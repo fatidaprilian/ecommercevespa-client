@@ -1,0 +1,27 @@
+# Stage 1: Build the application
+# Menggunakan Node.js 22 LTS sebagai 'builder'
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+# Jalankan build produksi
+RUN npm run build
+
+# ---
+
+# Stage 2: Create the final production image
+FROM node:22-alpine
+WORKDIR /app
+# Salin hasil build standalone dari stage 'builder'
+# Ini adalah cara paling efisien untuk menjalankan Next.js di produksi
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Expose port yang digunakan Next.js
+EXPOSE 3000
+# Perintah untuk menjalankan server Next.js standalone
+# Port akan dibaca dari environment variable PORT, defaultnya 3000
+ENV PORT=3000
+CMD ["node", "server.js"]

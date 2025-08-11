@@ -1,0 +1,34 @@
+# Stage 1: Build the application
+# Menggunakan Node.js 22 LTS sebagai 'builder'
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+# Install semua dependensi, termasuk devDependencies yang dibutuhkan untuk build
+RUN npm install
+COPY . .
+# Jalankan build untuk mengkompilasi TypeScript ke JavaScript
+RUN npm run build
+# Hapus devDependencies untuk memperkecil ukuran node_modules
+RUN npm prune --production
+
+# ---
+
+# Stage 2: Create the final production image
+# Mulai dari image node yang bersih dan ringan
+FROM node:22-alpine
+WORKDIR /app
+# Salin hanya hasil build dan node_modules yang sudah di-prune dari stage 'builder'
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+# Salin Prisma schema untuk generate client di production image
+COPY --from=builder /app/prisma ./prisma
+# Salin package.json untuk referensi
+COPY --from=builder /app/package.json ./
+
+# Generate Prisma Client di dalam production image
+RUN npx prisma generate
+
+# Expose port yang digunakan aplikasi
+EXPOSE 3001
+# Perintah untuk menjalankan aplikasi produksi
+CMD ["node", "dist/main"]

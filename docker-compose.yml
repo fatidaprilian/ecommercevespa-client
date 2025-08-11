@@ -1,0 +1,55 @@
+services:
+  # Layanan Backend API
+  api:
+    build:
+      context: ./vespa-ecommerce-api
+      dockerfile: Dockerfile
+    command: sh -c "npm install && npm run start:dev"
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./vespa-ecommerce-api:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: "postgresql://user:password@db:5432/vespapart_ecommerce?schema=public"
+      JWT_SECRET: "your-super-secret-jwt-key"
+      JWT_EXPIRES_IN: "7d"
+      REDIS_HOST: "redis"
+      REDIS_PORT: 6379
+
+  # Layanan Frontend Web
+  web:
+    build:
+      context: ./vespa-ecommerce-web
+      dockerfile: Dockerfile
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./vespa-ecommerce-web:/app
+
+  # Layanan Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vespapart_ecommerce
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  # Layanan Redis
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  postgres-data:
+  redis-data:

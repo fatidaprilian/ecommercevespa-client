@@ -1,0 +1,37 @@
+# Folder dependensi
+node_modules/
+
+# File Environment (SANGAT PENTING!)
+# Jangan pernah meng-upload file .env ke repository publik
+.env
+.env.*
+!.env.example
+
+# Log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Folder hasil build
+dist/
+.next/
+out/
+build/
+
+# File sistem operasi
+.DS_Store
+Thumbs.db
+
+# Konfigurasi Editor/IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# File temporary dan cache
+.npm
+.pnp*
