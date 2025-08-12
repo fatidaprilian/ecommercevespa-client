@@ -30,3 +30,34 @@ model User {
 
   @@map("users") // Nama tabel di database akan menjadi 'users'
 }
+
+// Model untuk kategori produk
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+
+  products  Product[] // Relasi: satu kategori punya banyak produk
+
+  @@map("categories")
+}
+
+// Model untuk produk
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  sku         String    @unique
+  description String?
+  price       Decimal   @db.Decimal(12, 2) // Harga dengan 2 angka di belakang koma
+  stock       Int       @default(0)
+  images      String[]  // Menyimpan array URL gambar
+  isActive    Boolean   @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relasi: setiap produk masuk dalam satu kategori
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+
+  @@map("products")
+}

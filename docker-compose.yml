@@ -1,3 +1,4 @@
+# docker-compose.yml (untuk development lokal) - REVISI
 services:
   # Layanan Backend API
   api:
@@ -12,14 +13,12 @@ services:
     depends_on:
       - db
       - redis
-    environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/vespapart_ecommerce?schema=public"
-      JWT_SECRET: "your-super-secret-jwt-key"
-      JWT_EXPIRES_IN: "7d"
-      REDIS_HOST: "redis"
-      REDIS_PORT: 6379
+    # Variabel env untuk API tetap dibaca dari .env di dalam foldernya
+    # Ini menjaga agar setiap service punya konfigurasi .env sendiri
+    env_file:
+      - ./vespa-ecommerce-api/.env
 
-  # Layanan Frontend Web
+  # Layanan Frontend Customer
   web:
     build:
       context: ./vespa-ecommerce-web
@@ -29,14 +28,30 @@ services:
       - "3000:3000"
     volumes:
       - ./vespa-ecommerce-web:/app
+    env_file:
+      - ./vespa-ecommerce-web/.env.local
+
+  # Layanan Admin Panel
+  admin:
+    build:
+      context: ./vespa-ecommerce-admin
+      dockerfile: Dockerfile
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./vespa-ecommerce-admin:/app
+    env_file:
+      - ./vespa-ecommerce-admin/.env
 
   # Layanan Database
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: vespapart_ecommerce
+      # Variabel ini sekarang diambil dari file .env di root
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -45,6 +60,7 @@ services:
   # Layanan Redis
   redis:
     image: redis:alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD} # Menambahkan password untuk redis
     ports:
       - "6379:6379"
     volumes:
