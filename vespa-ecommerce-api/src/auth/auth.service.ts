@@ -1,55 +1,37 @@
-import {
-  Injectable,
-  ConflictException,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { UsersService } from 'src/users/users.service';
+// file: vespa-ecommerce-api/src/auth/auth.service.ts
+
+import { Injectable, ConflictException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.module';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
-import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async register(registerDto: RegisterDto) {
     const { email, password, name } = registerDto;
 
-    const existingUser = await this.usersService.findOneByEmail(email);
-    if (existingUser) {
+    const userExists = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (userExists) {
       throw new ConflictException('Email sudah terdaftar');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.usersService.create({
-      email,
-      name,
-      password: hashedPassword,
+    const newUser = await this.prisma.user.create({
+      data: {
+        email,
+        name,
+        password: hashedPassword,
+      },
     });
 
-    const { password: _, ...result } = user;
+    // Hapus password dari objek yang dikembalikan
+    const { password: _, ...result } = newUser;
     return result;
-  }
-
-  async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
-    const user = await this.usersService.findOneByEmail(email);
-    if (!user) {
-      throw new UnauthorizedException('Kredensial tidak valid');
-    }
-
-    const isPasswordMatching = await bcrypt.compare(password, user.password);
-    if (!isPasswordMatching) {
-      throw new UnauthorizedException('Kredensial tidak valid');
-    }
-
-    const payload = { sub: user.id, email: user.email, role: user.role };
-    const accessToken = await this.jwtService.signAsync(payload);
-    return { accessToken };
   }
 }

@@ -1,16 +1,17 @@
+// file: vespa-ecommerce-api/src/auth/auth.module.ts
+
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { UsersModule } from 'src/users/users.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { PassportModule } from '@nestjs/passport';
-import { JwtStrategy } from './jwt.strategy'; // <-- Impor
 
 @Module({
   imports: [
-    UsersModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PrismaModule,
+    PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -22,7 +23,7 @@ import { JwtStrategy } from './jwt.strategy'; // <-- Impor
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy], // <-- Tambahkan JwtStrategy di sini
   controllers: [AuthController],
+  providers: [AuthService],
 })
 export class AuthModule {}

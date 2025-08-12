@@ -1,3 +1,5 @@
+// file: vespa-ecommerce-api/src/app.module.ts
+
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -9,6 +11,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import * as Joi from 'joi';
+import { PrismaModule } from './prisma/prisma.module'; // <-- IMPORT INI
 
 @Module({
   imports: [
@@ -20,9 +23,11 @@ import * as Joi from 'joi';
         JWT_EXPIRES_IN: Joi.string().required(),
         REDIS_HOST: Joi.string().required(),
         REDIS_PORT: Joi.number().default(6379),
+        // Saya asumsikan FRONTEND_URL ada di .env Anda, jika tidak, hapus atau tambahkan
         FRONTEND_URL: Joi.string().uri().required(),
       }),
     }),
+    PrismaModule, // <-- DAFTARKAN DI SINI
     UsersModule,
     AuthModule,
     ProductsModule,
