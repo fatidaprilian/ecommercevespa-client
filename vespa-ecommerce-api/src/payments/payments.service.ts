@@ -1,152 +1,100 @@
-// src/payments/payments.service.ts
-
 import {
-  Inject,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import Xendit from 'xendit-node';
-import { CreateInvoiceRequest } from 'xendit-node/invoice/models/CreateInvoiceRequest';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { XenditService } from 'src/xendit/xendit.service';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private prisma: PrismaService,
-    @Inject('XENDIT_CLIENT') private xendit: Xendit,
+    private xenditService: XenditService,
   ) {}
 
-  /**
-   * Membuat permintaan pembayaran baru (invoice) di Xendit dan menyimpannya ke database.
-   * @param createPaymentDto DTO untuk membuat pembayaran.
-   * @param userId ID pengguna yang membuat pesanan.
-   * @returns Detail pembayaran yang berhasil dibuat, termasuk URL invoice.
-   */
-  async createPayment(createPaymentDto: CreatePaymentDto, userId: string) {
-    const { orderId } = createPaymentDto;
+  async createPayment(userId: string, createPaymentDto: CreatePaymentDto) {
+    const { orderId, paymentMethod } = createPaymentDto;
 
-    // 1. Mencari pesanan di database untuk memastikan validitasnya.
-    const order = await this.prisma.order.findFirst({
+    const order = await this.prisma.order.findUnique({
       where: { id: orderId, userId: userId },
       include: { user: true },
     });
 
     if (!order) {
       throw new NotFoundException(
-        `Pesanan dengan ID ${orderId} tidak ditemukan atau bukan milik Anda.`,
+        `Order dengan ID ${orderId} tidak ditemukan untuk user ini.`,
       );
     }
-
-    try {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-
-      // 2. Memanggil Xendit API untuk membuat invoice baru.
-      const invoiceData: CreateInvoiceRequest = {
-        externalId: order.id,
-        amount: Number(order.totalAmount),
-        payerEmail: order.user.email,
-        description: `Pembayaran untuk Pesanan Vespa Part #${order.id}`,
-        successRedirectUrl: `${frontendUrl}/payment/success?order_id=${order.id}`,
-        failureRedirectUrl: `${frontendUrl}/payment/failed?order_id=${order.id}`,
-      };
-      
-      const invoice = await this.xendit.Invoice.createInvoice({ data: invoiceData });
-
-      // 3. Menyimpan atau memperbarui entri pembayaran di database lokal.
-      // `upsert` digunakan untuk mencegah duplikasi jika fungsi dipanggil lebih dari sekali.
-      const payment = await this.prisma.payment.upsert({
-        where: { orderId: orderId },
-        update: {
-          externalId: invoice.id,
-          paymentUrl: invoice.invoiceUrl,
-          status: 'PENDING',
-        },
-        create: {
-          orderId: orderId,
-          amount: order.totalAmount,
-          paymentMethod: createPaymentDto.paymentMethod,
-          status: 'PENDING',
-          externalId: invoice.id,
-          paymentUrl: invoice.invoiceUrl,
-        },
-      });
-
-      return {
-        message: 'Invoice pembayaran berhasil dibuat.',
-        paymentId: payment.id,
-        paymentUrl: payment.paymentUrl,
-      };
-    } catch (error) {
-      console.error(
-        'Error saat membuat invoice Xendit:',
-        error.response?.data || error.message,
-      );
-      throw new InternalServerErrorException(
-        'Gagal membuat invoice pembayaran.',
-      );
+    if (order.status !== OrderStatus.PENDING) {
+      throw new UnprocessableEntityException('Order tidak dalam status PENDING.');
     }
+
+    // Panggil Xendit Service untuk membuat invoice
+    const invoice = await this.xenditService.createInvoice({
+      externalId: order.orderNumber, // Menggunakan camelCase
+      amount: order.totalAmount,
+      payerEmail: order.user.email,
+      description: `Pembayaran untuk Order #${order.orderNumber}`,
+    });
+
+    // Simpan data pembayaran ke database kita
+    const payment = await this.prisma.payment.create({
+      data: {
+        orderId: orderId,
+        amount: order.totalAmount,
+        method: paymentMethod,
+        status: PaymentStatus.PENDING,
+        transactionId: invoice.id,
+      },
+    });
+
+    return {
+      payment,
+      // --- PERBAIKAN FINAL ADA DI SINI ---
+      paymentUrl: invoice.invoiceUrl, // Menggunakan camelCase sesuai tipe data
+    };
   }
 
-  /**
-   * Memproses notifikasi webhook dari Xendit.
-   * @param payload Payload data dari webhook Xendit.
-   */
-  async processWebhook(payload: any) {
-    const orderId = payload.external_id;
+  async handleWebhook(headers: any, body: any) {
+    this.xenditService.validateCallbackToken(headers['x-callback-token']);
 
-    // Menangani kasus di mana webhook dikirim untuk status selain PAID
-    if (payload.status !== 'PAID') {
-        console.log(
-            `Webhook diterima untuk pesanan ${orderId}, tetapi status bukan PAID. Tidak ada aksi yang diambil.`,
-        );
-        return { message: 'Webhook diterima, tetapi tidak ada aksi yang diambil.' };
+    const { external_id, status } = body;
+
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber: external_id },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order dengan nomor ${external_id} tidak ditemukan.`);
     }
 
-    try {
-      // Menggunakan transaksi database untuk memastikan kedua operasi berhasil atau tidak sama sekali (atomicity).
-      return await this.prisma.$transaction(async (tx) => {
-        // Mencari dan memperbarui status pembayaran.
-        // Error "P2025" terjadi di sini jika record dengan orderId yang sesuai tidak ditemukan.
-        await tx.payment.update({
-          where: { orderId: orderId },
-          data: { status: 'PAID' },
+    if (status === 'PAID') {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.updateMany({
+          where: { orderId: order.id },
+          data: { status: PaymentStatus.SUCCESS },
         });
-
-        // Memperbarui status pesanan terkait.
-        const updatedOrder = await tx.order.update({
-          where: { id: orderId },
-          data: { status: 'PROCESSING' },
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: OrderStatus.PAID },
         });
-
-        console.log(
-          `Pembayaran untuk Pesanan ${orderId} berhasil. Status diubah menjadi PROCESSING.`,
-        );
-
-        return {
-          message: `Webhook untuk pesanan ${orderId} berhasil diproses.`,
-          order: updatedOrder,
-        };
       });
-    } catch (error) {
-      // Menangani error Prisma jika record tidak ditemukan.
-      if (error.code === 'P2025') {
-        console.error(
-          `Webhook Error: Tidak ada record pembayaran yang ditemukan untuk orderId: ${orderId}.`,
-        );
-        throw new NotFoundException(
-          `Gagal memproses webhook: Pembayaran tidak ditemukan untuk pesanan ${orderId}`,
-        );
-      }
-
-      console.error(
-        `Gagal memproses webhook untuk pesanan ${orderId}:`,
-        error,
-      );
-      throw new InternalServerErrorException(
-        `Gagal memproses webhook untuk pesanan ${orderId}`,
-      );
+    } else if (status === 'EXPIRED') {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.updateMany({
+          where: { orderId: order.id },
+          data: { status: PaymentStatus.EXPIRED },
+        });
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: OrderStatus.CANCELLED },
+        });
+      });
     }
+
+    return { success: true };
   }
 }

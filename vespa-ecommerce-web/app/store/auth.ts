@@ -1,17 +1,30 @@
-// vespa-ecommerce-web/src/store/auth.ts
-
 import { create } from 'zustand';
-import { User } from '../types'; // Kita akan buat tipe User nanti
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { User } from '../types';
 
-// Definisikan tipe untuk state dan actions
 type AuthState = {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
-  setUser: (user: User | null) => void;
+  setAuth: (user: User | null, token: string | null) => void;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthenticated: false,
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
-}));
+export const useAuthStore = create<AuthState>()(
+  // Gunakan middleware `persist` untuk menyimpan state
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      setAuth: (user, token) => set({
+        user,
+        token,
+        isAuthenticated: !!token,
+      }),
+    }),
+    {
+      name: 'auth-storage', // Nama key di localStorage
+      storage: createJSONStorage(() => localStorage), // Gunakan localStorage
+    },
+  ),
+);

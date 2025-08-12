@@ -1,20 +1,30 @@
-// src/orders/orders.controller.ts
-
-import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AuthGuard } from '@nestjs/passport';
-// Hapus import Request dari 'express'
-import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface'; // <-- INI BENAR
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  @UseGuards(AuthGuard('jwt'))
   @Post()
-  create(@Req() req: AuthenticatedRequest, @Body() createOrderDto: CreateOrderDto) { // <-- 2. Gunakan type baru
-    const userId = req.user.sub; // <-- 3. Akses 'sub' dari payload, lebih aman
+  @UseGuards(AuthGuard('jwt'))
+  create(@Req() req: any, @Body() createOrderDto: CreateOrderDto) {
+    const userId = req.user.id;
     return this.ordersService.create(userId, createOrderDto);
+  }
+
+  @Get()
+  @UseGuards(AuthGuard('jwt')) // Sebaiknya hanya admin/user terkait yg bisa lihat
+  findAll() {
+    // TODO: Tambahkan logika untuk memfilter order berdasarkan role
+    return this.ordersService.findAll();
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard('jwt'))
+  findOne(@Param('id') id: string) {
+    // TODO: Tambahkan validasi apakah user boleh melihat order ini
+    return this.ordersService.findOne(id);
   }
 }

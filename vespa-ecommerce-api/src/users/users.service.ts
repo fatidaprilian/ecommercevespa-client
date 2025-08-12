@@ -1,31 +1,45 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { User, Prisma } from '@prisma/client';
+import { CreateUserDto } from './dto/create-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findOneByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: {
-        email: email,
+  async create(createUserDto: CreateUserDto) {
+    const { email, password, name, role } = createUserDto; // Ini sudah benar sekarang
+
+    const existingUser = await this.findByEmail(email);
+    if (existingUser) {
+      throw new ConflictException('User dengan email ini sudah terdaftar');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role,
       },
     });
+    
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...result } = user;
+    return result;
   }
-  
-  // Method baru untuk mencari user berdasarkan ID
-  async findOneById(id: string): Promise<User | null> {
+
+  async findByEmail(email: string) {
     return this.prisma.user.findUnique({
-      where: {
-        id,
-      },
+      where: { email },
     });
   }
 
-  async create(data: Prisma.UserCreateInput): Promise<User> {
-    return this.prisma.user.create({
-      data,
+  async findById(id: string) {
+    return this.prisma.user.findUnique({
+      where: { id },
     });
   }
 }

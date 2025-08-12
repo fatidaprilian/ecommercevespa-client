@@ -1,89 +1,105 @@
-// src/products/products.service.ts
-
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service'; // Pastikan path benar
 import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import slugify from 'slugify';
-import { Prisma } from '@prisma/client'; // Di-import untuk memberikan tipe pada data update
+import { Product, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Membuat produk baru dan secara otomatis menghasilkan slug dari nama produk.
-   */
-  async create(createProductDto: CreateProductDto) {
-    const slug = slugify(createProductDto.name, {
-      lower: true,
-      strict: true,
-      remove: /[*+~.()'"!:@]/g,
-    });
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    const { categoryId, brandId, images, ...productData } = createProductDto;
+
+    const data: Prisma.ProductCreateInput = {
+      ...productData,
+      category: {
+        connect: { id: categoryId },
+      },
+      // Hubungkan brand jika ada
+      ...(brandId && { brand: { connect: { id: brandId } } }),
+      // Buat entri gambar terkait jika ada
+      ...(images && { images: { create: images } }),
+    };
 
     return this.prisma.product.create({
-      data: {
-        ...createProductDto,
-        slug: slug,
+      data,
+      include: {
+        category: true,
+        brand: true,
+        images: true,
       },
     });
   }
 
-  /**
-   * Mengambil semua produk dari database.
-   */
-  findAll() {
-    return this.prisma.product.findMany();
+  async findAll(): Promise<Product[]> {
+    return this.prisma.product.findMany({
+      include: {
+        category: true,
+        brand: true,
+        images: true,
+      },
+    });
   }
 
-  /**
-   * Mencari satu produk berdasarkan ID uniknya.
-   * Melempar error jika produk tidak ditemukan.
-   */
-  async findOne(id: string) {
+  async findOne(id: string): Promise<Product> {
     const product = await this.prisma.product.findUnique({
       where: { id },
+      include: {
+        category: true,
+        brand: true,
+        images: true,
+      },
     });
-
     if (!product) {
-      throw new NotFoundException(`Produk dengan ID "${id}" tidak ditemukan.`);
+      throw new NotFoundException(`Product with ID ${id} not found`);
     }
-
     return product;
   }
 
-  /**
-   * Memperbarui data produk berdasarkan ID.
-   * Jika nama produk diubah, slug juga akan diperbarui secara otomatis.
-   */
-  async update(id: string, updateProductDto: UpdateProductDto) {
-    await this.findOne(id); // Memastikan produk ada
+  async update(id: string, updateProductDto: Partial<CreateProductDto>): Promise<Product> {
+    const { categoryId, brandId, images, ...productData } = updateProductDto;
 
-    // Memberikan tipe eksplisit `Prisma.ProductUpdateInput`
-    // agar TypeScript mengizinkan penambahan properti `slug`.
-    const data: Prisma.ProductUpdateInput = { ...updateProductDto };
-
-    // Jika nama produk ada dalam data pembaruan, buat slug baru.
-    if (updateProductDto.name) {
-      data.slug = slugify(updateProductDto.name, {
-        lower: true,
-        strict: true,
-        remove: /[*+~.()'"!:@]/g,
+    // Prisma transaction untuk memastikan update dan delete/create image atomik
+    return this.prisma.$transaction(async (tx) => {
+      const updatedProduct = await tx.product.update({
+        where: { id },
+        data: {
+          ...productData,
+          ...(categoryId && { category: { connect: { id: categoryId } } }),
+          ...(brandId && { brand: { connect: { id: brandId } } }),
+        },
       });
-    }
 
-    return this.prisma.product.update({
-      where: { id },
-      data,
+      if (images) {
+        // Hapus semua gambar lama
+        await tx.productImage.deleteMany({ where: { productId: id } });
+        // Tambahkan gambar baru
+        await tx.product.update({
+          where: { id },
+          data: {
+            images: {
+              create: images,
+            },
+          },
+        });
+      }
+      
+      // Ambil data produk final dengan semua relasi
+      return tx.product.findUniqueOrThrow({
+        where: { id },
+        include: {
+          category: true,
+          brand: true,
+          images: true,
+        }
+      });
     });
   }
 
-  /**
-   * Menghapus produk berdasarkan ID.
-   */
-  async remove(id: string) {
-    await this.findOne(id); // Memastikan produk ada sebelum menghapus
-    
+  async remove(id: string): Promise<Product> {
+    // Pastikan produk ada sebelum dihapus
+    await this.findOne(id);
+    // onDelete: Cascade pada ProductImage akan menghapus gambar terkait secara otomatis
     return this.prisma.product.delete({
       where: { id },
     });
