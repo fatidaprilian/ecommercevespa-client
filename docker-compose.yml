@@ -32,17 +32,21 @@ services:
       - ./vespa-ecommerce-web/.env.local
 
   # Layanan Admin Panel
+  # Layanan Admin Panel (Next.js + Shadcn/ui)
   admin:
     build:
       context: ./vespa-ecommerce-admin
       dockerfile: Dockerfile
-    command: sh -c "npm install && npm run dev -- --port 3002"
+    # 'command' DIHAPUS, karena sudah diatur di dalam Dockerfile
     ports:
-      - "3002:3002"
+      - "3003:3003" # Port sudah benar sesuai permintaan Anda
     volumes:
+      # Sinkronkan kode, tapi buat pengecualian untuk node_modules dan .next
       - ./vespa-ecommerce-admin:/app
+      - /app/node_modules
+      - /app/.next
     env_file:
-      - ./vespa-ecommerce-admin/.env
+      - ./vespa-ecommerce-admin/.env.local # Next.js menggunakan .env.local
 
   # Layanan Database
   db:
