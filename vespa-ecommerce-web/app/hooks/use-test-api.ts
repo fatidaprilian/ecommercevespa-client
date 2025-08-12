@@ -1,7 +1,7 @@
 // src/hooks/use-test-api.ts
 
 import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api'; // Impor instance axios kita
+import api from '../lib/api'; // Impor instance axios kita
 
 // Fungsi untuk mengambil data
 const getHelloWorld = async () => {

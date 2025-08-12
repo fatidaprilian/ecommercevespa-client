@@ -2,8 +2,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
-import { Product } from '@/types';
+import api from '../lib/api';
+import { Product } from '../types';
 
 const getProducts = async (): Promise<Product[]> => {
   const { data } = await api.get('/products');

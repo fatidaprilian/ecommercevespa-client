@@ -1,4 +1,5 @@
-// src/types/index.ts
+// vespa-ecommerce-web/src/types/index.ts
+
 export type Category = {
   id: string;
   name: string;
@@ -17,4 +18,12 @@ export type Product = {
   updatedAt: string;
   categoryId: string;
   category: Category;
+};
+
+// Tipe untuk data pengguna
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  role: 'ADMIN' | 'RESELLER' | 'MEMBER';
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import { Product } from '@/types';
+import { Product } from '../../types';
 import Link from 'next/link';
 
 type ProductCardProps = {
