@@ -36,7 +36,7 @@ services:
     build:
       context: ./vespa-ecommerce-admin
       dockerfile: Dockerfile
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "npm install && npm run dev -- --port 3002"
     ports:
       - "3002:3002"
     volumes:
