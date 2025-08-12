@@ -1,0 +1,56 @@
+# Dockerfile.prod untuk vespa-ecommerce-admin
+
+# =================
+#  TAHAP 1: BASE
+# =================
+# Menggunakan image Node.js versi Long Term Support (LTS) yang ringan (alpine).
+# 'AS base' memberi nama pada tahap ini agar bisa dirujuk nanti.
+FROM node:18-alpine AS base
+WORKDIR /app
+
+# =======================
+#  TAHAP 2: DEPENDENCIES
+# =======================
+# Tahap ini khusus untuk meng-install dependensi.
+# Tujuannya adalah memanfaatkan cache Docker. Selama package.json tidak berubah,
+# Docker tidak akan menjalankan `npm ci` lagi, sehingga build lebih cepat.
+FROM base AS deps
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# ===================
+#  TAHAP 3: BUILDER
+# ===================
+# Tahap ini bertanggung jawab untuk membuat build produksi dari aplikasi Anda.
+FROM base AS builder
+# Salin dependensi yang sudah di-install dari tahap 'deps'.
+COPY --from=deps /app/node_modules ./node_modules
+# Salin sisa source code aplikasi Anda.
+COPY . .
+# Jalankan script 'build' yang akan menghasilkan folder 'dist' berisi file statis.
+RUN npm run build
+
+# ==================
+#  TAHAP 4: RUNNER
+# ==================
+# Ini adalah tahap final yang akan menghasilkan image akhir yang sangat ringan.
+# Image ini tidak berisi source code atau development dependencies.
+FROM base AS runner
+ENV NODE_ENV=production
+
+# Salin folder 'dist' yang berisi hasil build dari tahap 'builder'.
+COPY --from=builder /app/dist ./dist
+
+# Install 'serve', sebuah server statis yang simpel dan efisien.
+RUN npm install -g serve
+
+# Mengganti ke user 'node' yang non-root adalah praktik keamanan yang baik.
+USER node
+
+# Perintah untuk menjalankan server saat container dimulai.
+# - 'serve' adalah nama package-nya.
+# - '-s dist' akan menyajikan konten dari folder 'dist' dan penting untuk
+#   Single Page Application (SPA) agar routing di sisi klien berfungsi.
+# - '-l 80' memberitahu 'serve' untuk berjalan di port 80, sesuai
+#   dengan konfigurasi `docker-compose.prod.yml` Anda.
+CMD ["serve", "-s", "dist", "-l", "80"]
