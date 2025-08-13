@@ -1,11 +1,11 @@
-// file: src/main.ts
+// file: vespa-ecommerce-api/src/main.ts
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe } from '@nestjs/common'; // <-- Impor ValidationPipe
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,18 +15,27 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // TAMBAHKAN BARIS INI untuk mengaktifkan validasi otomatis di semua endpoint
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Otomatis menghapus properti yang tidak ada di DTO
-    forbidNonWhitelisted: true, // Memberi error jika ada properti yang tidak terdaftar
-    transform: true, // Otomatis mengubah tipe data (misal: string dari query param ke number)
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
   }));
 
+  // --- Menggunakan FRONTEND_URL dan ADMIN_URL ---
+  const frontendUrl = configService.get('FRONTEND_URL');
+  const adminUrl = configService.get('ADMIN_URL');
+
+  const allowedOrigins = [frontendUrl, adminUrl].filter(Boolean); // Filter out any undefined values
+
   app.enableCors({
-    origin: configService.get('FRONTEND_URL'),
+    origin: allowedOrigins,
     credentials: true,
   });
+  // ----------------------------------------------
 
-  await app.listen(3001);
+  const port = configService.get('PORT') || 3001;
+  await app.listen(port);
+  console.log(`🚀 Server running on port ${port}`);
+  console.log(`✅ CORS enabled for origins: ${allowedOrigins.join(', ')}`);
 }
 bootstrap();

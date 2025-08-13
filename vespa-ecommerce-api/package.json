@@ -26,6 +26,11 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prepare": "husky"
   },
+
+    "prisma": {
+      "seed": "ts-node prisma/seed.ts"
+  },
+
   "dependencies": {
     "@nestjs/bull": "^11.0.3",
     "@nestjs/common": "^11.0.1",
@@ -101,5 +106,10 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
   }
 }
