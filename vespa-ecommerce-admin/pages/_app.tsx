@@ -1,30 +1,32 @@
-// pages/_app.tsx
-
 import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
-import { useState } from 'react'; // Impor useState
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'; // Impor React Query
+import { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast'; // <-- 1. Impor Toaster
+
 import AdminLayout from '@/components/layouts/AdminLayout';
 import AuthGuard from '@/components/guards/AuthGuard';
 import './globals.css';
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
-  // Buat instance QueryClient. useState memastikan ini hanya dibuat sekali.
   const [queryClient] = useState(() => new QueryClient());
 
-  if (router.pathname === '/auth/login') {
-    return <Component {...pageProps} />;
-  }
-
   return (
-    // Bungkus semua dengan QueryClientProvider
     <QueryClientProvider client={queryClient}>
-      <AuthGuard>
-        <AdminLayout>
-          <Component {...pageProps} />
-        </AdminLayout>
-      </AuthGuard>
+      {/* 2. Letakkan Toaster di sini agar tersedia di semua halaman */}
+      <Toaster position="top-center" reverseOrder={false} />
+
+      {/* 3. Logika untuk halaman login tetap dipertahankan */}
+      {router.pathname === '/auth/login' ? (
+        <Component {...pageProps} />
+      ) : (
+        <AuthGuard>
+          <AdminLayout>
+            <Component {...pageProps} />
+          </AdminLayout>
+        </AuthGuard>
+      )}
     </QueryClientProvider>
   );
 }

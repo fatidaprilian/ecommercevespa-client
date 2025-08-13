@@ -31,6 +31,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const navItems = [
     { href: '/', label: 'Dashboard', icon: Home },
     { href: '/products', label: 'Produk', icon: Package },
+    { href: '/categories', label: 'Kategori', icon: Package },
+    { href: '/brands', label: 'Merek', icon: Package },
     { href: '/orders', label: 'Pesanan', icon: ShoppingCart },
     { href: '/users', label: 'Pengguna', icon: Users },
   ];

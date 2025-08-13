@@ -10,16 +10,16 @@ import Link from "next/link";
 
 // Mock data untuk demo
 const mockProducts = [
-  { id: 1, name: "CVT Belt Original Piaggio", price: 285000, image: "https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400", rating: 4.9, reviews: 47 },
-  { id: 2, name: "Brake Pad Set Vespa Primavera", price: 125000, image: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=400", rating: 4.8, reviews: 32 },
-  { id: 3, name: "LED Headlight Assembly", price: 450000, image: "https://images.unsplash.com/photo-1614027164847-1b28cfe1df60?w=400", rating: 5.0, reviews: 28 },
-  { id: 4, name: "Shock Absorber Rear", price: 680000, image: "https://images.unsplash.com/photo-1609630875171-b1321377ee65?w=400", rating: 4.9, reviews: 15 }
+    { id: 1, name: "CVT Belt Original Piaggio", price: 285000, image: "https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400", rating: 4.9, reviews: 47 },
+    { id: 2, name: "Brake Pad Set Vespa Primavera", price: 125000, image: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=400", rating: 4.8, reviews: 32 },
+    { id: 3, name: "LED Headlight Assembly", price: 450000, image: "https://images.unsplash.com/photo-1614027164847-1b28cfe1df60?w=400", rating: 5.0, reviews: 28 },
+    { id: 4, name: "Shock Absorber Rear", price: 680000, image: "https://images.unsplash.com/photo-1609630875171-b1321377ee65?w=400", rating: 4.9, reviews: 15 }
 ];
 
 const testimonials = [
-  { name: "Ahmad Rifky", role: "Vespa Sprint Owner", content: "Kualitas sparepart original terbaik! Vespa saya kembali performa seperti baru.", rating: 5, avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100" },
-  { name: "Sari Indah", role: "Vespa Collector", content: "Pelayanan sangat memuaskan, packaging rapi dan pengiriman cepat. Highly recommended!", rating: 5, avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100" },
-  { name: "Budi Santoso", role: "Workshop Owner", content: "Partner terpercaya untuk kebutuhan sparepart. Harga kompetitif dengan kualitas terjamin.", rating: 5, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" }
+    { name: "Ahmad Rifky", role: "Vespa Sprint Owner", content: "Kualitas sparepart original terbaik! Vespa saya kembali performa seperti baru.", rating: 5, avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100" },
+    { name: "Sari Indah", role: "Vespa Collector", content: "Pelayanan sangat memuaskan, packaging rapi dan pengiriman cepat. Highly recommended!", rating: 5, avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100" },
+    { name: "Budi Santoso", role: "Workshop Owner", content: "Partner terpercaya untuk kebutuhan sparepart. Harga kompetitif dengan kualitas terjamin.", rating: 5, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" }
 ];
 
 // Reusable Components
@@ -108,14 +108,14 @@ const HeroSection = () => {
                   transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
                   className="flex flex-col sm:flex-row gap-6 justify-center items-center"
                 >
-                  <button className="group relative inline-flex items-center gap-3 bg-[#C9D6DF] text-[#1E2022] font-bold py-4 px-8 rounded-lg text-lg hover:bg-white transition-all transform hover:scale-105 shadow-2xl">
+                  <Link href="/products" className="group relative inline-flex items-center gap-3 bg-[#C9D6DF] text-[#1E2022] font-bold py-4 px-8 rounded-lg text-lg hover:bg-white transition-all transform hover:scale-105 shadow-2xl">
                       Mulai Jelajahi 
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                  </button>
-                  <button className="group inline-flex items-center gap-3 bg-transparent border-2 border-white text-white font-bold py-4 px-8 rounded-lg text-lg hover:bg-white hover:text-black transition-all transform hover:scale-105">
+                  </Link>
+                  <Link href="/contact" className="group inline-flex items-center gap-3 bg-transparent border-2 border-white text-white font-bold py-4 px-8 rounded-lg text-lg hover:bg-white hover:text-black transition-all transform hover:scale-105">
                       <Phone className="w-5 h-5" />
                       Konsultasi Gratis
-                  </button>
+                  </Link>
                 </motion.div>
             </div>
             <FloatingBadge className="top-20 right-10 hidden lg:flex items-center gap-2">
@@ -244,12 +244,12 @@ const CategoriesSection = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {categories.map((cat, index) => (
             <motion.div
-              key={cat.name}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.6, delay: index * 0.15, ease: "easeOut" }}
-              className="group cursor-pointer"
+                key={cat.name}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 0.6, delay: index * 0.15, ease: "easeOut" }}
+                className="group cursor-pointer"
             >
               <div className="relative h-80 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
                 <img 
@@ -284,6 +284,49 @@ const CategoriesSection = () => {
     </Section>
   );
 };
+
+const BrandsSection = () => {
+  const brands = [
+    { name: 'Piaggio', logoUrl: 'https://i.pinimg.com/736x/bc/b3/a8/bcb3a86da424ea6874d6d44b22b705a6.jpg' },
+    { name: 'Vespa', logoUrl: 'https://i.pinimg.com/1200x/7a/45/2d/7a452ddbf4e6cb86a3bf0829b7288314.jpg' },
+    { name: 'Polini', logoUrl: 'https://i.pinimg.com/736x/a2/06/e7/a206e7950e2606371e9c20b44963931a.jpg' },
+    { name: 'Malossi', logoUrl: 'https://i.pinimg.com/1200x/b2/b4/db/b2b4db6f39c5249ed1cd8fb2e7dd7a29.jpg' },
+    { name: 'Zelioni', logoUrl: 'https://i.pinimg.com/1200x/e6/d4/fc/e6d4fc2f6c8c9ba9cb9f7dd7fb94fd14.jpg' },
+    { name: 'Brembo', logoUrl: 'https://i.pinimg.com/1200x/00/12/a5/0012a5bb953933f2943252e5edf5683a.jpg' }
+  ];
+
+  return (
+    <Section className="bg-white">
+      <div className="container mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-gray-400">
+            Merek Terpercaya Kami
+          </h2>
+        </div>
+        <div className="flex flex-wrap justify-center items-center gap-x-16 gap-y-10">
+          {brands.map((brand, index) => (
+            <motion.div
+              key={brand.name}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              title={brand.name}
+              className="grayscale hover:grayscale-0 transition-all duration-300"
+            >
+              <img 
+                src={brand.logoUrl} 
+                alt={`${brand.name} logo`}
+                // --- UKURAN LOGO DIPERBESAR ---
+                className="h-14 md:h-16 object-contain"
+              />
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </Section>
+  )
+}
 
 const FeaturedProducts = () => {
     return (
@@ -500,15 +543,15 @@ const CTASection = () => {
                     </p>
                     
                     <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-                        <button className="group bg-[#C9D6DF] text-[#1E2022] font-bold py-4 px-8 rounded-lg text-lg hover:bg-white transition-all transform hover:scale-105 shadow-2xl flex items-center gap-3">
+                        <Link href="/products" className="group bg-[#C9D6DF] text-[#1E2022] font-bold py-4 px-8 rounded-lg text-lg hover:bg-white transition-all transform hover:scale-105 shadow-2xl flex items-center gap-3">
                             <ShoppingCart className="w-5 h-5" />
                             Start Shopping Now
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                        </button>
-                        <button className="group border-2 border-white text-white font-bold py-4 px-8 rounded-lg text-lg hover:bg-white hover:text-black transition-all transform hover:scale-105 flex items-center gap-3">
+                        </Link>
+                        <Link href="/contact" className="group border-2 border-white text-white font-bold py-4 px-8 rounded-lg text-lg hover:bg-white hover:text-black transition-all transform hover:scale-105 flex items-center gap-3">
                             <Phone className="w-5 h-5" />
                             Konsultasi Gratis
-                        </button>
+                        </Link>
                     </div>
                 </motion.div>
             </div>
@@ -522,6 +565,7 @@ export default function HomePage() {
       <HeroSection />
       <StatsSection />
       <CategoriesSection />
+      <BrandsSection />
       <FeaturedProducts />
       <OurPromise />
       <TestimonialsSection />
