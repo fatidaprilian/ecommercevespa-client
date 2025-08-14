@@ -20,7 +20,6 @@ export interface JwtPayload {
  */
 const cookieExtractor = (req: Request): string | null => {
   let token = null;
-  // Periksa apakah request dan cookies ada, lalu ambil cookie bernama 'access_token'
   if (req && req.cookies) {
     token = req.cookies['access_token'];
   }
@@ -36,9 +35,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      // 1. Perubahan Kunci: Gunakan fungsi cookieExtractor
-      jwtFromRequest: cookieExtractor,
-      // 2. Pastikan ignoreExpiration false agar token yang kedaluwarsa ditolak
+      // --- PERUBAHAN UTAMA DI SINI ---
+      // Memberitahu Passport untuk mencari token di dua tempat:
+      // 1. Dari 'Authorization: Bearer <token>' header.
+      // 2. Jika tidak ada, cari di cookie bernama 'access_token'.
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        cookieExtractor,
+      ]),
+      // ------------------------------------
+
       ignoreExpiration: false,
       secretOrKey: jwtSecret,
     });
@@ -51,8 +57,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @returns Objek user yang akan dilampirkan ke `req.user`.
    */
   async validate(payload: JwtPayload) {
-    // 3. Kita percaya pada payload karena sudah divalidasi oleh signature.
-    //    Ini lebih efisien karena tidak perlu query ke database setiap kali ada request.
+    // Kita percaya pada payload karena sudah divalidasi oleh signature.
+    // Ini lebih efisien karena tidak perlu query ke database setiap kali ada request.
     return { id: payload.sub, email: payload.email, role: payload.role };
   }
 }

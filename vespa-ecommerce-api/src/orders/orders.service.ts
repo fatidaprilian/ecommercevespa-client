@@ -1,3 +1,5 @@
+// file: vespa-ecommerce-api/src/orders/orders.service.ts
+
 import {
   Injectable,
   NotFoundException,
@@ -11,46 +13,32 @@ import { Prisma } from '@prisma/client';
 export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Membuat order baru untuk user tertentu.
-   * Method ini akan berjalan dalam satu transaksi database untuk memastikan integritas data.
-   * @param userId - ID dari user yang membuat order.
-   * @param createOrderDto - Data untuk membuat order baru, termasuk item dan alamat pengiriman.
-   * @returns Order yang baru dibuat beserta itemnya.
-   */
   async create(userId: string, createOrderDto: CreateOrderDto) {
     const { items, shippingAddress } = createOrderDto;
 
     // Menjalankan semua operasi database dalam satu transaksi
     const newOrder = await this.prisma.$transaction(async (tx) => {
       let totalAmount = 0;
-      // Memberikan tipe eksplisit pada array untuk item order
       const orderItemsData: Prisma.OrderItemCreateManyOrderInput[] = [];
 
-      // 1. Iterasi setiap item, validasi produk, dan hitung total harga
+      // 1. Validasi produk, stok, dan hitung total
       for (const item of items) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
         });
 
         if (!product) {
-          throw new NotFoundException(
-            `Produk dengan ID ${item.productId} tidak ditemukan.`,
-          );
+          throw new NotFoundException(`Produk dengan ID ${item.productId} tidak ditemukan.`);
         }
         if (product.stock < item.quantity) {
-          throw new UnprocessableEntityException(
-            `Stok untuk produk ${product.name} tidak mencukupi. Tersedia: ${product.stock}, Diminta: ${item.quantity}`,
-          );
+          throw new UnprocessableEntityException(`Stok untuk produk ${product.name} tidak mencukupi.`);
         }
 
-        // Akumulasi total harga
         totalAmount += product.price * item.quantity;
-
         orderItemsData.push({
           productId: item.productId,
           quantity: item.quantity,
-          price: product.price, // Simpan harga produk saat itu juga
+          price: product.price,
         });
       }
 
@@ -65,22 +53,23 @@ export class OrdersService {
             create: orderItemsData,
           },
         },
-        include: {
-          items: true, // Sertakan item yang baru dibuat dalam response
-        },
+        include: { items: true },
       });
 
-      // 3. Kurangi stok untuk setiap produk yang diorder
+      // 3. Kurangi stok untuk setiap produk
       for (const item of items) {
         await tx.product.update({
           where: { id: item.productId },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
+          data: { stock: { decrement: item.quantity } },
         });
       }
+
+      // --- 4. PERUBAHAN UTAMA: KOSONGKAN KERANJANG ---
+      const cart = await tx.cart.findUnique({ where: { userId } });
+      if (cart) {
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      }
+      // ----------------------------------------------
 
       return createdOrder;
     });
@@ -88,50 +77,27 @@ export class OrdersService {
     return newOrder;
   }
 
-  /**
-   * Mengambil semua order yang ada di sistem.
-   * @returns Daftar semua order.
-   */
+  // ... (Method findAll dan findOne tetap sama, tidak perlu diubah)
   async findAll() {
     return this.prisma.order.findMany({
       include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-        items: {
-          include: {
-            product: {
-              select: { id: true, name: true, sku: true },
-            },
-          },
-        },
+        user: { select: { id: true, name: true, email: true } },
+        items: { include: { product: { select: { id: true, name: true, sku: true } } } },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  /**
-   * Mengambil satu order spesifik berdasarkan ID.
-   * @param id - ID dari order yang ingin dicari.
-   * @returns Detail lengkap dari satu order.
-   */
   async findOne(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
         user: true,
-        items: {
-          include: {
-            product: true,
-          },
-        },
+        items: { include: { product: true } },
         payment: true,
         shipment: true,
       },
     });
-
     if (!order) {
       throw new NotFoundException(`Order dengan ID ${id} tidak ditemukan`);
     }

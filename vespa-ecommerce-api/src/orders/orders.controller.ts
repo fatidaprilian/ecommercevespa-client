@@ -1,30 +1,31 @@
+// file: vespa-ecommerce-api/src/orders/orders.controller.ts
+
 import { Controller, Get, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { AuthGuard } from '@nestjs/passport';
+import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
+import { AuthGuard } from '@nestjs/passport'; // <-- TAMBAHKAN BARIS INI
 
 @Controller('orders')
+@UseGuards(AuthGuard('jwt')) // Melindungi semua endpoint di controller ini
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  @UseGuards(AuthGuard('jwt'))
-  create(@Req() req: any, @Body() createOrderDto: CreateOrderDto) {
+  create(@Req() req: AuthenticatedRequest, @Body() createOrderDto: CreateOrderDto) {
     const userId = req.user.id;
     return this.ordersService.create(userId, createOrderDto);
   }
 
   @Get()
-  @UseGuards(AuthGuard('jwt')) // Sebaiknya hanya admin/user terkait yg bisa lihat
-  findAll() {
-    // TODO: Tambahkan logika untuk memfilter order berdasarkan role
+  findAll(@Req() req: AuthenticatedRequest) {
+    // Di masa depan, kita bisa filter berdasarkan req.user.role di sini
     return this.ordersService.findAll();
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'))
-  findOne(@Param('id') id: string) {
-    // TODO: Tambahkan validasi apakah user boleh melihat order ini
+  findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    // Di masa depan, kita bisa cek apakah req.user.id cocok dengan order.userId
     return this.ordersService.findOne(id);
   }
 }

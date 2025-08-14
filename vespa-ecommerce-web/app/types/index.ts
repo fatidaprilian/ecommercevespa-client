@@ -1,6 +1,17 @@
-// vespa-ecommerce-web/src/types/index.ts
+// file: vespa-ecommerce-web/app/types/index.ts
+
+// Tipe untuk gambar, sesuai dengan respons dari Prisma
+export type ProductImage = {
+  id: string;
+  url: string;
+};
 
 export type Category = {
+  id: string;
+  name: string;
+};
+
+export type Brand = {
   id: string;
   name: string;
 };
@@ -12,12 +23,10 @@ export type Product = {
   description: string | null;
   price: string; // Prisma Decimal dikirim sebagai string
   stock: number;
-  images: string[];
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  categoryId: string;
+  // --- PERUBAHAN DI SINI ---
+  images: ProductImage[]; // Menggunakan tipe ProductImage[]
   category: Category;
+  brand: Brand | null;
 };
 
 // Tipe untuk data pengguna

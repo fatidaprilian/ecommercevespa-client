@@ -33,3 +33,35 @@ export const createCategory = async (categoryData: CategoryData) => {
     });
     return data;
 };
+
+/**
+ * --- BARU ---
+ * Mengambil satu kategori berdasarkan ID.
+ */
+export const getCategoryById = async (id: string): Promise<Category> => {
+  const { data } = await axios.get(`${API_URL}/categories/${id}`, {
+    withCredentials: true,
+  });
+  return data;
+};
+
+/**
+ * --- BARU ---
+ * Memperbarui data kategori berdasarkan ID.
+ */
+export const updateCategory = async (id: string, categoryData: CategoryData): Promise<Category> => {
+  const { data } = await axios.patch(`${API_URL}/categories/${id}`, categoryData, {
+    withCredentials: true,
+  });
+  return data;
+};
+
+/**
+ * --- BARU ---
+ * Menghapus kategori berdasarkan ID.
+ */
+export const deleteCategory = async (id: string): Promise<void> => {
+  await axios.delete(`${API_URL}/categories/${id}`, {
+    withCredentials: true,
+  });
+};

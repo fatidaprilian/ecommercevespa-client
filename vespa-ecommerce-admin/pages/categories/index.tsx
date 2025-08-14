@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+// vespa-ecommerce-admin/pages/categories/index.tsx
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,14 +14,38 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { getCategories, Category } from '../services/categoryService'; // Impor fungsi dan tipe
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { getCategories, deleteCategory, Category } from '../services/categoryService';
 
 export default function CategoriesPage() {
-  // Menggunakan useQuery untuk mengambil data kategori
+  const queryClient = useQueryClient();
+
   const { data: categories, isLoading, isError, error } = useQuery<Category[], Error>({
-    queryKey: ['categories'], // Kunci unik untuk query ini
-    queryFn: getCategories,    // Fungsi yang akan dijalankan untuk fetch data
+    queryKey: ['categories'],
+    queryFn: getCategories,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success('Kategori berhasil dihapus.');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Gagal menghapus kategori.');
+    },
+  });
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Anda yakin ingin menghapus kategori ini?')) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   return (
     <div>
@@ -49,44 +75,58 @@ export default function CategoriesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">No</TableHead>
                 <TableHead>Nama Kategori</TableHead>
-                <TableHead className="w-[200px]">ID</TableHead>
-                <TableHead className="text-right w-[150px]">Aksi</TableHead>
+                <TableHead>ID</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center h-24">
-                    Memuat data...
-                  </TableCell>
+                  <TableCell colSpan={3} className="text-center h-24">Memuat data...</TableCell>
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center h-24 text-red-500">
+                  <TableCell colSpan={3} className="text-center h-24 text-red-500">
                     Gagal memuat data: {error.message}
                   </TableCell>
                 </TableRow>
               ) : categories && categories.length > 0 ? (
-                categories.map((category, index) => (
+                categories.map((category) => (
                   <TableRow key={category.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>{category.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{category.id}</TableCell>
+                    <TableCell className="font-medium">{category.name}</TableCell>
+                    <TableCell className="text-muted-foreground font-mono text-xs">{category.id}</TableCell>
                     <TableCell className="text-right">
-                      {/* Tombol Aksi (Edit/Hapus) bisa ditambahkan di sini nanti */}
-                      <Button variant="outline" size="sm">
-                        Edit
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Buka menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            {/* --- PERUBAHAN DI SINI --- */}
+                            <Link href={`/categories/edit?id=${category.id}`}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              <span>Edit</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600"
+                            onClick={() => handleDelete(category.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Hapus</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center h-24">
-                    Belum ada kategori.
-                  </TableCell>
+                  <TableCell colSpan={3} className="text-center h-24">Belum ada kategori.</TableCell>
                 </TableRow>
               )}
             </TableBody>

@@ -1,6 +1,10 @@
-// src/auth/interfaces/jwt.payload.ts
+// file: vespa-ecommerce-api/src/auth/interfaces/jwt.payload.ts
 
 export interface JwtPayload {
-  sub: string; // 'sub' adalah nama standar untuk subject (ID User)
+  // --- PERUBAHAN DI SINI ---
+  // Kita ganti 'sub' menjadi 'id' agar sesuai dengan objek
+  // yang dikembalikan oleh JwtStrategy
+  id: string; 
   email: string;
+  role: string;
 }

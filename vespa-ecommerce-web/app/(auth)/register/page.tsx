@@ -1,96 +1,119 @@
-// file: vespa-ecommerce-web/src/app/(auth)/register/page.tsx
+// file: vespa-ecommerce-web/app/(auth)/register/page.tsx
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import api from '@/lib/api'; // Pastikan path ini benar
+import { motion } from 'framer-motion';
+import { UserPlus, User, Mail, KeyRound, Loader2 } from 'lucide-react';
+
+import api from '@/lib/api';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // --- REVISI DI SINI ---
     if (password.length < 8) {
       setError('Password minimal harus 8 karakter.');
       return;
     }
+    setIsLoading(true);
 
     try {
       await api.post('/auth/register', { name, email, password });
-      // Menggunakan notifikasi yang lebih modern daripada alert()
-      // Untuk sekarang, kita bisa log ke konsol dan langsung redirect
-      console.log('Pendaftaran berhasil! Mengalihkan ke halaman login...');
+      alert('Pendaftaran berhasil! Silakan login dengan akun Anda.');
       router.push('/login');
     } catch (err: any) {
-      // Menangkap pesan error dari NestJS (misal: "Email sudah terdaftar")
       const errorMessage = Array.isArray(err.response?.data?.message)
         ? err.response.data.message.join(', ')
         : err.response?.data?.message;
-      
       setError(errorMessage || 'Terjadi kesalahan saat mendaftar.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Palet Warna:
-  // Latar: #F0F5F9 (putih kebiruan)
-  // Tombol & Aksen: #52616B (abu-abu gelap kebiruan)
-  // Teks: #1E2022 (hitam pekat)
-
   return (
-    <div className="flex justify-center items-center min-h-[calc(100vh-200px)] bg-[#F0F5F9]">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md border border-gray-200">
-        <h2 className="text-3xl font-bold text-center text-[#1E2022]">Daftar Akun Baru</h2>
+    <div className="flex justify-center items-center min-h-screen bg-[#F0F5F9] px-4 pt-20">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-md p-8 md:p-10 space-y-6 bg-white rounded-2xl shadow-2xl border"
+      >
+        <div className="text-center">
+            <h2 className="text-4xl font-bold text-gray-800 font-playfair">
+                Buat Akun Baru
+            </h2>
+            <p className="text-gray-500 mt-2">Bergabung dengan ribuan pecinta Vespa lainnya.</p>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#52616B] focus:border-[#52616B]"
-              placeholder="John Doe"
-            />
+          <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={isLoading}
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#52616B] transition-all"
+                placeholder="Nama Lengkap"
+              />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#52616B] focus:border-[#52616B]"
-              placeholder="email@example.com"
-            />
+          <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isLoading}
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#52616B] transition-all"
+                placeholder="email@example.com"
+              />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#52616B] focus:border-[#52616B]"
-              placeholder="Minimal 8 karakter"
-            />
+          <div className="relative">
+              <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isLoading}
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#52616B] transition-all"
+                placeholder="Minimal 8 karakter"
+              />
           </div>
 
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          {error && (
+            <motion.p 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-red-600 text-sm text-center bg-red-100 p-3 rounded-md"
+            >
+              {error}
+            </motion.p>
+          )}
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
-            className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-[#52616B] hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#52616B] transition-colors"
+            disabled={isLoading}
+            className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-bold text-white bg-[#52616B] hover:bg-[#1E2022] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#52616B] transition-all disabled:bg-gray-400"
           >
-            Daftar
-          </button>
+            {/* --- PERBAIKAN DI SINI --- */}
+            {isLoading ? <Loader2 className="animate-spin"/> : <UserPlus size={20} />}
+            <span>{isLoading ? 'Memproses...' : 'Daftar'}</span>
+          </motion.button>
         </form>
         <p className="text-center text-sm text-gray-600">
           Sudah punya akun?{' '}
@@ -98,7 +121,7 @@ export default function RegisterPage() {
             Masuk di sini
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

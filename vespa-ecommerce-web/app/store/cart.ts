@@ -1,101 +1,164 @@
-// /app/store/cart.ts
+// file: vespa-ecommerce-web/app/store/cart.ts
+
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { Product } from '../types';
+import { Product, ProductImage } from '../types';
+import api from '@/lib/api';
+import { debounce } from 'lodash';
 
 export type CartItem = {
-  product: Product;
+  id: string; 
   quantity: number;
+  product: Product & { images: ProductImage[] };
 };
+
+type Cart = {
+  id: string;
+  items: CartItem[];
+};
+
+const debouncedUpdateApi = debounce(async (cartItemId: string, quantity: number) => {
+  try {
+    await api.patch(`/cart/items/${cartItemId}`, { quantity });
+  } catch (error) {
+    console.error("Gagal sinkronisasi kuantitas:", error);
+  }
+}, 750);
 
 type CartState = {
-  items: CartItem[];
-  addItem: (product: Product, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
-  totalItems: number;
-  totalPrice: number;
+  cart: Cart | null;
+  isLoading: boolean;
+  selectedItems: Set<string>;
+  error: string | null;
+  
+  fetchCart: () => Promise<void>;
+  addItem: (productId: string, quantity?: number) => Promise<void>;
+  updateItemQuantity: (cartItemId: string, quantity: number) => void;
+  removeItem: (cartItemId: string) => Promise<void>;
+  toggleItemSelected: (cartItemId: string) => void;
+  toggleSelectAll: (forceSelect?: boolean) => void;
+  clearClientCart: () => void;
+  
+  // Aksi baru untuk membuat pesanan
+  createOrder: (shippingAddress: string) => Promise<any>; 
 };
 
-export const useCartStore = create<CartState>()(
-  persist(
-    (set, get) => ({
-      items: [],
-      totalItems: 0,
-      totalPrice: 0,
+export const useCartStore = create<CartState>((set, get) => ({
+  cart: null,
+  isLoading: true,
+  selectedItems: new Set(),
+  error: null,
 
-      // Aksi untuk menambah item ke keranjang
-      addItem: (product, quantity = 1) => {
-        const { items } = get();
-        const existingItem = items.find(
-          (item) => item.product.id === product.id
-        );
+  clearClientCart: () => set({ cart: null, selectedItems: new Set(), isLoading: false, error: null }),
 
-        let updatedItems;
-        if (existingItem) {
-          // Jika item sudah ada, update kuantitasnya
-          updatedItems = items.map((item) =>
-            item.product.id === product.id
-              ? { ...item, quantity: item.quantity + quantity }
-              : item
-          );
-        } else {
-          // Jika item baru, tambahkan ke array
-          updatedItems = [...items, { product, quantity }];
-        }
-        
-        set((state) => ({
-          items: updatedItems,
-          totalItems: state.totalItems + quantity,
-          totalPrice: state.totalPrice + Number(product.price) * quantity,
-        }));
-      },
-
-      // Aksi untuk menghapus item dari keranjang
-      removeItem: (productId) => {
-        const { items } = get();
-        const itemToRemove = items.find((item) => item.product.id === productId);
-        if (!itemToRemove) return;
-
-        set((state) => ({
-          items: state.items.filter((item) => item.product.id !== productId),
-          totalItems: state.totalItems - itemToRemove.quantity,
-          totalPrice: state.totalPrice - Number(itemToRemove.product.price) * itemToRemove.quantity,
-        }));
-      },
-
-      // Aksi untuk mengubah kuantitas item
-      updateQuantity: (productId, quantity) => {
-        if (quantity < 1) {
-          get().removeItem(productId);
-          return;
-        }
-
-        let totalItems = 0;
-        let totalPrice = 0;
-
-        const updatedItems = get().items.map((item) => {
-          if (item.product.id === productId) {
-            return { ...item, quantity };
-          }
-          return item;
-        });
-
-        updatedItems.forEach(item => {
-          totalItems += item.quantity;
-          totalPrice += Number(item.product.price) * item.quantity;
-        });
-
-        set({ items: updatedItems, totalItems, totalPrice });
-      },
-
-      // Aksi untuk mengosongkan keranjang
-      clearCart: () => set({ items: [], totalItems: 0, totalPrice: 0 }),
-    }),
-    {
-      name: 'cart-storage',
-      storage: createJSONStorage(() => localStorage),
+  fetchCart: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.get('/cart');
+      set({ cart: data, isLoading: false });
+      get().toggleSelectAll(true);
+    } catch (error) {
+      console.error("Gagal mengambil keranjang:", error);
+      set({ isLoading: false, error: 'Gagal memuat keranjang.' });
     }
-  )
-);
+  },
+
+  addItem: async (productId: string, quantity = 1) => {
+    try {
+      const { data } = await api.post('/cart/items', { productId, quantity });
+      set({ cart: data });
+      const newItem = data.items.find((item: CartItem) => item.product.id === productId);
+      if (newItem) {
+        get().toggleItemSelected(newItem.id);
+      }
+    } catch (error) {
+      console.error("Gagal menambah item:", error);
+    }
+  },
+
+  updateItemQuantity: (cartItemId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      get().removeItem(cartItemId);
+      return;
+    }
+    set(state => {
+      if (!state.cart) return {};
+      const updatedItems = state.cart.items.map(item => 
+        item.id === cartItemId ? { ...item, quantity: newQuantity } : item
+      );
+      return { cart: { ...state.cart, items: updatedItems } };
+    });
+    debouncedUpdateApi(cartItemId, newQuantity);
+  },
+  
+  removeItem: async (cartItemId: string) => {
+    set(state => {
+      if (!state.cart) return {};
+      const updatedItems = state.cart.items.filter(item => item.id !== cartItemId);
+      state.selectedItems.delete(cartItemId);
+      return { cart: { ...state.cart, items: updatedItems }, selectedItems: new Set(state.selectedItems) };
+    });
+    try {
+      await api.delete(`/cart/items/${cartItemId}`);
+    } catch (error) {
+      console.error("Gagal menghapus item:", error);
+      get().fetchCart();
+    }
+  },
+
+  toggleItemSelected: (cartItemId: string) => {
+    set(state => {
+      const newSelectedItems = new Set(state.selectedItems);
+      if (newSelectedItems.has(cartItemId)) {
+        newSelectedItems.delete(cartItemId);
+      } else {
+        newSelectedItems.add(cartItemId);
+      }
+      return { selectedItems: newSelectedItems };
+    });
+  },
+
+  toggleSelectAll: (forceSelect?: boolean) => {
+    set(state => {
+      if (!state.cart) return {};
+      const allItemIds = state.cart.items.map(item => item.id);
+      const shouldSelectAll = forceSelect !== undefined ? forceSelect : state.selectedItems.size !== allItemIds.length;
+      if (shouldSelectAll) {
+        return { selectedItems: new Set(allItemIds) };
+      } else {
+        return { selectedItems: new Set() };
+      }
+    });
+  },
+
+  // Implementasi aksi baru
+  createOrder: async (shippingAddress: string) => {
+    const { cart, selectedItems } = get();
+    if (!cart || selectedItems.size === 0) {
+      throw new Error("Tidak ada item yang dipilih untuk di-checkout.");
+    }
+
+    const itemsToOrder = cart.items
+      .filter(item => selectedItems.has(item.id))
+      .map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+      }));
+
+    set({ isLoading: true });
+    try {
+      const { data: newOrder } = await api.post('/orders', {
+        items: itemsToOrder,
+        shippingAddress,
+      });
+      
+      await get().fetchCart(); // Sinkronisasi state keranjang setelah order dibuat
+      set({ isLoading: false });
+      return newOrder;
+
+    } catch (error) {
+      console.error("Gagal membuat pesanan:", error);
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+}));
