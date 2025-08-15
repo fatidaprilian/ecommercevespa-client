@@ -1,3 +1,5 @@
+// src/auth/auth.service.ts
+
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
@@ -19,6 +21,7 @@ export class AuthService {
    */
   async validateUser(loginDto: LoginDto): Promise<any> {
     const user = await this.usersService.findByEmail(loginDto.email);
+    // Perbaikan utama: Menggunakan bcrypt.compare untuk membandingkan password
     if (user && (await bcrypt.compare(loginDto.password, user.password))) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
@@ -41,13 +44,10 @@ export class AuthService {
 
   /**
    * Mendaftarkan pengguna baru.
-   * Method ini memanggil UsersService untuk membuat entitas pengguna baru.
    * @param registerDto - Data untuk registrasi pengguna baru.
    * @returns Pengguna yang baru dibuat (tanpa password).
    */
   async register(registerDto: RegisterDto) {
-    // Meneruskan DTO registrasi ke UsersService yang akan menangani
-    // pengecekan duplikasi email dan hashing password.
     return this.usersService.create(registerDto);
   }
 }

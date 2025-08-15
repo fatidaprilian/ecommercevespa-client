@@ -1,42 +1,40 @@
 // file: vespa-ecommerce-api/src/products/products.controller.ts
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
-import { Public } from 'src/auth/decorators/public.decorator'; // <-- 1. IMPORT DECORATOR PUBLIC
+import { Public } from 'src/auth/decorators/public.decorator';
+import { QueryProductDto } from './dto/query-product.dto'; // <-- 1. IMPORT DTO BARU
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  // Endpoint ini tetap dilindungi, hanya ADMIN yang bisa
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.create(createProductDto);
   }
 
-  // --- PERUBAHAN DI SINI ---
-  @Public() // <-- 2. Tandai sebagai endpoint publik
+  @Public()
   @Get()
-  findAll() {
-    return this.productsService.findAll();
+  // 2. GUNAKAN DTO BARU UNTUK MENANGKAP SEMUA PARAMETER QUERY
+  findAll(@Query() queryProductDto: QueryProductDto) {
+    return this.productsService.findAll(queryProductDto);
   }
 
-  // --- PERUBAHAN DI SINI ---
-  @Public() // <-- 3. Tandai sebagai endpoint publik juga
+  @Public()
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
 
   @Patch(':id')
-  // Endpoint ini tetap dilindungi, hanya ADMIN yang bisa
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
@@ -44,7 +42,6 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  // Endpoint ini tetap dilindungi, hanya ADMIN yang bisa
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {

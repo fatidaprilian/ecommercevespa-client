@@ -2,8 +2,13 @@
 
 import api from '@/lib/api'; // Menggunakan instance axios yang sudah dikonfigurasi
 
-// Tipe data untuk payload produk sesuai schema.prisma
-export interface ProductData {
+// ====================================================================
+// Tipe Data (Types)
+// ====================================================================
+
+// Tipe data untuk satu produk, harus cocok dengan data yang dikirim API
+export interface Product {
+  id: string;
   name: string;
   sku: string;
   price: number;
@@ -12,56 +17,84 @@ export interface ProductData {
   categoryId: string;
   brandId?: string;
   images?: { url: string }[];
+  createdAt: string;
+  updatedAt: string;
+  // Anda bisa tambahkan relasi lain jika perlu, misal: category, brand
 }
+
+// Tipe data untuk struktur respons paginasi dari API
+export interface PaginatedProducts {
+  data: Product[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
+}
+
+// Tipe data untuk payload saat membuat/memperbarui produk
+export interface ProductData {
+  name: string;
+  price: number;
+  stock: number;
+  categoryId: string;
+  description?: string;
+  brandId?: string;
+  images?: { url: string }[];
+  // SKU sekarang opsional karena akan digenerate oleh backend
+  sku?: string; 
+}
+
+
+// ====================================================================
+// Fungsi-fungsi Service
+// ====================================================================
 
 /**
  * Mengirim data produk baru ke API backend.
- * @param productData - Objek yang berisi data produk baru.
  */
 export const createProduct = async (productData: ProductData) => {
-  const { data } = await api.post('/products', productData);
+  const { data } = await api.post<Product>('/products', productData);
   return data;
 };
 
 /**
  * Mengupload satu file gambar ke endpoint upload di backend.
- * @param file - File gambar yang akan di-upload.
  */
 export const uploadImage = async (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const { data } = await api.post('/upload', formData, {
+  const { data } = await api.post<{ url: string; public_id: string }>('/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
-  return data; // API diharapkan mengembalikan { url: '...' }
+  return data;
 };
 
-// --- Fungsi untuk halaman Edit (akan kita tambahkan nanti) ---
-
 /**
- * Mengambil semua produk dari API.
+ * Mengambil semua produk dari API dengan struktur paginasi.
  */
-export const getProducts = async () => {
-  const { data } = await api.get('/products');
+export const getProducts = async (): Promise<PaginatedProducts> => {
+  const { data } = await api.get<PaginatedProducts>('/products');
   return data;
 };
 
 /**
  * Mengambil satu produk berdasarkan ID.
  */
-export const getProductById = async (id: string) => {
-  const { data } = await api.get(`/products/${id}`);
+export const getProductById = async (id: string): Promise<Product> => {
+  const { data } = await api.get<Product>(`/products/${id}`);
   return data;
 };
 
 /**
  * Memperbarui data produk berdasarkan ID.
  */
-export const updateProduct = async (id: string, productData: ProductData) => {
-  const { data } = await api.patch(`/products/${id}`, productData);
+export const updateProduct = async (id: string, productData: Partial<ProductData>) => {
+  const { data } = await api.patch<Product>(`/products/${id}`, productData);
   return data;
 };
 

@@ -1,72 +1,60 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  UnauthorizedException,
-} from '@nestjs/common';
+// file: vespa-ecommerce-api/src/xendit/xendit.service.ts
+
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Xendit from 'xendit-node';
+import { Order, User } from '@prisma/client';
+import axios from 'axios';
 
 @Injectable()
 export class XenditService {
-  private readonly xenditClient: Xendit;
+  private readonly xenditApiKey: string;
+  private readonly xenditWebhookToken: string;
+  private readonly xenditApiUrl = 'https://api.xendit.co';
 
   constructor(private configService: ConfigService) {
-    const xenditKey = this.configService.get<string>('XENDIT_API_KEY');
-    if (!xenditKey) {
-      throw new Error(
-        'XENDIT_API_KEY tidak terdefinisi di environment variables',
-      );
+    const apiKey = this.configService.get<string>('XENDIT_API_KEY');
+    const webhookToken = this.configService.get<string>('XENDIT_WEBHOOK_TOKEN');
+    if (!apiKey || !webhookToken) {
+      throw new InternalServerErrorException('Xendit API Key atau Webhook Token tidak diatur di .env');
     }
-    this.xenditClient = new Xendit({
-      secretKey: xenditKey,
-    });
+    this.xenditApiKey = apiKey;
+    this.xenditWebhookToken = webhookToken;
   }
 
-  /**
-   * Membuat invoice di Xendit menggunakan API asli.
-   * @param invoiceData - Data yang dibutuhkan untuk membuat invoice (camelCase).
-   * @returns Objek response dari API Xendit.
-   */
-  async createInvoice(invoiceData: {
-    // --- PERBAIKAN FINAL ADA DI SINI ---
-    externalId: string; // Menggunakan camelCase sesuai tipe data
-    amount: number;
-    payerEmail: string; // Menggunakan camelCase sesuai tipe data
-    description: string;
-  }) {
+  async createInvoice(order: Order, user: User, shippingCost: number) {
+    const totalAmount = order.totalAmount + shippingCost;
+    const encodedKey = Buffer.from(`${this.xenditApiKey}:`).toString('base64');
+
+    const payload = {
+      external_id: order.id,
+      amount: totalAmount,
+      payer_email: user.email,
+      description: `Pembayaran untuk Pesanan #${order.orderNumber}`,
+      success_redirect_url: `${this.configService.get('FRONTEND_URL')}/orders/${order.id}`,
+      failure_redirect_url: `${this.configService.get('FRONTEND_URL')}/cart`,
+    };
+
     try {
-      const invoiceClient = this.xenditClient.Invoice;
-
-      console.log(
-        `Mencoba membuat invoice untuk external_id: ${invoiceData.externalId}`,
-      );
-
-      // Kirim data ke Xendit
-      const response = await invoiceClient.createInvoice({
-        data: invoiceData,
+      const response = await axios.post(`${this.xenditApiUrl}/v2/invoices`, payload, {
+        headers: {
+          Authorization: `Basic ${encodedKey}`,
+          'Content-Type': 'application/json',
+        },
       });
-
-      console.log(`Invoice berhasil dibuat: ${response.id}`);
-      return response;
-
+      return response.data;
     } catch (error) {
-      console.error('Gagal membuat invoice Xendit:', error.message || error);
-      throw new InternalServerErrorException(
-        'Gagal memproses pembayaran dengan Xendit',
-      );
+      console.error('Xendit Invoice Creation Error:', error.response?.data || error.message);
+      throw new InternalServerErrorException('Gagal membuat invoice pembayaran.');
     }
   }
 
   /**
-   * Memvalidasi callback token dari webhook Xendit.
-   * @param token - Token yang diterima dari header 'x-callback-token'.
+   * Memvalidasi token callback yang masuk dari header Xendit.
    */
-  validateCallbackToken(token: string) {
-    const expectedToken = this.configService.get<string>(
-      'XENDIT_WEBHOOK_TOKEN',
-    );
-    if (!expectedToken || token !== expectedToken) {
-      throw new UnauthorizedException('Token callback tidak valid');
+  validateCallbackToken(tokenFromHeader: string | undefined): void {
+    if (tokenFromHeader !== this.xenditWebhookToken) {
+      // Lempar error jika token tidak cocok.
+      throw new UnauthorizedException('Token webhook tidak valid.');
     }
   }
 }

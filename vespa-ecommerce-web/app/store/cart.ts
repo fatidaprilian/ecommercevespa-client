@@ -16,11 +16,13 @@ type Cart = {
   items: CartItem[];
 };
 
+// This function sends updates to the backend after a brief delay
 const debouncedUpdateApi = debounce(async (cartItemId: string, quantity: number) => {
   try {
     await api.patch(`/cart/items/${cartItemId}`, { quantity });
   } catch (error) {
     console.error("Gagal sinkronisasi kuantitas:", error);
+    // You could add logic here to revert the state if the API call fails
   }
 }, 750);
 
@@ -37,9 +39,7 @@ type CartState = {
   toggleItemSelected: (cartItemId: string) => void;
   toggleSelectAll: (forceSelect?: boolean) => void;
   clearClientCart: () => void;
-  
-  // Aksi baru untuk membuat pesanan
-  createOrder: (shippingAddress: string) => Promise<any>; 
+  createOrder: (shippingAddress: string, shippingCost: number, courier: string) => Promise<any>; 
 };
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -75,11 +75,14 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
+  // --- LOGIC REVISED AS REQUESTED ---
   updateItemQuantity: (cartItemId: string, newQuantity: number) => {
+    // Enforce a minimum quantity of 1. Do nothing if it's less.
     if (newQuantity < 1) {
-      get().removeItem(cartItemId);
       return;
     }
+    
+    // Optimistically update the UI for a responsive feel
     set(state => {
       if (!state.cart) return {};
       const updatedItems = state.cart.items.map(item => 
@@ -87,21 +90,28 @@ export const useCartStore = create<CartState>((set, get) => ({
       );
       return { cart: { ...state.cart, items: updatedItems } };
     });
+    
+    // Sync the change with the backend after a short delay
     debouncedUpdateApi(cartItemId, newQuantity);
   },
   
   removeItem: async (cartItemId: string) => {
+    const originalCart = get().cart; // Save original state for fallback
+    // Optimistically remove the item from the UI
     set(state => {
       if (!state.cart) return {};
       const updatedItems = state.cart.items.filter(item => item.id !== cartItemId);
       state.selectedItems.delete(cartItemId);
       return { cart: { ...state.cart, items: updatedItems }, selectedItems: new Set(state.selectedItems) };
     });
+
     try {
+      // Call the backend to permanently delete the item
       await api.delete(`/cart/items/${cartItemId}`);
     } catch (error) {
       console.error("Gagal menghapus item:", error);
-      get().fetchCart();
+      // If the API call fails, revert the UI to its original state
+      set({ cart: originalCart }); 
     }
   },
 
@@ -130,31 +140,27 @@ export const useCartStore = create<CartState>((set, get) => ({
     });
   },
 
-  // Implementasi aksi baru
-  createOrder: async (shippingAddress: string) => {
+  createOrder: async (shippingAddress: string, shippingCost: number, courier: string) => {
     const { cart, selectedItems } = get();
     if (!cart || selectedItems.size === 0) {
       throw new Error("Tidak ada item yang dipilih untuk di-checkout.");
     }
-
     const itemsToOrder = cart.items
       .filter(item => selectedItems.has(item.id))
-      .map(item => ({
-        productId: item.product.id,
-        quantity: item.quantity,
-      }));
+      .map(item => ({ productId: item.product.id, quantity: item.quantity }));
 
     set({ isLoading: true });
     try {
       const { data: newOrder } = await api.post('/orders', {
         items: itemsToOrder,
         shippingAddress,
+        shippingCost,
+        courier,
       });
       
-      await get().fetchCart(); // Sinkronisasi state keranjang setelah order dibuat
+      await get().fetchCart(); // Refresh cart state after order
       set({ isLoading: false });
       return newOrder;
-
     } catch (error) {
       console.error("Gagal membuat pesanan:", error);
       set({ isLoading: false });

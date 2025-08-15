@@ -5,7 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, KeyRound, Loader2 } from 'lucide-react';
+import { LogIn, Mail, KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
 
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { setAuth } = useAuthStore();
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setIsLoading(true);
 
     try {
@@ -32,13 +34,16 @@ export default function LoginPage() {
 
       setAuth(profileResponse.data, data.access_token);
 
-      router.push('/');
-      router.refresh();
+      setSuccessMessage('Login berhasil! Anda akan dialihkan...');
+
+      setTimeout(() => {
+        router.push('/');
+        router.refresh();
+      }, 2000);
       
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Email atau password salah.';
       setError(errorMessage);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -93,6 +98,17 @@ export default function LoginPage() {
             </motion.p>
           )}
 
+          {successMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-center gap-2 text-green-700 text-sm text-center bg-green-100 p-3 rounded-md"
+            >
+              <CheckCircle2 size={18} />
+              <span>{successMessage}</span>
+            </motion.div>
+          )}
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -100,7 +116,6 @@ export default function LoginPage() {
             disabled={isLoading}
             className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-bold text-white bg-[#52616B] hover:bg-[#1E2022] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#52616B] transition-all disabled:bg-gray-400"
           >
-            {/* --- PERBAIKAN DI SINI --- */}
             {isLoading ? <Loader2 className="animate-spin"/> : <LogIn size={20} />}
             <span>{isLoading ? 'Memproses...' : 'Masuk'}</span>
           </motion.button>

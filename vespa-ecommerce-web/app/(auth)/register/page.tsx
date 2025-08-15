@@ -5,7 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { UserPlus, User, Mail, KeyRound, Loader2 } from 'lucide-react';
+import { UserPlus, User, Mail, KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
 
 import api from '@/lib/api';
 
@@ -14,12 +14,14 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null); // State baru untuk pesan sukses
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null); // Hapus pesan sukses sebelumnya
 
     if (password.length < 8) {
       setError('Password minimal harus 8 karakter.');
@@ -29,15 +31,21 @@ export default function RegisterPage() {
 
     try {
       await api.post('/auth/register', { name, email, password });
-      alert('Pendaftaran berhasil! Silakan login dengan akun Anda.');
-      router.push('/login');
+      
+      // Ganti alert() dengan state message
+      setSuccessMessage('Pendaftaran berhasil! Anda akan dialihkan...');
+      
+      // Alihkan ke halaman login setelah 2 detik
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+
     } catch (err: any) {
       const errorMessage = Array.isArray(err.response?.data?.message)
         ? err.response.data.message.join(', ')
         : err.response?.data?.message;
       setError(errorMessage || 'Terjadi kesalahan saat mendaftar.');
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Hentikan loading hanya jika terjadi error
     }
   };
 
@@ -103,6 +111,18 @@ export default function RegisterPage() {
             </motion.p>
           )}
 
+          {/* --- BLOK PESAN SUKSES --- */}
+          {successMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-center gap-2 text-green-700 text-sm text-center bg-green-100 p-3 rounded-md"
+            >
+              <CheckCircle2 size={18} />
+              <span>{successMessage}</span>
+            </motion.div>
+          )}
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -110,7 +130,6 @@ export default function RegisterPage() {
             disabled={isLoading}
             className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-bold text-white bg-[#52616B] hover:bg-[#1E2022] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#52616B] transition-all disabled:bg-gray-400"
           >
-            {/* --- PERBAIKAN DI SINI --- */}
             {isLoading ? <Loader2 className="animate-spin"/> : <UserPlus size={20} />}
             <span>{isLoading ? 'Memproses...' : 'Daftar'}</span>
           </motion.button>

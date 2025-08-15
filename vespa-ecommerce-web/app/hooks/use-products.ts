@@ -1,24 +1,29 @@
-// file: vespa-ecommerce-web/app/hooks/use-products.ts
 'use client';
-
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
-import { Product } from '../types';
+import { PaginatedProducts } from '../types';
 
-/**
- * Fungsi untuk mengambil SEMUA produk dari API.
- */
-const getProducts = async (): Promise<Product[]> => {
-  const { data } = await api.get('/products');
+export interface ProductQueryParams {
+  page?: number;
+  limit?: number;
+  categoryId?: string; // Pastikan nama ini cocok dengan DTO backend
+  brandId?: string;    // Pastikan nama ini cocok dengan DTO backend
+  sortBy?: 'price' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+const getProducts = async (params: ProductQueryParams): Promise<PaginatedProducts> => {
+  const queryString = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value != null).map(([key, value]) => [key, String(value)])
+  ).toString();
+  const { data } = await api.get(`/products?${queryString}`);
   return data;
 };
 
-/**
- * Custom hook untuk mengambil data SEMUA produk.
- */
-export const useProducts = () => {
+export const useProducts = (params: ProductQueryParams) => {
   return useQuery({
-    queryKey: ['products'], // Kunci query untuk semua produk
-    queryFn: getProducts,
+    queryKey: ['products', params],
+    queryFn: () => getProducts(params),
+    keepPreviousData: true,
   });
 };

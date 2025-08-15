@@ -1,12 +1,10 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+// file: vespa-ecommerce-api/src/payments/payments.service.ts
+
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { XenditService } from 'src/xendit/xendit.service';
+// --- PERBAIKAN 1: Impor 'Prisma' untuk mendapatkan akses ke tipe TransactionClient ---
+import { PaymentStatus, OrderStatus, Order, User, Prisma } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -15,86 +13,70 @@ export class PaymentsService {
     private xenditService: XenditService,
   ) {}
 
-  async createPayment(userId: string, createPaymentDto: CreatePaymentDto) {
-    const { orderId, paymentMethod } = createPaymentDto;
+  async createPaymentForOrder(
+    order: Order,
+    user: User,
+    shippingCost: number,
+    // --- PERBAIKAN 2: Gunakan tipe yang benar untuk transactional client ---
+    prismaClient: Prisma.TransactionClient = this.prisma,
+  ) {
+    const totalAmount = order.totalAmount + shippingCost;
+    const xenditInvoice = await this.xenditService.createInvoice(order, user, shippingCost);
 
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId, userId: userId },
-      include: { user: true },
-    });
-
-    if (!order) {
-      throw new NotFoundException(
-        `Order dengan ID ${orderId} tidak ditemukan untuk user ini.`,
-      );
-    }
-    if (order.status !== OrderStatus.PENDING) {
-      throw new UnprocessableEntityException('Order tidak dalam status PENDING.');
-    }
-
-    // Panggil Xendit Service untuk membuat invoice
-    const invoice = await this.xenditService.createInvoice({
-      externalId: order.orderNumber, // Menggunakan camelCase
-      amount: order.totalAmount,
-      payerEmail: order.user.email,
-      description: `Pembayaran untuk Order #${order.orderNumber}`,
-    });
-
-    // Simpan data pembayaran ke database kita
-    const payment = await this.prisma.payment.create({
+    // Sekarang TypeScript tahu bahwa prismaClient memiliki properti .payment
+    await prismaClient.payment.create({
       data: {
-        orderId: orderId,
-        amount: order.totalAmount,
-        method: paymentMethod,
+        order: { connect: { id: order.id } },
+        amount: totalAmount,
+        method: 'XENDIT_INVOICE',
+        transactionId: xenditInvoice.id,
         status: PaymentStatus.PENDING,
-        transactionId: invoice.id,
       },
     });
 
-    return {
-      payment,
-      // --- PERBAIKAN FINAL ADA DI SINI ---
-      paymentUrl: invoice.invoiceUrl, // Menggunakan camelCase sesuai tipe data
-    };
+    return { invoiceUrl: xenditInvoice.invoice_url };
   }
 
-  async handleWebhook(headers: any, body: any) {
+  async handleXenditCallback(payload: any, headers: any) {
     this.xenditService.validateCallbackToken(headers['x-callback-token']);
 
-    const { external_id, status } = body;
+    const { external_id, status: xenditStatus } = payload;
+    const orderId = external_id;
 
-    const order = await this.prisma.order.findUnique({
-      where: { orderNumber: external_id },
-    });
-
-    if (!order) {
-      throw new NotFoundException(`Order dengan nomor ${external_id} tidak ditemukan.`);
+    if (!orderId) {
+      return { message: 'Callback ignored: external_id missing.' };
     }
 
-    if (status === 'PAID') {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.payment.updateMany({
-          where: { orderId: order.id },
-          data: { status: PaymentStatus.SUCCESS },
-        });
-        await tx.order.update({
-          where: { id: order.id },
-          data: { status: OrderStatus.PAID },
-        });
-      });
-    } else if (status === 'EXPIRED') {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.payment.updateMany({
-          where: { orderId: order.id },
-          data: { status: PaymentStatus.EXPIRED },
-        });
-        await tx.order.update({
-          where: { id: order.id },
-          data: { status: OrderStatus.CANCELLED },
-        });
-      });
+    let paymentStatus: PaymentStatus;
+    let orderStatus: OrderStatus;
+
+    if (xenditStatus === 'PAID') {
+      paymentStatus = PaymentStatus.SUCCESS;
+      orderStatus = OrderStatus.PAID;
+    } else if (xenditStatus === 'EXPIRED') {
+      paymentStatus = PaymentStatus.EXPIRED;
+      orderStatus = OrderStatus.CANCELLED;
+    } else {
+      return { message: `Callback for order ${orderId} with status ${xenditStatus} ignored.` };
     }
 
-    return { success: true };
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.updateMany({
+          where: { orderId: orderId },
+          data: { status: paymentStatus },
+        });
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: orderStatus },
+        });
+      });
+      console.log(`Order ${orderId} status updated to ${orderStatus}`);
+      return { message: 'Callback received and processed successfully.' };
+
+    } catch (error) {
+        console.error(`Failed to update order ${orderId}:`, error);
+        throw new Error('Failed to process callback.');
+    }
   }
 }

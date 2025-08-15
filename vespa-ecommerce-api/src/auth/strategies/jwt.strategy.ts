@@ -5,19 +5,15 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { UserPayload } from '../interfaces/jwt.payload'; 
 
-// Definisikan tipe data untuk payload JWT agar lebih jelas
+// Definisikan tipe data untuk payload JWT mentah
 export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
 }
 
-/**
- * Fungsi custom untuk memberitahu Passport cara mengekstrak JWT dari cookie.
- * @param req Objek request dari Express.
- * @returns Token JWT atau null jika tidak ditemukan.
- */
 const cookieExtractor = (req: Request): string | null => {
   let token = null;
   if (req && req.cookies) {
@@ -35,16 +31,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      // --- PERUBAHAN UTAMA DI SINI ---
-      // Memberitahu Passport untuk mencari token di dua tempat:
-      // 1. Dari 'Authorization: Bearer <token>' header.
-      // 2. Jika tidak ada, cari di cookie bernama 'access_token'.
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
         cookieExtractor,
       ]),
-      // ------------------------------------
-
       ignoreExpiration: false,
       secretOrKey: jwtSecret,
     });
@@ -52,13 +42,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   /**
    * Metode ini dijalankan setelah token berhasil diekstrak dan diverifikasi.
-   * Payload yang sudah ter-dekripsi akan diteruskan ke sini.
    * @param payload Payload dari JWT.
    * @returns Objek user yang akan dilampirkan ke `req.user`.
    */
-  async validate(payload: JwtPayload) {
-    // Kita percaya pada payload karena sudah divalidasi oleh signature.
-    // Ini lebih efisien karena tidak perlu query ke database setiap kali ada request.
+  async validate(payload: JwtPayload): Promise<UserPayload> {
+    // Memetakan 'sub' dari token ke 'id' di objek user
     return { id: payload.sub, email: payload.email, role: payload.role };
   }
 }

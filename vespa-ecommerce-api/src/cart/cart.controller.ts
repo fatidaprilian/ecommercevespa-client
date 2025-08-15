@@ -1,41 +1,52 @@
 // file: vespa-ecommerce-api/src/cart/cart.controller.ts
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Req,
+  UseGuards,
+  // ParseUUIDPipe has been removed to support Prisma's CUIDs
+} from '@nestjs/common';
 import { CartService } from './cart.service';
 import { AddItemDto } from './dto/add-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
+import { AuthGuard } from '@nestjs/passport';
 
-// Semua endpoint di sini memerlukan login
+@UseGuards(AuthGuard('jwt'))
 @Controller('cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
   @Get()
   getCart(@Req() req: AuthenticatedRequest) {
-    const userId = req.user.id;
-    return this.cartService.getCart(userId);
+    return this.cartService.getCart(req.user.id);
   }
 
   @Post('items')
   addItem(@Req() req: AuthenticatedRequest, @Body() addItemDto: AddItemDto) {
-    const userId = req.user.id;
-    return this.cartService.addItem(userId, addItemDto);
+    return this.cartService.addItem(req.user.id, addItemDto);
   }
 
   @Patch('items/:itemId')
   updateItem(
     @Req() req: AuthenticatedRequest,
-    @Param('itemId') itemId: string,
+    @Param('itemId') itemId: string, // FIX: Removed ParseUUIDPipe
     @Body() updateItemDto: UpdateItemDto,
   ) {
-    const userId = req.user.id;
-    return this.cartService.updateItemQuantity(userId, itemId, updateItemDto);
+    return this.cartService.updateItemQuantity(req.user.id, itemId, updateItemDto);
   }
 
   @Delete('items/:itemId')
-  removeItem(@Req() req: AuthenticatedRequest, @Param('itemId') itemId: string) {
-    const userId = req.user.id;
-    return this.cartService.removeItem(userId, itemId);
+  removeItem(
+    @Req() req: AuthenticatedRequest,
+    @Param('itemId') itemId: string, // FIX: Removed ParseUUIDPipe
+  ) {
+    return this.cartService.removeItem(req.user.id, itemId);
   }
 }

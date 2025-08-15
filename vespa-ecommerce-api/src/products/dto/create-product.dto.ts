@@ -1,7 +1,6 @@
 import { IsString, IsNotEmpty, IsNumber, IsInt, IsOptional, Min, IsArray, ValidateNested, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 
-// Object untuk setiap gambar
 class ProductImageDto {
   @IsUrl()
   @IsNotEmpty()
@@ -25,19 +24,19 @@ export class CreateProductDto {
   @Min(0)
   stock: number;
   
+  // --- PERUBAHAN DI SINI: SKU SEKARANG OPSIONAL ---
   @IsString()
-  @IsNotEmpty()
-  sku: string;
+  @IsOptional()
+  sku?: string;
 
-  @IsString() // ID Kategori sekarang string (CUID)
+  @IsString()
   @IsNotEmpty()
   categoryId: string;
 
-  @IsString() // ID Brand sekarang string (CUID)
+  @IsString()
   @IsOptional()
   brandId?: string;
   
-  // Validasi untuk array of objects
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ProductImageDto)

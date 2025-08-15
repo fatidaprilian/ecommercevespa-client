@@ -8,32 +8,26 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Prisma } from '@prisma/client';
+import { PaymentsService } from 'src/payments/payments.service';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private paymentsService: PaymentsService,
+  ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
-    const { items, shippingAddress } = createOrderDto;
+    const { items, shippingAddress, shippingCost, courier } = createOrderDto;
 
-    // Menjalankan semua operasi database dalam satu transaksi
-    const newOrder = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       let totalAmount = 0;
       const orderItemsData: Prisma.OrderItemCreateManyOrderInput[] = [];
 
-      // 1. Validasi produk, stok, dan hitung total
       for (const item of items) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
-        });
-
-        if (!product) {
-          throw new NotFoundException(`Produk dengan ID ${item.productId} tidak ditemukan.`);
-        }
-        if (product.stock < item.quantity) {
-          throw new UnprocessableEntityException(`Stok untuk produk ${product.name} tidak mencukupi.`);
-        }
-
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
+        if (!product) throw new NotFoundException(`Produk dengan ID ${item.productId} tidak ditemukan.`);
+        if (product.stock < item.quantity) throw new UnprocessableEntityException(`Stok untuk produk ${product.name} tidak mencukupi.`);
         totalAmount += product.price * item.quantity;
         orderItemsData.push({
           productId: item.productId,
@@ -42,21 +36,19 @@ export class OrdersService {
         });
       }
 
-      // 2. Buat entitas Order utama
       const createdOrder = await tx.order.create({
         data: {
           user: { connect: { id: userId } },
           totalAmount,
           shippingAddress,
+          courier,
+          shippingCost,
           status: 'PENDING',
-          items: {
-            create: orderItemsData,
-          },
+          items: { create: orderItemsData },
         },
         include: { items: true },
       });
 
-      // 3. Kurangi stok untuk setiap produk
       for (const item of items) {
         await tx.product.update({
           where: { id: item.productId },
@@ -64,20 +56,31 @@ export class OrdersService {
         });
       }
 
-      // --- 4. PERUBAHAN UTAMA: KOSONGKAN KERANJANG ---
       const cart = await tx.cart.findUnique({ where: { userId } });
       if (cart) {
         await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
       }
-      // ----------------------------------------------
 
-      return createdOrder;
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (!user) throw new NotFoundException('Pengguna tidak ditemukan.');
+      
+      // --- PERBAIKAN UTAMA DI SINI: Pass 'tx' ke service pembayaran ---
+      const payment = await this.paymentsService.createPaymentForOrder(
+        createdOrder,
+        user,
+        shippingCost,
+        tx // <-- Berikan transactional client
+      );
+
+      return {
+        ...createdOrder,
+        invoiceUrl: payment.invoiceUrl,
+      };
     });
 
-    return newOrder;
+    return result;
   }
 
-  // ... (Method findAll dan findOne tetap sama, tidak perlu diubah)
   async findAll() {
     return this.prisma.order.findMany({
       include: {

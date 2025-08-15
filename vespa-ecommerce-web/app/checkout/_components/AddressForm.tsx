@@ -10,7 +10,7 @@ import { Loader2, PackageCheck, PlusCircle, Check, ChevronsUpDown } from 'lucide
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
-import { getProvinces, getCities, getDistricts, calculateCost, ShippingCost } from '@/services/shippingService';
+import { getProvinces, getCities, getDistricts, ShippingCost } from '@/services/shippingService';
 import { getAddresses, createAddress, Address, CreateAddressData } from '@/services/addressService';
 import { useCartStore } from '@/store/cart';
 
@@ -26,7 +26,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { cn } from '@/lib/utils';
 
-// Skema validasi untuk form tambah alamat
 const addressSchema = z.object({
   street: z.string().min(10, "Alamat jalan lengkap diperlukan."),
   province: z.object({ id: z.string(), name: z.string() }),
@@ -38,7 +37,6 @@ const addressSchema = z.object({
 });
 type AddressFormValues = z.infer<typeof addressSchema>;
 
-// Define props for the component, including the callback
 interface AddressFormProps {
   onShippingSelect: (cost: number | null) => void;
 }
@@ -46,13 +44,13 @@ interface AddressFormProps {
 export function AddressForm({ onShippingSelect }: AddressFormProps) {
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { createOrder } = useCartStore();
+    const { createOrder, cart, selectedItems } = useCartStore();
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     const [shippingOptions, setShippingOptions] = useState<ShippingCost[]>([]);
     const [selectedShipping, setSelectedShipping] = useState<ShippingCost | null>(null);
-    const [isCalculatingCost, setIsCalculatingCost] = useState(false);
+    const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
     const { data: addresses, isLoading: isLoadingAddresses } = useQuery({
         queryKey: ['addresses'],
@@ -78,21 +76,12 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
 
     useEffect(() => {
         if (selectedAddress) {
-            console.log("DEV MODE: Melewatkan panggilan API RajaOngkir karena limit.");
+            console.log("DEV MODE: Menggunakan mock data untuk ongkir.");
             const mockShippingOptions: ShippingCost[] = [
-                {
-                    service: 'REG',
-                    description: 'JNE Reguler (Mock Data)',
-                    cost: [{ value: 18000, etd: '2-3', note: '' }]
-                },
-                {
-                    service: 'YES',
-                    description: 'JNE Yakin Esok Sampai (Mock Data)',
-                    cost: [{ value: 32000, etd: '1', note: '' }]
-                }
+                { service: 'REG', description: 'JNE Reguler (Mock)', cost: [{ value: 18000, etd: '2-3', note: '' }] },
+                { service: 'YES', description: 'JNE Yakin Esok Sampai (Mock)', cost: [{ value: 32000, etd: '1', note: '' }] }
             ];
             setShippingOptions(mockShippingOptions);
-            // Reset shipping selection when address changes
             setSelectedShipping(null);
             onShippingSelect(null);
         }
@@ -103,21 +92,52 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
         setSelectedShipping(shipping);
         onShippingSelect(shipping ? shipping.cost[0].value : null);
     };
-    
+
     const handleCreateOrder = async () => {
       if (!selectedAddress || !selectedShipping) {
         toast.error("Alamat dan layanan pengiriman harus dipilih.");
         return;
       }
+      setIsCreatingOrder(true);
       
-      const fullAddress = `${selectedAddress.street}, ${selectedAddress.district}, ${selectedAddress.city}, ${selectedAddress.province}, ${selectedAddress.postalCode}`;
+      const selectedCartItems = cart?.items?.filter(item => selectedItems.has(item.id)) || [];
+      if (selectedCartItems.length === 0) {
+        toast.error("Tidak ada item yang dipilih untuk dipesan.");
+        setIsCreatingOrder(false);
+        return;
+      }
+      
+      const payload = {
+        items: selectedCartItems.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+        shippingAddress: `${selectedAddress.street}, ${selectedAddress.district}, ${selectedAddress.city}, ${selectedAddress.province}, ${selectedAddress.postalCode}`,
+        shippingCost: Number(selectedShipping.cost[0].value),
+        courier: `JNE - ${selectedShipping.description}`,
+      };
+
+      console.log("Mencoba membuat pesanan dengan payload:", JSON.stringify(payload, null, 2));
       
       try {
-        const newOrder = await createOrder(fullAddress);
-        toast.success(`Pesanan #${newOrder.orderNumber} berhasil dibuat!`);
-        router.push(`/orders/${newOrder.id}`);
+        // PERBAIKAN: Panggil createOrder dengan argumen yang benar
+        const newOrder = await createOrder(
+          payload.shippingAddress, 
+          payload.shippingCost, 
+          payload.courier
+        );
+        
+        if (newOrder.invoiceUrl) {
+          window.location.href = newOrder.invoiceUrl;
+        } else {
+          toast.error("URL pembayaran tidak ditemukan, mengarahkan ke detail pesanan.");
+          router.push(`/orders/${newOrder.id}`);
+        }
       } catch (error) {
-        toast.error("Gagal membuat pesanan.");
+        console.error("Gagal melanjutkan ke pembayaran.");
+        // Toast error sudah ditangani di dalam store
+      } finally {
+        setIsCreatingOrder(false);
       }
     };
 
@@ -134,9 +154,7 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
                             <DialogContent className="sm:max-w-[425px]">
                                 <DialogHeader>
                                     <DialogTitle>Tambah Alamat Baru</DialogTitle>
-                                    <DialogDescription>
-                                        Pastikan alamat yang Anda masukkan sudah benar untuk pengiriman.
-                                    </DialogDescription>
+                                    <DialogDescription>Pastikan alamat yang Anda masukkan sudah benar untuk pengiriman.</DialogDescription>
                                 </DialogHeader>
                                 <NewAddressForm mutation={addAddressMutation} closeModal={() => setIsModalOpen(false)} />
                             </DialogContent>
@@ -149,7 +167,7 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
                             {addresses?.map(address => (
                                 <Label key={address.id} htmlFor={address.id} className="flex items-center space-x-3 border p-4 rounded-md has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary cursor-pointer">
                                     <RadioGroupItem value={address.id} id={address.id} />
-                                    <div className="font-normal w-full">
+                                    <div>
                                         <p className="font-bold">{address.isDefault ? "Utama" : "Alamat"}</p>
                                         <p className="text-gray-600">{address.street}, {address.district}, {address.city}, {address.province} {address.postalCode}</p>
                                     </div>
@@ -161,12 +179,11 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
                 </CardContent>
             </Card>
 
-            {isCalculatingCost && <p className="text-center p-4">Menghitung ongkos kirim... <Loader2 className="inline-block animate-spin" /></p>}
-
             {shippingOptions.length > 0 && (
                 <Card>
                   <CardHeader><CardTitle>Pilih Pengiriman (JNE)</CardTitle></CardHeader>
-                  <CardContent asChild>
+                  {/* --- PERBAIKAN: 'asChild' dihapus dari sini --- */}
+                  <CardContent> 
                     <RadioGroup onValueChange={handleShippingSelect} value={selectedShipping?.service}>
                         {shippingOptions.map(option => (
                           <Label key={option.service} htmlFor={option.service} className="flex items-center space-x-3 border p-4 rounded-md has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary cursor-pointer">
@@ -186,15 +203,15 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
             )}
 
             <div className="flex justify-end mt-8">
-                <Button onClick={handleCreateOrder} size="lg" disabled={!selectedAddress || !selectedShipping}>
-                    <PackageCheck className="mr-2" /> Buat Pesanan
+                <Button onClick={handleCreateOrder} size="lg" disabled={!selectedAddress || !selectedShipping || isCreatingOrder}>
+                    {isCreatingOrder ? <Loader2 className="mr-2 animate-spin" /> : <PackageCheck className="mr-2" />}
+                    {isCreatingOrder ? 'Memproses...' : 'Lanjutkan ke Pembayaran'}
                 </Button>
             </div>
         </div>
     );
 }
 
-// ... (NewAddressForm dan Combobox tidak berubah)
 function NewAddressForm({ mutation, closeModal }: { mutation: any, closeModal: () => void }) {
     const form = useForm<AddressFormValues>({ resolver: zodResolver(addressSchema), mode: 'onChange' });
 

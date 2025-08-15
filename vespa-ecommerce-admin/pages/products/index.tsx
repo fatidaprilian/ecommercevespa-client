@@ -20,13 +20,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getProducts, Product } from '../services/productService'; // Import tipe data Product
+// --- PERBAIKAN 1: Impor tipe data PaginatedProducts ---
+import { getProducts, PaginatedProducts } from '../services/productService'; 
 
 export default function ProductsPage() {
-  const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
+  // --- PERBAIKAN 2: Gunakan tipe PaginatedProducts untuk useQuery ---
+  const { data: productsResponse, isLoading, isError, error } = useQuery<PaginatedProducts, Error>({
     queryKey: ['products'],
     queryFn: getProducts,
   });
+
+  // --- PERBAIKAN 3: Ekstrak array produk dan metadata ---
+  const products = productsResponse?.data;
+  const totalProducts = productsResponse?.meta?.total || 0;
 
   return (
     <div>
@@ -47,7 +53,8 @@ export default function ProductsPage() {
       <Card>
         <CardHeader>
             <CardTitle>Daftar Produk</CardTitle>
-            <CardDescription>Total {products?.length || 0} produk ditemukan.</CardDescription>
+            {/* --- PERBAIKAN 4: Gunakan total dari metadata --- */}
+            <CardDescription>Total {totalProducts} produk ditemukan.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
@@ -66,6 +73,7 @@ export default function ProductsPage() {
                 ) : isError ? (
                   <TableRow><TableCell colSpan={5} className="text-center h-24 text-red-500">{error.message}</TableCell></TableRow>
                 ) : (
+                  // --- PERBAIKAN 5: Map melalui 'products' (yang sekarang sudah pasti array) ---
                   products?.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.name}</TableCell>
@@ -73,7 +81,6 @@ export default function ProductsPage() {
                       <TableCell>Rp{product.price.toLocaleString('id-ID')}</TableCell>
                       <TableCell>{product.stock}</TableCell>
                       <TableCell className="text-right">
-                        {/* === TOMBOL EDIT DAN AKSI DROPDOWN === */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -97,6 +104,14 @@ export default function ProductsPage() {
                       </TableCell>
                     </TableRow>
                   ))
+                )}
+                {/* Tambahkan kondisi jika tidak ada produk */}
+                {!isLoading && !isError && products?.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center h-24">
+                            Belum ada produk.
+                        </TableCell>
+                    </TableRow>
                 )}
               </TableBody>
             </Table>

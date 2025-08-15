@@ -94,6 +94,8 @@ CREATE TABLE "public"."Order" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" TEXT NOT NULL,
     "shippingAddress" TEXT NOT NULL,
+    "shippingCost" DOUBLE PRECISION NOT NULL,
+    "courier" TEXT NOT NULL,
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
 );
@@ -141,9 +143,13 @@ CREATE TABLE "public"."Shipment" (
 CREATE TABLE "public"."Address" (
     "id" TEXT NOT NULL,
     "street" TEXT NOT NULL,
-    "city" TEXT NOT NULL,
-    "province" TEXT NOT NULL,
     "postalCode" TEXT NOT NULL,
+    "provinceId" TEXT NOT NULL,
+    "province" TEXT NOT NULL,
+    "cityId" TEXT NOT NULL,
+    "city" TEXT NOT NULL,
+    "districtId" TEXT NOT NULL,
+    "district" TEXT NOT NULL,
     "isDefault" BOOLEAN NOT NULL DEFAULT false,
     "userId" TEXT NOT NULL,
 
@@ -202,6 +208,26 @@ CREATE TABLE "public"."Wishlist" (
     CONSTRAINT "Wishlist_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "public"."Cart" (
+    "id" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "Cart_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."CartItem" (
+    "id" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "cartId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+
+    CONSTRAINT "CartItem_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
@@ -237,6 +263,12 @@ CREATE UNIQUE INDEX "Voucher_code_key" ON "public"."Voucher"("code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Wishlist_userId_productId_key" ON "public"."Wishlist"("userId", "productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Cart_userId_key" ON "public"."Cart"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CartItem_cartId_productId_key" ON "public"."CartItem"("cartId", "productId");
 
 -- AddForeignKey
 ALTER TABLE "public"."User" ADD CONSTRAINT "User_resellerTierId_fkey" FOREIGN KEY ("resellerTierId") REFERENCES "public"."ResellerTier"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -288,3 +320,12 @@ ALTER TABLE "public"."Wishlist" ADD CONSTRAINT "Wishlist_userId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "public"."Wishlist" ADD CONSTRAINT "Wishlist_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Cart" ADD CONSTRAINT "Cart_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CartItem" ADD CONSTRAINT "CartItem_cartId_fkey" FOREIGN KEY ("cartId") REFERENCES "public"."Cart"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CartItem" ADD CONSTRAINT "CartItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
