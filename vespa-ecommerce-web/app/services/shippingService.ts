@@ -3,7 +3,7 @@
 import api from '@/lib/api';
 import { ShippingCost } from '@/types/checkout';
 
-// --- PERBAIKAN DI SINI: Seragamkan semua tipe data lokasi ---
+// Tipe data ini harus cocok dengan model Prisma Anda
 export interface LocationData {
   id: string;
   name: string;
@@ -41,10 +41,9 @@ export const getDistricts = async (cityId: string): Promise<District[]> => {
  * Menghitung estimasi ongkos kirim.
  */
 export const calculateCost = async (payload: {
-  origin: string; // district_id
   destination: string; // district_id
   weight: number; 
-  courier: 'jne' | 'tiki' | 'pos';
+  courier: 'jne' | 'tiki' | 'pos' | 'jnt';
 }): Promise<ShippingCost[]> => {
   const { data } = await api.post('/shipping/cost', payload);
   return data;

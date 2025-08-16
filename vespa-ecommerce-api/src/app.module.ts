@@ -17,9 +17,10 @@ import { CartModule } from './cart/cart.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { UploadModule } from './upload/upload.module';
-import { XenditModule } from './xendit/xendit.module';
+import { MidtransModule } from './midtrans/midtrans.module'; // <-- Ganti Xendit dengan Midtrans
 import { AddressesModule } from './addresses/addresses.module';
 import { DiscountsModule } from './discounts/discounts.module'; 
+import { ShipmentsModule } from './shipments/shipments.module';
 
 @Module({
   imports: [
@@ -36,15 +37,13 @@ import { DiscountsModule } from './discounts/discounts.module';
     PaymentsModule,
     ShippingModule,
     UploadModule,
-    XenditModule,
+    MidtransModule, // <-- Ganti Xendit dengan Midtrans
     AddressesModule,
+    ShipmentsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    // ✅ KUNCI PERBAIKAN: Pastikan JwtAuthGuard TIDAK terdaftar secara global di sini.
-    // Dengan menghapusnya dari sini, kita bisa mengontrol otentikasi
-    // di masing-masing controller menggunakan @UseGuards.
   ],
 })
 export class AppModule {}

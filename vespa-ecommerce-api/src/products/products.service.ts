@@ -7,7 +7,7 @@ import { Product, Prisma, Role } from '@prisma/client';
 import { QueryProductDto } from './dto/query-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { DiscountsCalculationService } from 'src/discounts/discounts-calculation.service';
-import { UserPayload } from 'src/auth/interfaces/jwt.payload'; // <-- 1. Import UserPayload
+import { UserPayload } from 'src/auth/interfaces/jwt.payload';
 
 @Injectable()
 export class ProductsService {
@@ -16,17 +16,24 @@ export class ProductsService {
     private discountsCalcService: DiscountsCalculationService,
   ) {}
 
-  // 2. Ubah tipe parameter 'user' menjadi 'UserPayload'
   private async processProductPrice(product: any, user?: UserPayload) {
       if (user && user.role === Role.RESELLER) {
-          // Kita butuh data user lengkap untuk kalkulasi, jadi kita fetch dari DB
           const fullUser = await this.prisma.user.findUnique({ where: { id: user.id }});
-          if (!fullUser) return { ...product, priceInfo: null }; // Fallback jika user tidak ditemukan
+          
+          if (!fullUser) {
+              // Jika data user lengkap tidak ditemukan, kembalikan harga normal agar tidak error.
+              return { 
+                  ...product, 
+                  priceInfo: { originalPrice: product.price, discountPercentage: 0, finalPrice: product.price, appliedRule: 'NONE' } 
+              };
+          }
 
           const priceInfo = await this.discountsCalcService.calculatePrice(fullUser, product);
+          
           return { ...product, price: priceInfo.finalPrice, priceInfo };
       }
       
+      // Jika pengguna bukan reseller atau tidak login, kembalikan harga normal.
       return { 
           ...product, 
           priceInfo: { 
@@ -79,8 +86,7 @@ export class ProductsService {
       },
     });
   }
-
-  // 3. Ubah tipe parameter 'user' di sini
+  
   async findAll(queryDto: QueryProductDto, user?: UserPayload) {
     const {
       page = 1,
@@ -134,7 +140,6 @@ export class ProductsService {
     };
   }
 
-  // 4. Dan ubah tipe parameter 'user' di sini juga
   async findOne(id: string, user?: UserPayload): Promise<any> {
     const product = await this.prisma.product.findUnique({
       where: { id },

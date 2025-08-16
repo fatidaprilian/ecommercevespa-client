@@ -1,20 +1,20 @@
-// file: vespa-ecommerce-api/src/payments/payments.controller.ts
+// file: src/payments/payments.controller.ts
 
-import { Controller, Post, Body, Headers, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { Public } from 'src/auth/decorators/public.decorator';
+import { Public } from 'src/auth/decorators/public.decorator'; // <-- Pastikan ini diimpor
 
-@Public()
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   // --- PERBAIKAN UTAMA DI SINI ---
-  // Ubah 'webhook/xendit' menjadi 'xendit-webhook' agar cocok dengan URL Xendit
-  @Post('xendit-webhook')
+  // Tambahkan decorator @Public() agar endpoint ini tidak memerlukan JWT
+  @Public() 
+  @Post('midtrans-webhook')
   @HttpCode(HttpStatus.OK)
-  handleXenditWebhook(@Headers() headers: any, @Body() body: any) {
-    // Pastikan Anda masih menggunakan kode debugging di service untuk melihat log token
-    return this.paymentsService.handleXenditCallback(body, headers);
+  handleMidtransWebhook(@Body() body: any) {
+    console.log("Received Midtrans Webhook:", body);
+    return this.paymentsService.handleMidtransCallback(body);
   }
 }

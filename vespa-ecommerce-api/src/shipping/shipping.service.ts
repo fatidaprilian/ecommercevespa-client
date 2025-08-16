@@ -6,14 +6,18 @@ import axios from 'axios';
 
 @Injectable()
 export class ShippingService {
-  private readonly rajaOngkirApiKey: string;
   private readonly rajaOngkirApiUrl: string = 'https://rajaongkir.komerce.id/api/v1';
+  private readonly rajaOngkirApiKey: string;
+  private readonly originDistrictId: string;
 
   constructor(private configService: ConfigService) {
     this.rajaOngkirApiKey = this.configService.get<string>('RAJAONGKIR_API_KEY')!;
+    this.originDistrictId = this.configService.get<string>('RAJAONGKIR_ORIGIN_DISTRICT_ID')!;
+    if (!this.originDistrictId) {
+        throw new InternalServerErrorException('RAJAONGKIR_ORIGIN_DISTRICT_ID tidak diatur di .env');
+    }
   }
 
-  // Mengambil daftar provinsi
   async getProvinces() {
     try {
       const response = await axios.get(`${this.rajaOngkirApiUrl}/destination/province`, {
@@ -21,12 +25,11 @@ export class ShippingService {
       });
       return response.data.data; 
     } catch (error) {
-      console.error('RajaOngkir V2 Error (getProvinces):', error.response?.data || error.message);
+      console.error('RajaOngkir Error (getProvinces):', error.response?.data || error.message);
       throw new InternalServerErrorException('Gagal mengambil data provinsi');
     }
   }
 
-  // Mengambil daftar kota berdasarkan ID provinsi
   async getCities(provinceId: string) {
     if (!provinceId) throw new BadRequestException('Province ID diperlukan.');
     try {
@@ -35,12 +38,11 @@ export class ShippingService {
       });
       return response.data.data;
     } catch (error) {
-      console.error('RajaOngkir V2 Error (getCities):', error.response?.data || error.message);
+      console.error('RajaOngkir Error (getCities):', error.response?.data || error.message);
       throw new InternalServerErrorException('Gagal mengambil data kota');
     }
   }
 
-  // Mengambil daftar kecamatan berdasarkan ID kota
   async getDistricts(cityId: string) {
     if (!cityId) throw new BadRequestException('City ID diperlukan.');
     try {
@@ -49,36 +51,56 @@ export class ShippingService {
         });
         return response.data.data;
     } catch (error) {
-        console.error('RajaOngkir V2 Error (getDistricts):', error.response?.data || error.message);
+        console.error('RajaOngkir Error (getDistricts):', error.response?.data || error.message);
         throw new InternalServerErrorException('Gagal mengambil data kecamatan');
     }
   }
 
-  // Menghitung ongkos kirim menggunakan ID Kecamatan
-  async calculateShippingCost(originDistrictId: string, destinationDistrictId: string, weight: number, courier: string) {
+  async calculateShippingCost(destinationDistrictId: string, weight: number, courier: string) {
+    const params = new URLSearchParams();
+    params.append('origin', this.originDistrictId);
+    params.append('destination', destinationDistrictId);
+    params.append('weight', weight.toString());
+    params.append('courier', courier.toLowerCase());
+
     try {
+      // --- PERBAIKAN UTAMA: HAPUS '/district' DARI URL DI BAWAH INI ---
       const response = await axios.post(
-        // 1. Gunakan URL yang panjang dan spesifik sesuai dokumentasi
-        `${this.rajaOngkirApiUrl}/calculate/district/domestic-cost`,
-        // 2. Body request sebagai objek JSON biasa
-        {
-          origin: originDistrictId,
-          destination: destinationDistrictId,
-          weight: weight,
-          courier: courier.toLowerCase(),
-        },
+        `${this.rajaOngkirApiUrl}/calculate/domestic-cost`, // URL yang benar
+        params,
         {
           headers: { 
             key: this.rajaOngkirApiKey,
-            // 3. Pastikan Content-Type adalah application/json sesuai contoh fetch
-            'Content-Type': 'application/json' 
+            'Content-Type': 'application/x-www-form-urlencoded' 
           },
         }
       );
-      // API V2 mengembalikan data di dalam properti 'data'
-      return response.data.data;
+
+      const flatServices = response.data.data;
+
+      if (!Array.isArray(flatServices) || flatServices.length === 0) {
+        return [];
+      }
+      
+      const formattedCosts = flatServices.map(service => ({
+        service: service.service,
+        description: service.description,
+        cost: [{
+            value: service.cost,
+            etd: service.etd,
+            note: ''
+          }]
+      }));
+      
+      const finalResponse = [{
+          code: courier.toLowerCase(),
+          name: flatServices[0].name,
+          costs: formattedCosts
+      }];
+
+      return finalResponse;
+
     } catch (error) {
-      // Log error yang lebih detail untuk debugging
       console.error('RajaOngkir Final Error (calculateCost):', error.response?.data || error.message);
       throw new InternalServerErrorException('Gagal menghitung ongkos kirim dari RajaOngkir');
     }

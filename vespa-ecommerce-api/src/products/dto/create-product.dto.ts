@@ -1,3 +1,5 @@
+// file: src/products/dto/create-product.dto.ts
+
 import { IsString, IsNotEmpty, IsNumber, IsInt, IsOptional, Min, IsArray, ValidateNested, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -24,7 +26,6 @@ export class CreateProductDto {
   @Min(0)
   stock: number;
   
-  // --- PERUBAHAN DI SINI: SKU SEKARANG OPSIONAL ---
   @IsString()
   @IsOptional()
   sku?: string;
@@ -42,4 +43,10 @@ export class CreateProductDto {
   @Type(() => ProductImageDto)
   @IsOptional()
   images?: ProductImageDto[];
+
+  // --- PENAMBAHAN DI SINI ---
+  @IsInt({ message: 'Berat harus berupa angka bulat (gram).' })
+  @Min(1, { message: 'Berat minimal adalah 1 gram.' })
+  @IsOptional()
+  weight?: number;
 }

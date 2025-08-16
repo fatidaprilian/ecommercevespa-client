@@ -1,11 +1,17 @@
+// file: src/orders/orders.module.ts
+
 import { Module } from '@nestjs/common';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
-import { PaymentsModule } from 'src/payments/payments.module'; // Import PaymentsModule
+import { PaymentsModule } from 'src/payments/payments.module';
+import { DiscountsModule } from 'src/discounts/discounts.module'; // <-- 1. Impor DiscountsModule
 
 @Module({
-  imports: [PaymentsModule], // Tambahkan PaymentsModule di sini agar OrdersService bisa menggunakannya
+  imports: [
+    PaymentsModule,
+    DiscountsModule, // <-- 2. Daftarkan di sini
+  ],
   controllers: [OrdersController],
-  providers: [OrdersService], 
+  providers: [OrdersService],
 })
 export class OrdersModule {}

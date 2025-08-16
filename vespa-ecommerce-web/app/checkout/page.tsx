@@ -16,8 +16,8 @@ export default function CheckoutPage() {
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
-  // State for shipping cost is lifted up to this parent component
   const [shippingCost, setShippingCost] = useState<number | null>(null);
+  const [shippingCourier, setShippingCourier] = useState<string | null>(null);
 
   const selectedCartItems = cart?.items?.filter(item => selectedItems.has(item.id)) || [];
 
@@ -59,8 +59,10 @@ export default function CheckoutPage() {
             transition={{ delay: 0.1 }}
             className="lg:col-span-2"
           >
-            {/* Pass the setter function as a prop */}
-            <AddressForm onShippingSelect={setShippingCost} />
+            <AddressForm onShippingSelect={(cost, courier) => {
+                setShippingCost(cost);
+                setShippingCourier(courier);
+            }} />
           </motion.div>
 
           <motion.div 
@@ -69,7 +71,6 @@ export default function CheckoutPage() {
             transition={{ delay: 0.2 }}
             className="lg:col-span-1"
           >
-             {/* Pass the shipping cost value as a prop */}
              <OrderSummary shippingCost={shippingCost} />
           </motion.div>
 

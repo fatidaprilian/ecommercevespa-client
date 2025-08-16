@@ -1,69 +1,68 @@
-// file: vespa-ecommerce-api/src/payments/payments.service.ts
+// file: src/payments/payments.service.ts
 
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { XenditService } from 'src/xendit/xendit.service';
-// --- PERBAIKAN 1: Impor 'Prisma' untuk mendapatkan akses ke tipe TransactionClient ---
+import { MidtransService } from 'src/midtrans/midtrans.service';
 import { PaymentStatus, OrderStatus, Order, User, Prisma } from '@prisma/client';
+import { ShipmentsService } from 'src/shipments/shipments.service'; // <-- 1. IMPORT SHIPMENT SERVICE
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private prisma: PrismaService,
-    private xenditService: XenditService,
+    private midtransService: MidtransService,
+    private shipmentsService: ShipmentsService, // <-- 2. INJECT SERVICE
   ) {}
 
   async createPaymentForOrder(
-    order: Order,
+    order: Order & { items: any[] },
     user: User,
     shippingCost: number,
-    // --- PERBAIKAN 2: Gunakan tipe yang benar untuk transactional client ---
     prismaClient: Prisma.TransactionClient = this.prisma,
   ) {
     const totalAmount = order.totalAmount + shippingCost;
-    const xenditInvoice = await this.xenditService.createInvoice(order, user, shippingCost);
+    const midtransTransaction = await this.midtransService.createSnapTransaction(order, user, shippingCost);
 
-    // Sekarang TypeScript tahu bahwa prismaClient memiliki properti .payment
     await prismaClient.payment.create({
       data: {
         order: { connect: { id: order.id } },
         amount: totalAmount,
-        method: 'XENDIT_INVOICE',
-        transactionId: xenditInvoice.id,
+        method: 'MIDTRANS_SNAP',
+        transactionId: midtransTransaction.token,
         status: PaymentStatus.PENDING,
       },
     });
-
-    return { invoiceUrl: xenditInvoice.invoice_url };
+    
+    return { redirect_url: midtransTransaction.redirect_url };
   }
 
-  async handleXenditCallback(payload: any, headers: any) {
-    this.xenditService.validateCallbackToken(headers['x-callback-token']);
-
-    const { external_id, status: xenditStatus } = payload;
-    const orderId = external_id;
-
-    if (!orderId) {
-      return { message: 'Callback ignored: external_id missing.' };
-    }
+  async handleMidtransCallback(payload: any) {
+    const orderId = payload.order_id;
+    const transactionStatus = payload.transaction_status;
+    const fraudStatus = payload.fraud_status;
 
     let paymentStatus: PaymentStatus;
     let orderStatus: OrderStatus;
-
-    if (xenditStatus === 'PAID') {
-      paymentStatus = PaymentStatus.SUCCESS;
-      orderStatus = OrderStatus.PAID;
-    } else if (xenditStatus === 'EXPIRED') {
-      paymentStatus = PaymentStatus.EXPIRED;
-      orderStatus = OrderStatus.CANCELLED;
+    let shouldCreateShipment = false; // <-- Flag untuk membuat pengiriman
+    
+    if (transactionStatus == 'capture' || transactionStatus == 'settlement') {
+        paymentStatus = PaymentStatus.SUCCESS;
+        orderStatus = OrderStatus.PAID;
+        shouldCreateShipment = true; // <-- Tandai untuk membuat pengiriman
+    } else if (transactionStatus == 'pending') {
+        paymentStatus = PaymentStatus.PENDING;
+        orderStatus = OrderStatus.PENDING;
+    } else if (transactionStatus == 'deny' || transactionStatus == 'expire' || transactionStatus == 'cancel') {
+        paymentStatus = PaymentStatus.FAILED;
+        orderStatus = OrderStatus.CANCELLED;
     } else {
-      return { message: `Callback for order ${orderId} with status ${xenditStatus} ignored.` };
+        return { message: `Callback untuk order ${orderId} dengan status ${transactionStatus} diabaikan.` };
     }
 
     try {
       await this.prisma.$transaction(async (tx) => {
         await tx.payment.updateMany({
-          where: { orderId: orderId },
+          where: { order: { id: orderId } },
           data: { status: paymentStatus },
         });
         await tx.order.update({
@@ -71,12 +70,18 @@ export class PaymentsService {
           data: { status: orderStatus },
         });
       });
-      console.log(`Order ${orderId} status updated to ${orderStatus}`);
-      return { message: 'Callback received and processed successfully.' };
+
+      // --- 3. BUAT PENGIRIMAN JIKA PEMBAYARAN SUKSES ---
+      if (shouldCreateShipment) {
+        await this.shipmentsService.createShipment(orderId);
+      }
+
+      console.log(`Order ${orderId} status diperbarui ke ${orderStatus}`);
+      return { message: 'Callback diterima dan diproses.' };
 
     } catch (error) {
-        console.error(`Failed to update order ${orderId}:`, error);
-        throw new Error('Failed to process callback.');
+        console.error(`Gagal memperbarui order ${orderId}:`, error);
+        throw new Error('Gagal memproses callback.');
     }
   }
 }

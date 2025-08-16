@@ -1,4 +1,4 @@
-// file: vespa-ecommerce-web/app/checkout/_components/AddressForm.tsx
+// file: app/checkout/_components/AddressForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,11 +10,15 @@ import { Loader2, PackageCheck, PlusCircle, Check, ChevronsUpDown } from 'lucide
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
-import { getProvinces, getCities, getDistricts, ShippingCost } from '@/services/shippingService';
+// --- UBAH TIPE DATA SHIPPING COST AGAR SESUAI DENGAN API ---
+import { getProvinces, getCities, getDistricts, calculateCost } from '@/services/shippingService';
+import { ShippingCost as ApiShippingCost } from '@/types/checkout';
+type ShippingCost = ApiShippingCost['costs'][0];
+// -----------------------------------------------------------
+
 import { getAddresses, createAddress, Address, CreateAddressData } from '@/services/addressService';
 import { useCartStore } from '@/store/cart';
 
-// Komponen UI dari Shadcn
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,25 +42,26 @@ const addressSchema = z.object({
 type AddressFormValues = z.infer<typeof addressSchema>;
 
 interface AddressFormProps {
-  onShippingSelect: (cost: number | null) => void;
+  onShippingSelect: (cost: number | null, courier: string | null) => void;
 }
 
 export function AddressForm({ onShippingSelect }: AddressFormProps) {
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { createOrder, cart, selectedItems } = useCartStore();
+    const { createOrder, getTotalWeight } = useCartStore();
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-    const [shippingOptions, setShippingOptions] = useState<ShippingCost[]>([]);
-    const [selectedShipping, setSelectedShipping] = useState<ShippingCost | null>(null);
+    const [shippingOptions, setShippingOptions] = useState<({ courierName: string } & ShippingCost)[]>([]);
+    const [selectedShippingService, setSelectedShippingService] = useState<string | null>(null);
     const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+    const [isCalculatingCost, setIsCalculatingCost] = useState(false);
 
     const { data: addresses, isLoading: isLoadingAddresses } = useQuery({
         queryKey: ['addresses'],
         queryFn: getAddresses,
         onSuccess: (data) => {
-            if (!selectedAddress && data.length > 0) {
+            if (!selectedAddress && Array.isArray(data) && data.length > 0) {
                 const defaultAddress = data.find(addr => addr.isDefault) || data[0];
                 setSelectedAddress(defaultAddress);
             }
@@ -75,67 +80,95 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
     });
 
     useEffect(() => {
-        if (selectedAddress) {
-            console.log("DEV MODE: Menggunakan mock data untuk ongkir.");
-            const mockShippingOptions: ShippingCost[] = [
-                { service: 'REG', description: 'JNE Reguler (Mock)', cost: [{ value: 18000, etd: '2-3', note: '' }] },
-                { service: 'YES', description: 'JNE Yakin Esok Sampai (Mock)', cost: [{ value: 32000, etd: '1', note: '' }] }
-            ];
-            setShippingOptions(mockShippingOptions);
-            setSelectedShipping(null);
-            onShippingSelect(null);
-        }
-    }, [selectedAddress, onShippingSelect]);
+        const fetchShippingCosts = async () => {
+            if (!selectedAddress) return;
+
+            setShippingOptions([]);
+            setSelectedShippingService(null);
+            onShippingSelect(null, null);
+            const totalWeight = getTotalWeight();
+            
+            if (totalWeight > 0) {
+                setIsCalculatingCost(true);
+                const couriers: ('jne' | 'jnt')[] = ['jne', 'jnt'];
+                
+                try {
+                    const costPromises = couriers.map(courier => 
+                        calculateCost({
+                            destination: selectedAddress.districtId,
+                            weight: totalWeight,
+                            courier: courier,
+                        })
+                    );
+
+                    const results = await Promise.all(costPromises);
+                    const allOptions: ({ courierName: string } & ShippingCost)[] = [];
+
+                    results.forEach(result => {
+                        if (result && result[0] && result[0].costs.length > 0) {
+                            const courierName = result[0].name;
+                            result[0].costs.forEach(cost => {
+                                allOptions.push({ courierName, ...cost });
+                            });
+                        }
+                    });
+
+                    if (allOptions.length > 0) {
+                        setShippingOptions(allOptions);
+                        toast.success("Opsi pengiriman ditemukan!");
+                    } else {
+                        toast.error("Tidak ada opsi pengiriman untuk tujuan ini.");
+                    }
+                } catch (error) {
+                    console.error("Gagal menghitung ongkos kirim:", error);
+                    toast.error("Gagal menghitung ongkos kirim.");
+                } finally {
+                    setIsCalculatingCost(false);
+                }
+            }
+        };
+
+        fetchShippingCosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedAddress]);
     
-    const handleShippingSelect = (service: string) => {
-        const shipping = shippingOptions.find(s => s.service === service) || null;
-        setSelectedShipping(shipping);
-        onShippingSelect(shipping ? shipping.cost[0].value : null);
+    const handleShippingSelect = (serviceIdentifier: string) => {
+        setSelectedShippingService(serviceIdentifier);
+        const selectedOption = shippingOptions.find(opt => `${opt.courierName}-${opt.service}` === serviceIdentifier);
+        
+        if (selectedOption) {
+            onShippingSelect(
+                selectedOption.cost[0].value, 
+                `${selectedOption.courierName} - ${selectedOption.description}`
+            );
+        } else {
+            onShippingSelect(null, null);
+        }
     };
 
     const handleCreateOrder = async () => {
-      if (!selectedAddress || !selectedShipping) {
+      if (!selectedAddress || !selectedShippingService) {
         toast.error("Alamat dan layanan pengiriman harus dipilih.");
         return;
       }
+      const selectedOption = shippingOptions.find(opt => `${opt.courierName}-${opt.service}` === selectedShippingService);
+      if (!selectedOption) return;
+
       setIsCreatingOrder(true);
       
-      const selectedCartItems = cart?.items?.filter(item => selectedItems.has(item.id)) || [];
-      if (selectedCartItems.length === 0) {
-        toast.error("Tidak ada item yang dipilih untuk dipesan.");
-        setIsCreatingOrder(false);
-        return;
-      }
-      
-      const payload = {
-        items: selectedCartItems.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        })),
-        shippingAddress: `${selectedAddress.street}, ${selectedAddress.district}, ${selectedAddress.city}, ${selectedAddress.province}, ${selectedAddress.postalCode}`,
-        shippingCost: Number(selectedShipping.cost[0].value),
-        courier: `JNE - ${selectedShipping.description}`,
-      };
-
-      console.log("Mencoba membuat pesanan dengan payload:", JSON.stringify(payload, null, 2));
+      const fullAddress = `${selectedAddress.street}, ${selectedAddress.district}, ${selectedAddress.city}, ${selectedAddress.province}, ${selectedAddress.postalCode}`;
+      const shippingCost = Number(selectedOption.cost[0].value);
+      const courier = `${selectedOption.courierName} - ${selectedOption.description}`;
       
       try {
-        // PERBAIKAN: Panggil createOrder dengan argumen yang benar
-        const newOrder = await createOrder(
-          payload.shippingAddress, 
-          payload.shippingCost, 
-          payload.courier
-        );
-        
-        if (newOrder.invoiceUrl) {
-          window.location.href = newOrder.invoiceUrl;
+        const newOrder = await createOrder(fullAddress, shippingCost, courier);
+        if (newOrder && newOrder.redirect_url) {
+          window.location.href = newOrder.redirect_url;
         } else {
-          toast.error("URL pembayaran tidak ditemukan, mengarahkan ke detail pesanan.");
           router.push(`/orders/${newOrder.id}`);
         }
       } catch (error) {
-        console.error("Gagal melanjutkan ke pembayaran.");
-        // Toast error sudah ditangani di dalam store
+        console.error("Gagal melanjutkan ke pembayaran:", error);
       } finally {
         setIsCreatingOrder(false);
       }
@@ -154,7 +187,7 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
                             <DialogContent className="sm:max-w-[425px]">
                                 <DialogHeader>
                                     <DialogTitle>Tambah Alamat Baru</DialogTitle>
-                                    <DialogDescription>Pastikan alamat yang Anda masukkan sudah benar untuk pengiriman.</DialogDescription>
+                                    <DialogDescription>Pastikan alamat yang Anda masukkan sudah benar.</DialogDescription>
                                 </DialogHeader>
                                 <NewAddressForm mutation={addAddressMutation} closeModal={() => setIsModalOpen(false)} />
                             </DialogContent>
@@ -173,37 +206,43 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
                                     </div>
                                 </Label>
                             ))}
-                             {addresses?.length === 0 && <p className="text-center text-gray-500 py-4">Anda belum memiliki alamat tersimpan.</p>}
+                            {addresses?.length === 0 && <p className="text-center text-gray-500 py-4">Anda belum memiliki alamat.</p>}
                         </RadioGroup>
                     )}
                 </CardContent>
             </Card>
 
-            {shippingOptions.length > 0 && (
+            {selectedAddress && (
                 <Card>
-                  <CardHeader><CardTitle>Pilih Pengiriman (JNE)</CardTitle></CardHeader>
-                  {/* --- PERBAIKAN: 'asChild' dihapus dari sini --- */}
+                  <CardHeader><CardTitle>Pilih Pengiriman</CardTitle></CardHeader>
                   <CardContent> 
-                    <RadioGroup onValueChange={handleShippingSelect} value={selectedShipping?.service}>
-                        {shippingOptions.map(option => (
-                          <Label key={option.service} htmlFor={option.service} className="flex items-center space-x-3 border p-4 rounded-md has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary cursor-pointer">
-                              <RadioGroupItem value={option.service} id={option.service} />
-                              <div className="font-normal w-full flex justify-between items-center">
-                                <div>
-                                    <p className="font-bold">{option.description} ({option.service})</p>
-                                    <p className="text-sm text-gray-500">Estimasi: {option.cost[0].etd} hari</p>
-                                </div>
-                                <p className="font-semibold text-lg">Rp {option.cost[0].value.toLocaleString('id-ID')}</p>
-                              </div>
-                          </Label>
-                        ))}
-                    </RadioGroup>
+                    {isCalculatingCost ? (
+                        <div className="flex items-center gap-2 text-gray-500"><Loader2 className="animate-spin h-4 w-4"/> Menghitung ongkos kirim...</div>
+                    ) : (
+                        <RadioGroup onValueChange={handleShippingSelect} value={selectedShippingService || ''}>
+                            {shippingOptions.length > 0 ? shippingOptions.map(option => {
+                                const id = `${option.courierName}-${option.service}`;
+                                return (
+                                  <Label key={id} htmlFor={id} className="flex items-center space-x-3 border p-4 rounded-md has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary cursor-pointer">
+                                      <RadioGroupItem value={id} id={id} />
+                                      <div className="font-normal w-full flex justify-between items-center">
+                                        <div>
+                                            <p className="font-bold">{option.courierName} - {option.description} ({option.service})</p>
+                                            <p className="text-sm text-gray-500">Estimasi: {option.cost[0].etd} hari</p>
+                                        </div>
+                                        <p className="font-semibold text-lg">Rp {option.cost[0].value.toLocaleString('id-ID')}</p>
+                                      </div>
+                                  </Label>
+                                )
+                            }) : <p className="text-center text-gray-500">Tidak ada opsi pengiriman untuk alamat ini.</p>}
+                        </RadioGroup>
+                    )}
                   </CardContent>
                 </Card>
             )}
 
             <div className="flex justify-end mt-8">
-                <Button onClick={handleCreateOrder} size="lg" disabled={!selectedAddress || !selectedShipping || isCreatingOrder}>
+                <Button onClick={handleCreateOrder} size="lg" disabled={!selectedAddress || !selectedShippingService || isCreatingOrder || isCalculatingCost}>
                     {isCreatingOrder ? <Loader2 className="mr-2 animate-spin" /> : <PackageCheck className="mr-2" />}
                     {isCreatingOrder ? 'Memproses...' : 'Lanjutkan ke Pembayaran'}
                 </Button>
@@ -214,7 +253,6 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
 
 function NewAddressForm({ mutation, closeModal }: { mutation: any, closeModal: () => void }) {
     const form = useForm<AddressFormValues>({ resolver: zodResolver(addressSchema), mode: 'onChange' });
-
     const { data: provinces } = useQuery({ queryKey: ['provinces'], queryFn: getProvinces });
     const selectedProvinceId = form.watch('province')?.id;
     const { data: cities, isLoading: isLoadingCities } = useQuery({
@@ -239,53 +277,15 @@ function NewAddressForm({ mutation, closeModal }: { mutation: any, closeModal: (
         };
         mutation.mutate(payload);
     };
-
-    const onValidationErrors = (errors: any) => {
-        console.error("Validation Errors:", errors);
-        toast.error("Harap lengkapi semua field alamat.");
-    };
     
     return (
-      <form onSubmit={form.handleSubmit(onSubmit, onValidationErrors)} className="space-y-4 pt-4">
-        <div>
-            <Textarea {...form.register("street")} placeholder="Alamat Lengkap (Jalan, No. Rumah, RT/RW)" />
-            <p className="text-sm text-red-500 mt-1 h-4">{form.formState.errors.street?.message}</p>
-        </div>
-        <Controller control={form.control} name="province" render={({ field, fieldState }) => (
-            <div>
-                <Combobox data={provinces || []} value={field.value} onChange={(value) => {
-                    field.onChange(value);
-                    form.resetField('city');
-                    form.resetField('district');
-                }} placeholder="Pilih Provinsi" />
-                <p className="text-sm text-red-500 mt-1 h-4">{fieldState.error?.message}</p>
-            </div>
-        )}/>
-        <Controller control={form.control} name="city" render={({ field, fieldState }) => (
-            <div>
-                <Combobox data={cities || []} value={field.value} onChange={(value) => {
-                    field.onChange(value);
-                    form.resetField('district');
-                }} placeholder="Pilih Kota" disabled={!selectedProvinceId || isLoadingCities} />
-                <p className="text-sm text-red-500 mt-1 h-4">{fieldState.error?.message}</p>
-            </div>
-        )}/>
-        <Controller control={form.control} name="district" render={({ field, fieldState }) => (
-            <div>
-                <Combobox data={districts || []} value={field.value} onChange={field.onChange} placeholder="Pilih Kecamatan" disabled={!selectedCityId || isLoadingDistricts} />
-                <p className="text-sm text-red-500 mt-1 h-4">{fieldState.error?.message}</p>
-            </div>
-        )}/>
-        <div>
-            <Input {...form.register("postalCode")} placeholder="Kode Pos" />
-            <p className="text-sm text-red-500 mt-1 h-4">{form.formState.errors.postalCode?.message}</p>
-        </div>
-        <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="ghost" onClick={closeModal}>Batal</Button>
-            <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? <Loader2 className="animate-spin" /> : "Simpan Alamat"}
-            </Button>
-        </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+        <div><Textarea {...form.register("street")} placeholder="Alamat Lengkap (Jalan, No. Rumah, RT/RW)" /><p className="text-sm text-red-500 mt-1 h-4">{form.formState.errors.street?.message}</p></div>
+        <Controller control={form.control} name="province" render={({ field, fieldState }) => (<div><Combobox data={provinces || []} value={field.value} onChange={(value) => { field.onChange(value); form.resetField('city'); form.resetField('district'); }} placeholder="Pilih Provinsi" /><p className="text-sm text-red-500 mt-1 h-4">{fieldState.error?.message}</p></div>)}/>
+        <Controller control={form.control} name="city" render={({ field, fieldState }) => (<div><Combobox data={cities || []} value={field.value} onChange={(value) => { field.onChange(value); form.resetField('district'); }} placeholder="Pilih Kota" disabled={!selectedProvinceId || isLoadingCities} /><p className="text-sm text-red-500 mt-1 h-4">{fieldState.error?.message}</p></div>)}/>
+        <Controller control={form.control} name="district" render={({ field, fieldState }) => (<div><Combobox data={districts || []} value={field.value} onChange={field.onChange} placeholder="Pilih Kecamatan" disabled={!selectedCityId || isLoadingDistricts} /><p className="text-sm text-red-500 mt-1 h-4">{fieldState.error?.message}</p></div>)}/>
+        <div><Input {...form.register("postalCode")} placeholder="Kode Pos" /><p className="text-sm text-red-500 mt-1 h-4">{form.formState.errors.postalCode?.message}</p></div>
+        <div className="flex justify-end gap-2 pt-4"><Button type="button" variant="ghost" onClick={closeModal}>Batal</Button><Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? <Loader2 className="animate-spin" /> : "Simpan Alamat"}</Button></div>
       </form>
     );
 }
@@ -298,36 +298,5 @@ function Combobox({ data, value, onChange, placeholder, disabled }: {
     disabled?: boolean
 }) {
     const [open, setOpen] = useState(false);
-    
-    return (
-        <Popover open={open} onOpenChange={setOpen} modal={false}>
-            <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between font-normal" disabled={disabled}>
-                    {value ? value.name : placeholder}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" sideOffset={5} align="start">
-                <Command>
-                    <CommandInput placeholder={`Cari ${placeholder.split(' ')[1]?.toLowerCase() || 'item'}...`} />
-                    <CommandEmpty>Tidak ditemukan.</CommandEmpty>
-                    <CommandGroup className="max-h-60 overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
-                        {data.map((item) => (
-                            <CommandItem
-                                key={item.id}
-                                value={item.name}
-                                onSelect={() => {
-                                    onChange({ id: String(item.id), name: item.name });
-                                    setOpen(false);
-                                }}
-                            >
-                                <Check className={cn("mr-2 h-4 w-4", value?.id === String(item.id) ? "opacity-100" : "opacity-0")} />
-                                {item.name}
-                            </CommandItem>
-                        ))}
-                    </CommandGroup>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
+    return (<Popover open={open} onOpenChange={setOpen} modal={false}><PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between font-normal" disabled={disabled}>{value ? value.name : placeholder}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger><PopoverContent className="w-[--radix-popover-trigger-width] p-0" sideOffset={5} align="start"><Command><CommandInput placeholder={`Cari ${placeholder.split(' ')[1]?.toLowerCase() || 'item'}...`} /><CommandEmpty>Tidak ditemukan.</CommandEmpty><CommandGroup className="max-h-60 overflow-y-auto" onWheel={(e) => e.stopPropagation()}>{data.map((item) => (<CommandItem key={item.id} value={item.name} onSelect={() => { onChange({ id: String(item.id), name: item.name }); setOpen(false); }}><Check className={cn("mr-2 h-4 w-4", value?.id === String(item.id) ? "opacity-100" : "opacity-0")} />{item.name}</CommandItem>))}</CommandGroup></Command></PopoverContent></Popover>);
 }

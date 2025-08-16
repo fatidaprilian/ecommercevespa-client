@@ -1,11 +1,14 @@
+// file: app/store/cart.ts
 import { create } from 'zustand';
 import { Product, ProductImage } from '../types';
 import api from '@/lib/api';
 import { debounce } from 'lodash';
+import toast from 'react-hot-toast';
 
 export type CartItem = {
   id: string;
   quantity: number;
+  productId: string;
   product: Product & { images: ProductImage[] };
 };
 
@@ -14,15 +17,13 @@ type Cart = {
   items: CartItem[];
 };
 
-// Fungsi ini mengirim pembaruan ke backend setelah jeda singkat
 const debouncedUpdateApi = debounce(async (cartItemId: string, quantity: number) => {
   try {
     await api.patch(`/cart/items/${cartItemId}`, { quantity });
   } catch (error) {
     console.error("Gagal sinkronisasi kuantitas:", error);
-    // Anda bisa menambahkan logika di sini untuk mengembalikan state jika panggilan API gagal
   }
-}, 750); // Menunggu 750ms setelah interaksi terakhir sebelum mengirim request
+}, 750);
 
 type CartState = {
   cart: Cart | null;
@@ -38,6 +39,7 @@ type CartState = {
   toggleSelectAll: (forceSelect?: boolean) => void;
   clearClientCart: () => void;
   createOrder: (shippingAddress: string, shippingCost: number, courier: string) => Promise<any>;
+  getTotalWeight: () => number; // <-- Tambahkan fungsi ini
 };
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -53,7 +55,6 @@ export const useCartStore = create<CartState>((set, get) => ({
     try {
       const { data } = await api.get('/cart');
       set({ cart: data, isLoading: false });
-      // Secara default, pilih semua item saat keranjang pertama kali dimuat
       get().toggleSelectAll(true);
     } catch (error) {
       console.error("Gagal mengambil keranjang:", error);
@@ -63,27 +64,20 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   addItem: async (productId: string, quantity = 1) => {
     try {
-      // Backend akan merespons dengan state keranjang terbaru
       const { data } = await api.post('/cart/items', { productId, quantity });
       set({ cart: data });
-      // Cari item yang baru ditambahkan dan langsung pilih
       const newItem = data.items.find((item: CartItem) => item.product.id === productId);
       if (newItem) {
         get().toggleItemSelected(newItem.id);
       }
-    } catch (error) {
-      console.error("Gagal menambah item:", error);
+    } catch (error: any) {
+        const message = error.response?.data?.message || "Gagal menambah item ke keranjang.";
+        toast.error(message);
     }
   },
-
-  // --- LOGIKA UTAMA: UPDATE KUANTITAS SECARA OPTIMISTIS ---
+  
   updateItemQuantity: (cartItemId: string, newQuantity: number) => {
-    // Batasi kuantitas minimal 1. Jangan lakukan apa-apa jika kurang.
-    if (newQuantity < 1) {
-      return;
-    }
-    
-    // 1. Update UI secara langsung agar terasa responsif
+    if (newQuantity < 1) return;
     set(state => {
       if (!state.cart) return {};
       const updatedItems = state.cart.items.map(item => 
@@ -91,30 +85,21 @@ export const useCartStore = create<CartState>((set, get) => ({
       );
       return { cart: { ...state.cart, items: updatedItems } };
     });
-    
-    // 2. Sinkronisasikan perubahan dengan backend setelah jeda singkat
     debouncedUpdateApi(cartItemId, newQuantity);
   },
   
-  // --- LOGIKA UTAMA: HAPUS ITEM SECARA OPTIMISTIS ---
   removeItem: async (cartItemId: string) => {
-    const originalCart = get().cart; // Simpan state asli untuk fallback jika gagal
-
-    // 1. Hapus item dari UI secara langsung
+    const originalCart = get().cart;
     set(state => {
       if (!state.cart) return {};
       const updatedItems = state.cart.items.filter(item => item.id !== cartItemId);
-      // Hapus juga dari item yang terseleksi
       state.selectedItems.delete(cartItemId);
       return { cart: { ...state.cart, items: updatedItems }, selectedItems: new Set(state.selectedItems) };
     });
-
     try {
-      // 2. Panggil backend untuk menghapus item secara permanen
       await api.delete(`/cart/items/${cartItemId}`);
     } catch (error) {
       console.error("Gagal menghapus item:", error);
-      // 3. Jika API gagal, kembalikan UI ke state aslinya
       set({ cart: originalCart });
     }
   },
@@ -135,7 +120,6 @@ export const useCartStore = create<CartState>((set, get) => ({
     set(state => {
       if (!state.cart) return {};
       const allItemIds = state.cart.items.map(item => item.id);
-      // Tentukan apakah harus memilih semua atau tidak
       const shouldSelectAll = forceSelect !== undefined ? forceSelect : state.selectedItems.size !== allItemIds.length;
       
       if (shouldSelectAll) {
@@ -146,12 +130,26 @@ export const useCartStore = create<CartState>((set, get) => ({
     });
   },
 
+  // --- FUNGSI BARU UNTUK MENGHITUNG TOTAL BERAT ---
+  getTotalWeight: () => {
+    const { cart, selectedItems } = get();
+    if (!cart) return 0;
+    
+    // Hitung total berat dari item-item yang dipilih
+    return cart.items
+      .filter(item => selectedItems.has(item.id))
+      .reduce((totalWeight, item) => {
+        // Gunakan berat produk jika ada, jika tidak, gunakan default 1000 gram (1kg)
+        const itemWeight = item.product.weight || 1000; 
+        return totalWeight + (itemWeight * item.quantity);
+      }, 0);
+  },
+
   createOrder: async (shippingAddress: string, shippingCost: number, courier: string) => {
     const { cart, selectedItems } = get();
     if (!cart || selectedItems.size === 0) {
       throw new Error("Tidak ada item yang dipilih untuk di-checkout.");
     }
-    // Siapkan data item yang akan dikirim ke API
     const itemsToOrder = cart.items
       .filter(item => selectedItems.has(item.id))
       .map(item => ({ productId: item.product.id, quantity: item.quantity }));
@@ -165,12 +163,13 @@ export const useCartStore = create<CartState>((set, get) => ({
         courier,
       });
       
-      // Setelah order berhasil, muat ulang state keranjang (yang seharusnya sudah kosong)
       await get().fetchCart();
       set({ isLoading: false });
-      return newOrder;
-    } catch (error) {
-      console.error("Gagal membuat pesanan:", error);
+      
+      return newOrder; 
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Gagal membuat pesanan.";
+      toast.error(message);
       set({ isLoading: false });
       throw error;
     }

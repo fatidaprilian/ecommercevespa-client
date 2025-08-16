@@ -1,8 +1,9 @@
 // file: vespa-ecommerce-api/src/shipping/shipping.controller.ts
 
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { ShippingService } from './shipping.service';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('shipping')
 export class ShippingController {
@@ -19,8 +20,7 @@ export class ShippingController {
   getCities(@Query('provinceId') provinceId: string) {
     return this.shippingService.getCities(provinceId);
   }
-
-  // --- ENDPOINT BARU UNTUK KECAMATAN ---
+  
   @Public() 
   @Get('districts')
   getDistricts(@Query('cityId') cityId: string) {
@@ -28,9 +28,8 @@ export class ShippingController {
   }
 
   @Post('cost')
-  // Menghitung ongkir sebaiknya hanya untuk user yang sudah login
-  calculateCost(@Body() body: { origin: string; destination: string; weight: number; courier: string }) {
-    // Pastikan parameter 'origin' dan 'destination' sekarang diisi dengan district_id
-    return this.shippingService.calculateShippingCost(body.origin, body.destination, body.weight, body.courier);
+  @UseGuards(AuthGuard('jwt'))
+  calculateCost(@Body() body: { destination: string; weight: number; courier: string }) {
+    return this.shippingService.calculateShippingCost(body.destination, body.weight, body.courier);
   }
 }

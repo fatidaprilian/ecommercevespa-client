@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LogIn, Mail, KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query'; // 1. Import useQueryClient
 
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { setAuth } = useAuthStore();
+  const queryClient = useQueryClient(); // 2. Inisialisasi queryClient
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,11 +36,13 @@ export default function LoginPage() {
 
       setAuth(profileResponse.data, data.access_token);
 
+      // 3. (REVISI UTAMA) Tambahkan baris ini untuk membersihkan cache produk
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+
       setSuccessMessage('Login berhasil! Anda akan dialihkan...');
 
       setTimeout(() => {
         router.push('/');
-        router.refresh();
       }, 2000);
       
     } catch (err: any) {
