@@ -1,5 +1,6 @@
+// file: src/products/dto/query-product.dto.ts
 import { IsString, IsOptional, IsIn, IsEnum } from 'class-validator';
-import { PaginationDto } from '../../common/dto/pagination.dto'; // Sesuaikan path jika perlu
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class QueryProductDto extends PaginationDto {
   @IsOptional()
@@ -10,6 +11,12 @@ export class QueryProductDto extends PaginationDto {
   @IsString()
   brandId?: string;
   
+  // --- PENAMBAHAN DI SINI ---
+  @IsOptional()
+  @IsString()
+  search?: string;
+  // -------------------------
+
   @IsOptional()
   @IsEnum(['price', 'createdAt'])
   sortBy?: 'price' | 'createdAt' = 'createdAt';

@@ -1,37 +1,29 @@
+// file: app/components/layout/Navbar.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Menu, X, Search, ShoppingCart,
-  Heart, ChevronDown, Package, Wrench, Zap, Sparkles, Tag // Impor 'Tag' sebagai ikon default
+  Heart, ChevronDown, Package, Wrench, Zap, Sparkles, Tag, Loader2
 } from 'lucide-react';
 
 import ClientOnly from '@/components/providers/ClientOnly';
 import AuthNav from '@/components/molecules/AuthNav';
 import { useCartStore } from '@/store/cart';
+import { useCategories } from '@/hooks/use-categories';
+import { Category, Product } from '@/types';
+import api from '@/lib/api';
 
-// [+] Definisikan tipe untuk data Kategori dari database Anda
-interface Category {
-  id: string;
-  name: string;
-}
-
-// [+] Fungsi bantuan untuk memetakan nama kategori ke ikon
 const getCategoryIcon = (categoryName: string) => {
   switch (categoryName.toLowerCase()) {
-    case 'engine parts':
-      return Wrench;
-    case 'body & frame':
-      return Package;
-    case 'electrical':
-      return Zap;
-    case 'accessories':
-      return Sparkles;
-    default:
-      return Tag; // Ikon default jika tidak ada yang cocok
+    case 'engine parts': return Wrench;
+    case 'body & frame': return Package;
+    case 'electrical': return Zap;
+    case 'accessories': return Sparkles;
+    default: return Tag;
   }
 };
 
@@ -40,10 +32,15 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   
-  // [+] Tambahkan state untuk menyimpan data kategori dari API
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
+  const { data: categories, isLoading: isLoadingCategories } = useCategories();
+  
   const { cart } = useCartStore();
   const uniqueItemCount = cart?.items?.length || 0;
 
@@ -51,6 +48,7 @@ export default function Navbar() {
   const isAuthPage = pathname === '/login' || pathname === '/register';
 
   useEffect(() => {
+    setIsSearchOpen(false);
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     if (isAuthPage) {
       setIsScrolled(true);
@@ -61,28 +59,40 @@ export default function Navbar() {
     }
   }, [pathname, isAuthPage]);
 
-  // [+] Tambahkan useEffect untuk mengambil data kategori saat komponen dimuat
   useEffect(() => {
-    const fetchCategories = async () => {
-      setIsLoading(true);
+    if (isSearchOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    } else {
+      setSearchQuery('');
+      setSearchResults([]);
+    }
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const debounceTimeout = setTimeout(async () => {
       try {
-        // Pastikan endpoint ini ada di backend Anda
-        const response = await fetch('/api/categories'); 
-        if (!response.ok) {
-          throw new Error('Gagal mengambil data kategori');
-        }
-        const data: Category[] = await response.json();
-        setCategories(data);
+        const { data } = await api.get('/products/search', { params: { term: searchQuery } });
+        setSearchResults(data);
       } catch (error) {
-        console.error(error);
+        console.error("Search failed:", error);
       } finally {
-        setIsLoading(false);
+        setIsSearching(false);
       }
-    };
+    }, 300);
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery]);
 
-    fetchCategories();
-  }, []); // Dijalankan sekali saat komponen pertama kali render
-
+  const handleSearchSelect = (productId: string) => {
+    router.push(`/products/${productId}`);
+    setIsSearchOpen(false);
+  };
+  
   const navigationLinks = [
     { name: 'Home', href: '/' },
     { name: 'Products', href: '/products', hasDropdown: true },
@@ -107,7 +117,6 @@ export default function Navbar() {
       >
         <div className="container mx-auto px-6">
           <div className="flex items-center justify-between h-20">
-            {/* --- Bagian Logo (TIDAK BERUBAH) --- */}
             <Link href="/" className="flex items-center space-x-3 group">
               <div className="relative">
                 <div className="w-12 h-12 bg-gradient-to-br from-[#52616B] to-[#1E2022] rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -122,54 +131,25 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* --- Navigasi Desktop --- */}
             <div className="hidden md:flex items-center space-x-6">
               {navigationLinks.map((link) => (
-                <div
-                  key={link.name}
-                  className="relative pb-4"
-                  onMouseEnter={() => link.hasDropdown && setActiveDropdown(link.name)}
-                  onMouseLeave={() => link.hasDropdown && setActiveDropdown(null)}
-                >
-                  <Link
-                    href={link.href}
-                    className={`text-sm font-medium transition-colors duration-300 flex items-center gap-1.5 group ${
-                      pathname === link.href
-                        ? textColorClass
-                        : navIsSolid
-                          ? 'text-gray-500 hover:text-[#1E2022]'
-                          : 'text-gray-500 hover:text-white'
-                    }`}
-                  >
+                <div key={link.name} className="relative group" onMouseEnter={() => link.hasDropdown && setActiveDropdown(link.name)} onMouseLeave={() => link.hasDropdown && setActiveDropdown(null)}>
+                  <Link href={link.href} className={`text-sm font-medium transition-colors duration-300 flex items-center gap-1.5 pb-1 ${pathname === link.href ? textColorClass : navIsSolid ? 'text-gray-500 hover:text-[#1E2022]' : 'text-gray-400 hover:text-white'}`}>
                     {link.name}
                     {link.hasDropdown && <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${activeDropdown === link.name ? 'rotate-180' : ''}`} />}
                   </Link>
-                  <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-0 group-hover:w-full transition-all duration-300 ${pathname === link.href ? 'w-full' : ''} ${navIsSolid ? 'bg-[#1E2022]' : 'bg-white'}`}></div>
+                  <div className={`absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-300 ${pathname === link.href ? 'w-full' : ''} ${navIsSolid ? 'bg-[#1E2022]' : 'bg-white'}`}></div>
 
-                  {/* [REVISI] Dropdown sekarang menampilkan Kategori dari API */}
                   {link.hasDropdown && activeDropdown === link.name && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 w-64 bg-white rounded-lg shadow-xl overflow-hidden"
-                    >
-                      <div className="p-4 grid grid-cols-1 gap-2">
-                        {isLoading ? (
-                           <div className="p-3 text-center text-gray-500">Loading...</div>
-                        ) : (
-                          categories.map((category) => {
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.2 }} className="absolute top-full pt-4 left-1/2 -translate-x-1/2 w-64">
+                      <div className="bg-white rounded-lg shadow-xl overflow-hidden p-2">
+                        {isLoadingCategories ? ( <div className="p-3 text-center text-gray-500">Memuat...</div> ) : (
+                          categories?.map((category: Category) => {
                             const Icon = getCategoryIcon(category.name);
-                            return (
-                                <Link
-                                    key={category.id}
-                                    href={`/products?category=${encodeURIComponent(category.name)}`}
-                                    className="flex items-center p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                                >
-                                    <Icon className="w-5 h-5 mr-3 text-[#52616B]" />
-                                    <span className="font-medium">{category.name}</span>
-                                </Link>
+                            return ( <Link key={category.id} href={`/products?categoryId=${category.id}`} className="flex items-center p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200">
+                                <Icon className="w-5 h-5 mr-3 text-[#52616B]" />
+                                <span className="font-medium">{category.name}</span>
+                              </Link>
                             );
                           })
                         )}
@@ -179,11 +159,62 @@ export default function Navbar() {
                 </div>
               ))}
             </div>
-            
-            {/* --- Ikon Aksi (TIDAK BERUBAH) --- */}
-            <div className={`flex items-center space-x-4 ${textColorClass}`}>
-              <button className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${navIsSolid ? 'hover:bg-[#C9D6DF]/50 hover:text-[#52616B]' : 'hover:bg-white/10'}`}><Search className="w-5 h-5" /></button>
+
+            <div className={`flex items-center space-x-2 md:space-x-4 ${textColorClass}`}>
+              <div className="flex items-center">
+                <AnimatePresence>
+                  {isSearchOpen && (
+                    <motion.div 
+                      initial={{ width: 0, opacity: 0 }} 
+                      animate={{ width: 200, opacity: 1 }} 
+                      exit={{ width: 0, opacity: 0 }} 
+                      transition={{ duration: 0.3 }} 
+                      className="relative"
+                    >
+                      <input 
+                        ref={searchInputRef}
+                        type="text" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Cari produk..." 
+                        className={`w-full h-9 pl-4 pr-2 rounded-lg text-black bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#52616B] text-sm border border-gray-300`}
+                      />
+                      {(searchResults.length > 0 || isSearching) && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="absolute top-11 left-0 w-full bg-white rounded-lg shadow-lg border flex flex-col"
+                        >
+                          <div className="max-h-80 overflow-y-auto">
+                            {isSearching && (
+                              <div className="flex items-center justify-center p-4 text-sm text-gray-500">
+                                <Loader2 className="w-4 h-4 animate-spin mr-2"/> Mencari...
+                              </div>
+                            )}
+                            {!isSearching && searchResults.map((product: Product) => (
+                              <button key={product.id} onClick={() => handleSearchSelect(product.id)} className="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors">
+                                 <img src={product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={product.name} className="w-10 h-10 object-cover rounded-md flex-shrink-0" />
+                                 <span className="text-sm text-gray-800">{product.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                          {!isSearching && searchResults.length > 0 && (
+                            <Link href={`/products?search=${searchQuery}`} onClick={() => setIsSearchOpen(false)} className="block w-full text-center p-3 border-t bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-blue-600">
+                              Lihat Semua Hasil
+                            </Link>
+                          )}
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${navIsSolid ? 'hover:bg-[#C9D6DF]/50 hover:text-[#52616B]' : 'hover:bg-white/10'}`}>
+                  {isSearchOpen ? <X className="w-5 h-5"/> : <Search className="w-5 h-5" />}
+                </button>
+              </div>
+
               <button className={`hidden sm:block p-2 rounded-full transition-all duration-300 hover:scale-110 ${navIsSolid ? 'hover:bg-[#C9D6DF]/50 hover:text-[#52616B]' : 'hover:bg-white/10'}`}><Heart className="w-5 h-5" /></button>
+              
               <Link href="/cart" className={`relative p-2 rounded-full transition-all duration-300 hover:scale-110 ${navIsSolid ? 'hover:bg-[#C9D6DF]/50 hover:text-[#52616B]' : 'hover:bg-white/10'}`}>
                 <ShoppingCart className="w-5 h-5" />
                 <ClientOnly>
@@ -194,11 +225,11 @@ export default function Navbar() {
                   )}
                 </ClientOnly>
               </Link>
+
               <div className="hidden md:block">
-                <ClientOnly>
-                  <AuthNav />
-                </ClientOnly>
+                <ClientOnly><AuthNav /></ClientOnly>
               </div>
+
               <button onClick={() => setIsOpen(!isOpen)} className={`md:hidden p-2 rounded-full transition-all duration-300 hover:scale-110 ${navIsSolid ? 'hover:bg-[#C9D6DF]/50 hover:text-[#52616B]' : 'hover:bg-white/10'}`}>
                 {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -207,61 +238,32 @@ export default function Navbar() {
         </div>
       </motion.nav>
 
-      {/* --- Mobile Menu (TIDAK BERUBAH KECUALI DROPDOWN) --- */}
       <AnimatePresence>
         {isOpen && (
            <div className="md:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl flex flex-col"
-            >
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }} onClick={(e) => e.stopPropagation()} className="absolute top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl flex flex-col">
               <div className="p-6 flex justify-between items-center border-b border-gray-200">
                 <h2 className="text-xl font-bold text-[#1E2022]">Menu</h2>
-                <button onClick={() => setIsOpen(false)} className="p-2 -mr-2">
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
+                <button onClick={() => setIsOpen(false)} className="p-2 -mr-2"><X className="w-6 h-6 text-gray-500" /></button>
               </div>
               <div className="flex-grow p-6 space-y-4 overflow-y-auto">
                 {navigationLinks.map((link) => (
                   <div key={link.name}>
                     {link.hasDropdown ? (
                       <div>
-                        <button
-                          onClick={() => setActiveDropdown(activeDropdown === link.name ? null : link.name)}
-                          className="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-700 p-3 rounded-lg hover:bg-gray-100"
-                        >
+                        <button onClick={() => setActiveDropdown(activeDropdown === link.name ? null : link.name)} className="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-700 p-3 rounded-lg hover:bg-gray-100">
                           {link.name}
                           <ChevronDown className={`w-5 h-5 transition-transform ${activeDropdown === link.name ? 'rotate-180' : ''}`} />
                         </button>
                         <AnimatePresence>
                           {activeDropdown === link.name && (
-                            <motion.div
-                              initial="collapsed"
-                              animate="open"
-                              exit="collapsed"
-                              variants={{ open: { opacity: 1, height: 'auto' }, collapsed: { opacity: 0, height: 0 } }}
-                              transition={{ duration: 0.3, ease: 'easeInOut' }}
-                              className="overflow-hidden pl-4 mt-2"
-                            >
-                              {/* [REVISI] Dropdown mobile sekarang juga menampilkan Kategori */}
-                              {isLoading ? (
-                                <div className="p-3 text-gray-500">Loading...</div>
-                              ) : (
-                                categories.map(category => {
+                            <motion.div initial="collapsed" animate="open" exit="collapsed" variants={{ open: { opacity: 1, height: 'auto' }, collapsed: { opacity: 0, height: 0 } }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="overflow-hidden pl-4 mt-2">
+                              {isLoadingCategories ? ( <div className="p-3 text-gray-500">Memuat...</div> ) : (
+                                categories?.map(category => {
                                   const Icon = getCategoryIcon(category.name);
-                                  return (
-                                    <Link
-                                        key={category.id}
-                                        href={`/products?category=${encodeURIComponent(category.name)}`}
-                                        onClick={() => setIsOpen(false)}
-                                        className="flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-100"
-                                    >
-                                        <Icon className="w-5 h-5 mr-3 text-gray-400" />
-                                        {category.name}
+                                  return ( <Link key={category.id} href={`/products?categoryId=${category.id}`} onClick={() => setIsOpen(false)} className="flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-100">
+                                      <Icon className="w-5 h-5 mr-3 text-gray-400" />
+                                      {category.name}
                                     </Link>
                                   );
                                 })
@@ -279,9 +281,7 @@ export default function Navbar() {
                 ))}
               </div>
               <div className="p-6 border-t border-gray-200">
-                <ClientOnly>
-                  <AuthNav />
-                </ClientOnly>
+                <ClientOnly><AuthNav /></ClientOnly>
               </div>
             </motion.div>
            </div>

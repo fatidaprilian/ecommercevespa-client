@@ -48,76 +48,100 @@ model User {
   role            Role           @default(MEMBER)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+
+  // ATURAN #3: Diskon Dasar milik Reseller (Default)
+  defaultDiscountPercentage Float @default(0)
+
+  // Relasi ke aturan diskon yang lebih spesifik
+  productDiscounts  UserProductDiscount[]
+  categoryDiscounts UserCategoryDiscount[]
+
+  // Relasi lain
   orders          Order[]
   reviews         Review[]
   wishlists       Wishlist[]
   addresses       Address[]
+  cart            Cart?
   tier            ResellerTier?  @relation(fields: [resellerTierId], references: [id])
   resellerTierId  String?
-  cart            Cart?
 }
 
+// Model ini hanya untuk pengelompokan/labeling, BUKAN untuk aturan diskon.
 model ResellerTier {
-  id                    String                   @id @default(cuid())
-  name                  String                   @unique
-  defaultDiscountPercentage Float                  @default(0)
-  minSpending           Float                    @default(0)
-  users                 User[]
-  categoryDiscounts     TierCategoryDiscount[]
+  id          String @id @default(cuid())
+  name        String @unique
+  description String?
+  users       User[]
 }
 
-model TierCategoryDiscount {
-  id               String       @id @default(cuid())
+// MODEL BARU untuk ATURAN #1: Diskon Spesifik per Produk (Prioritas Tertinggi)
+model UserProductDiscount {
+  id                 String @id @default(cuid())
   discountPercentage Float
-  tier             ResellerTier @relation(fields: [resellerTierId], references: [id])
-  resellerTierId   String
-  category         Category     @relation(fields: [categoryId], references: [id])
-  categoryId       String
+  user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  product            Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId          String
 
-  @@unique([resellerTierId, categoryId])
+  @@unique([userId, productId])
+}
+
+// MODEL BARU untuk ATURAN #2: Diskon Spesifik per Kategori (Prioritas Menengah)
+model UserCategoryDiscount {
+  id                 String   @id @default(cuid())
+  discountPercentage Float
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  category           Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId         String
+
+  @@unique([userId, categoryId])
 }
 
 model Brand {
-  id      String    @id @default(cuid())
-  name    String    @unique
-  logoUrl String?
+  id       String    @id @default(cuid())
+  name     String    @unique
+  logoUrl  String?
   products Product[]
 }
 
 model Product {
-  id          String         @id @default(cuid())
-  sku         String         @unique
-  name        String
-  description String?
-  price       Float
-  stock       Int            @default(0)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  images      ProductImage[]
-  category    Category?      @relation(fields: [categoryId], references: [id])
-  categoryId  String?
-  brand       Brand?         @relation(fields: [brandId], references: [id])
-  brandId     String?
-  orderItems  OrderItem[]
-  reviews     Review[]
-  wishlists   Wishlist[]
-  erpSyncLog  ErpSyncLog[]
-  cartItems   CartItem[]
+  id                 String                @id @default(cuid())
+  sku                String                @unique
+  name               String
+  description        String?
+  price              Float
+  stock              Int                   @default(0)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  images             ProductImage[]
+  category           Category?             @relation(fields: [categoryId], references: [id])
+  categoryId         String?
+  brand              Brand?                @relation(fields: [brandId], references: [id])
+  brandId            String?
+  orderItems         OrderItem[]
+  reviews            Review[]
+  wishlists          Wishlist[]
+  erpSyncLog         ErpSyncLog[]
+  cartItems          CartItem[]
+  // Relasi ke diskon spesifik per produk
+  userProductDiscounts UserProductDiscount[]
 }
 
 model ProductImage {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   url       String
-  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId String
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Category {
-  id            String                   @id @default(cuid())
-  name          String                   @unique
-  products      Product[]
-  tierDiscounts TierCategoryDiscount[]
+  id                  String                 @id @default(cuid())
+  name                String                 @unique
+  products            Product[]
+  // Relasi ke diskon spesifik per kategori
+  userCategoryDiscounts UserCategoryDiscount[]
 }
 
 model Order {
@@ -130,10 +154,8 @@ model Order {
   user            User        @relation(fields: [userId], references: [id])
   userId          String
   shippingAddress String
-  // --- PENAMBAHAN DI SINI ---
   shippingCost    Float
   courier         String
-  // -------------------------
   items           OrderItem[]
   payment         Payment?
   shipment        Shipment?
@@ -165,75 +187,74 @@ model Payment {
 }
 
 model Shipment {
-  id                String      @id @default(cuid())
-  order             Order       @relation(fields: [orderId], references: [id])
-  orderId           String      @unique
+  id                String    @id @default(cuid())
+  order             Order     @relation(fields: [orderId], references: [id])
+  orderId           String    @unique
   courier           String
   trackingNumber    String?
   shippingCost      Float
   estimatedDelivery DateTime?
-  createdAt         DateTime    @default(now())
+  createdAt         DateTime  @default(now())
 }
 
-// --- MODEL ADDRESS YANG SUDAH DIPERBARUI ---
 model Address {
-  id          String  @id @default(cuid())
-  street      String
-  postalCode  String
-  provinceId  String
-  province    String
-  cityId      String
-  city        String
-  districtId  String
-  district    String
-  isDefault   Boolean @default(false)
-  user        User    @relation(fields: [userId], references: [id])
-  userId      String
+  id         String  @id @default(cuid())
+  street     String
+  postalCode String
+  provinceId String
+  province   String
+  cityId     String
+  city       String
+  districtId String
+  district   String
+  isDefault  Boolean @default(false)
+  user       User    @relation(fields: [userId], references: [id])
+  userId     String
 }
 
 model Voucher {
-  id              String    @id @default(cuid())
-  code            String    @unique
-  description     String?
-  discountValue   Float
-  isPercentage    Boolean   @default(false)
+  id                String   @id @default(cuid())
+  code              String   @unique
+  description       String?
+  discountValue     Float
+  isPercentage      Boolean  @default(false)
   maxDiscountAmount Float?
-  minPurchaseAmount Float   @default(0)
-  validFrom       DateTime
-  validUntil      DateTime
-  maxUses         Int?
-  usageCount      Int       @default(0)
-  isActive        Boolean   @default(true)
+  minPurchaseAmount Float    @default(0)
+  validFrom         DateTime
+  validUntil        DateTime
+  maxUses           Int?
+  usageCount        Int      @default(0)
+  isActive          Boolean  @default(true)
 }
 
 model ErpSyncLog {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   syncType  String
   status    String
   message   String?
-  runAt     DateTime  @default(now())
-  product   Product?  @relation(fields: [productId], references: [id])
+  runAt     DateTime @default(now())
+  product   Product? @relation(fields: [productId], references: [id])
   productId String?
 }
 
 model Review {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   rating    Int
   comment   String?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
   userId    String
-  product   Product   @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
   productId String
 }
 
 model Wishlist {
-  id        String    @id @default(cuid())
-  user      User      @relation(fields: [userId], references: [id])
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
   userId    String
-  product   Product   @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
   productId String
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([userId, productId])
 }

@@ -1,6 +1,5 @@
-// file: vespa-ecommerce-web/app/types/index.ts
+// file: app/types/index.ts
 
-// Tipe untuk gambar, sesuai dengan respons dari Prisma
 export type ProductImage = {
   id: string;
   url: string;
@@ -16,23 +15,56 @@ export type Brand = {
   name: string;
 };
 
+// --- TIPE BARU UNTUK INFORMASI HARGA ---
+export type PriceInfo = {
+  originalPrice: number;
+  discountPercentage: number;
+  finalPrice: number;
+  appliedRule: 'PRODUCT' | 'CATEGORY' | 'DEFAULT' | 'NONE';
+};
+
 export type Product = {
   id: string;
   name: string;
   sku: string;
   description: string | null;
-  price: string; // Prisma Decimal dikirim sebagai string
+  price: number; // Ini sekarang akan menjadi harga final/diskon
   stock: number;
-  // --- PERUBAHAN DI SINI ---
-  images: ProductImage[]; // Menggunakan tipe ProductImage[]
+  images: ProductImage[];
   category: Category;
   brand: Brand | null;
+  priceInfo: PriceInfo; // <-- TAMBAHKAN FIELD INI
 };
 
-// Tipe untuk data pengguna
 export type User = {
   id: string;
   email: string;
   name: string;
   role: 'ADMIN' | 'RESELLER' | 'MEMBER';
+};
+
+export type OrderItem = {
+    id: string;
+    quantity: number;
+    price: number;
+    product: Product;
+}
+
+export type Payment = {
+    id: string;
+    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
+    invoiceUrl?: string;
+}
+
+export type Order = {
+    id: string;
+    orderNumber: string;
+    totalAmount: number;
+    shippingCost: number;
+    courier: string;
+    shippingAddress: string;
+    status: 'PENDING' | 'PAID' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED';
+    createdAt: string;
+    items: OrderItem[];
+    payment?: Payment;
 };

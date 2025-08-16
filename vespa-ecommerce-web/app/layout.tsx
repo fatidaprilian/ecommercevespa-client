@@ -19,15 +19,19 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="id">
-            <body className={`${inter.variable} ${playfair.variable} font-sans bg-[#F0F5F9] text-[#1E2022]`}>
+            <body
+                className={`${inter.variable} ${playfair.variable} font-sans bg-[#F0F5F9] text-[#1E2022] flex flex-col min-h-screen`}
+            >
                 <QueryProvider>
                     <Navbar />
-                    <main>
+
+                    <main className="flex-1">
                         {children}
                     </main>
-                    <footer className="bg-[#1E2022] text-white p-6 mt-12">
+
+                    <footer className="bg-[#1E2022] text-white p-6">
                         <div className="container mx-auto text-center">
-                            <p>&copy; 2024 VespaPart Ecommerce. All rights reserved.</p>
+                            <p>VespaPart Ecommerce &copy; 2025. Design by. kodekiri.com </p>
                         </div>
                     </footer>
                 </QueryProvider>

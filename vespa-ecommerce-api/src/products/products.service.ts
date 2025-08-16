@@ -1,34 +1,75 @@
-// file: vespa-ecommerce-api/src/products/products.service.ts
+// file: src/products/products.service.ts
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
-import { Product, Prisma } from '@prisma/client';
+import { Product, Prisma, Role } from '@prisma/client';
 import { QueryProductDto } from './dto/query-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { DiscountsCalculationService } from 'src/discounts/discounts-calculation.service';
+import { UserPayload } from 'src/auth/interfaces/jwt.payload'; // <-- 1. Import UserPayload
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private discountsCalcService: DiscountsCalculationService,
+  ) {}
+
+  // 2. Ubah tipe parameter 'user' menjadi 'UserPayload'
+  private async processProductPrice(product: any, user?: UserPayload) {
+      if (user && user.role === Role.RESELLER) {
+          // Kita butuh data user lengkap untuk kalkulasi, jadi kita fetch dari DB
+          const fullUser = await this.prisma.user.findUnique({ where: { id: user.id }});
+          if (!fullUser) return { ...product, priceInfo: null }; // Fallback jika user tidak ditemukan
+
+          const priceInfo = await this.discountsCalcService.calculatePrice(fullUser, product);
+          return { ...product, price: priceInfo.finalPrice, priceInfo };
+      }
+      
+      return { 
+          ...product, 
+          priceInfo: { 
+              originalPrice: product.price, 
+              discountPercentage: 0, 
+              finalPrice: product.price, 
+              appliedRule: 'NONE' 
+          } 
+      };
+  }
+
+  async search(term: string) {
+    if (!term || term.trim() === '') {
+      return [];
+    }
+    return this.prisma.product.findMany({
+      where: {
+        OR: [
+          { name: { contains: term, mode: 'insensitive' } },
+          { sku: { contains: term, mode: 'insensitive' } },
+        ],
+      },
+      take: 10,
+      include: {
+        images: true,
+        category: { select: { name: true } },
+        brand: { select: { name: true } },
+      },
+    });
+  }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const { categoryId, brandId, images, ...productData } = createProductDto;
-
-    // --- PERBAIKAN UTAMA: GENERATE SKU OTOMATIS ---
-    // Buat SKU dari 3 huruf pertama nama produk + timestamp unik
     const skuPrefix = productData.name.substring(0, 3).toUpperCase();
     const uniqueTimestamp = Date.now().toString().slice(-6);
     const generatedSku = `${skuPrefix}-${uniqueTimestamp}`;
-
     const data: Prisma.ProductCreateInput = {
       ...productData,
-      sku: generatedSku, // Gunakan SKU yang baru dibuat
-      category: {
-        connect: { id: categoryId },
-      },
+      sku: generatedSku,
+      category: { connect: { id: categoryId } },
       ...(brandId && { brand: { connect: { id: brandId } } }),
       ...(images && { images: { create: images } }),
     };
-
     return this.prisma.product.create({
       data,
       include: {
@@ -39,56 +80,62 @@ export class ProductsService {
     });
   }
 
-  async findAll(queryDto: QueryProductDto) {
-    const { 
-      page = 1, 
-      limit = 10, 
-      categoryId, 
-      brandId, 
-      sortBy = 'createdAt', 
-      sortOrder = 'desc' 
+  // 3. Ubah tipe parameter 'user' di sini
+  async findAll(queryDto: QueryProductDto, user?: UserPayload) {
+    const {
+      page = 1,
+      limit = 10,
+      categoryId,
+      brandId,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      search,
     } = queryDto;
-    
-    const skip = (page - 1) * limit;
+
+    const skip = (Number(page) - 1) * Number(limit);
 
     const where: Prisma.ProductWhereInput = {};
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
-    if (brandId) {
-      where.brandId = brandId;
+    if (categoryId) where.categoryId = categoryId;
+    if (brandId) where.brandId = brandId;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
         skip,
-        take: limit,
+        take: Number(limit),
         include: {
           category: true,
           brand: true,
           images: true,
         },
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
+        orderBy: { [sortBy]: sortOrder },
       }),
       this.prisma.product.count({ where }),
     ]);
 
+    const processedProducts = await Promise.all(
+      products.map(p => this.processProductPrice(p, user))
+    );
+
     return {
-      data: products,
+      data: processedProducts,
       meta: {
         total,
-        page,
-        limit,
-        lastPage: Math.ceil(total / limit),
+        page: Number(page),
+        limit: Number(limit),
+        lastPage: Math.ceil(total / Number(limit)),
       },
     };
   }
 
-  // ... metode findOne, update, remove tidak berubah ...
-  async findOne(id: string): Promise<Product> {
+  // 4. Dan ubah tipe parameter 'user' di sini juga
+  async findOne(id: string, user?: UserPayload): Promise<any> {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: {
@@ -98,14 +145,13 @@ export class ProductsService {
       },
     });
     if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
+      throw new NotFoundException(`Produk dengan ID ${id} tidak ditemukan`);
     }
-    return product;
+    return this.processProductPrice(product, user);
   }
 
-  async update(id: string, updateProductDto: Partial<CreateProductDto>): Promise<Product> {
+  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
     const { categoryId, brandId, images, ...productData } = updateProductDto;
-
     return this.prisma.$transaction(async (tx) => {
       await tx.product.update({
         where: { id },
@@ -115,19 +161,13 @@ export class ProductsService {
           ...(brandId && { brand: { connect: { id: brandId } } }),
         },
       });
-
       if (images) {
         await tx.productImage.deleteMany({ where: { productId: id } });
         await tx.product.update({
           where: { id },
-          data: {
-            images: {
-              create: images,
-            },
-          },
+          data: { images: { create: images } },
         });
       }
-
       return tx.product.findUniqueOrThrow({
         where: { id },
         include: {
@@ -140,7 +180,10 @@ export class ProductsService {
   }
 
   async remove(id: string): Promise<Product> {
-    await this.findOne(id);
+    const product = await this.prisma.product.findUnique({ where: { id } });
+     if (!product) {
+      throw new NotFoundException(`Produk dengan ID ${id} tidak ditemukan`);
+    }
     return this.prisma.product.delete({
       where: { id },
     });

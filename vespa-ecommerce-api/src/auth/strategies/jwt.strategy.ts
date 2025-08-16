@@ -12,6 +12,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  name: string; // 'name' sudah ada di sini
 }
 
 const cookieExtractor = (req: Request): string | null => {
@@ -46,7 +47,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @returns Objek user yang akan dilampirkan ke `req.user`.
    */
   async validate(payload: JwtPayload): Promise<UserPayload> {
-    // Memetakan 'sub' dari token ke 'id' di objek user
-    return { id: payload.sub, email: payload.email, role: payload.role };
+    // 'name' dari payload token sekarang ikut dikembalikan
+    return { 
+      id: payload.sub, 
+      email: payload.email, 
+      role: payload.role,
+      name: payload.name, // Baris ini sudah benar
+    };
   }
 }

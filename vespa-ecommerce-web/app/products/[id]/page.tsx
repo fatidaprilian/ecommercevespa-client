@@ -1,4 +1,4 @@
-// file: vespa-ecommerce-web/app/products/[id]/page.tsx
+// file: app/products/[id]/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -10,24 +10,13 @@ import toast from 'react-hot-toast';
 import { useProduct } from '@/hooks/use-product';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
-
-// Helper untuk format harga
-const formatPrice = (price: string) => {
-  const numericPrice = Number(price);
-  if (isNaN(numericPrice)) return 'Harga tidak tersedia';
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(numericPrice);
-};
+import PriceDisplay from '@/components/molecules/PriceDisplay'; // <-- Import komponen harga
 
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = params.id as string;
   
-  // Ambil state dan aksi dari store
   const { addItem, isLoading: isCartLoading } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const { data: product, isLoading, error } = useProduct(productId);
@@ -36,18 +25,14 @@ export default function ProductDetailPage() {
   const [isAdded, setIsAdded] = useState(false);
 
   const handleAddToCart = () => {
-    // 1. Cek apakah pengguna sudah login
     if (!isAuthenticated) {
       toast.error("Silakan login terlebih dahulu untuk menambah item.");
       router.push('/login');
       return;
     }
-
     if (product) {
-      // 2. Panggil aksi 'addItem' dengan productId dan quantity
       addItem(product.id, quantity);
       toast.success(`${product.name} ditambahkan ke keranjang!`);
-      
       setIsAdded(true);
       setTimeout(() => setIsAdded(false), 2000);
     }
@@ -56,11 +41,9 @@ export default function ProductDetailPage() {
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen"><p>Memuat detail produk...</p></div>;
   }
-
   if (error) {
     return <div className="text-center p-10 text-red-500">Error: {error.message}</div>;
   }
-
   if (!product) {
     return <div className="text-center p-10">Produk tidak ditemukan.</div>;
   }
@@ -98,9 +81,14 @@ export default function ProductDetailPage() {
             <h1 className="text-4xl font-bold text-[#1E2022] mb-2 font-playfair">{product.name}</h1>
             <p className="text-md text-gray-500 mb-4">SKU: {product.sku}</p>
             
-            <p className="text-5xl font-bold text-[#52616B] mb-6">
-              {formatPrice(product.price)}
-            </p>
+            {/* --- PERUBAHAN UTAMA DI SINI --- */}
+            <div className="mb-6">
+              <PriceDisplay 
+                priceInfo={product.priceInfo} 
+                className="text-5xl" 
+                originalPriceClassName="text-2xl" 
+              />
+            </div>
 
             <div className="mb-6 border-t pt-6">
               <h2 className="font-semibold text-xl mb-2 text-gray-800">Deskripsi</h2>

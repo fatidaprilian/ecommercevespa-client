@@ -2,8 +2,6 @@
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core'; // APP_GUARD masih diimpor, tapi tidak digunakan untuk JwtAuthGuard
-
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -21,12 +19,13 @@ import { ShippingModule } from './shipping/shipping.module';
 import { UploadModule } from './upload/upload.module';
 import { XenditModule } from './xendit/xendit.module';
 import { AddressesModule } from './addresses/addresses.module';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard'; // Tetap impor untuk referensi
+import { DiscountsModule } from './discounts/discounts.module'; 
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    DiscountsModule,
     AuthModule,
     UsersModule,
     ProductsModule,
@@ -43,17 +42,9 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard'; // Tetap impor untu
   controllers: [AppController],
   providers: [
     AppService,
-    // --- PERBAIKAN UTAMA DI SINI ---
-    // Hapus blok provider untuk JwtAuthGuard dari sini.
-    // Dengan menghapus ini, guard tidak lagi diterapkan secara global.
-    // Otentikasi sekarang akan ditangani di level controller/route secara spesifik
-    // dengan decorator @UseGuards(JwtAuthGuard) atau @UseGuards(AuthGuard('jwt')).
-    /*
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
-    */
+    // ✅ KUNCI PERBAIKAN: Pastikan JwtAuthGuard TIDAK terdaftar secara global di sini.
+    // Dengan menghapusnya dari sini, kita bisa mengontrol otentikasi
+    // di masing-masing controller menggunakan @UseGuards.
   ],
 })
 export class AppModule {}

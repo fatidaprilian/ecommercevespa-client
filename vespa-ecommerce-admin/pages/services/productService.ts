@@ -1,4 +1,4 @@
-// file: vespa-ecommerce-admin/pages/services/productService.ts
+// file: pages/services/productService.ts
 
 import api from '@/lib/api'; // Menggunakan instance axios yang sudah dikonfigurasi
 
@@ -19,7 +19,6 @@ export interface Product {
   images?: { url: string }[];
   createdAt: string;
   updatedAt: string;
-  // Anda bisa tambahkan relasi lain jika perlu, misal: category, brand
 }
 
 // Tipe data untuk struktur respons paginasi dari API
@@ -42,10 +41,8 @@ export interface ProductData {
   description?: string;
   brandId?: string;
   images?: { url: string }[];
-  // SKU sekarang opsional karena akan digenerate oleh backend
   sku?: string; 
 }
-
 
 // ====================================================================
 // Fungsi-fungsi Service
@@ -76,9 +73,24 @@ export const uploadImage = async (file: File) => {
 
 /**
  * Mengambil semua produk dari API dengan struktur paginasi.
+ * Versi ini mengambil semua produk sekaligus (sesuai permintaan revisi).
  */
 export const getProducts = async (): Promise<PaginatedProducts> => {
   const { data } = await api.get<PaginatedProducts>('/products');
+  return data;
+};
+
+/**
+ * Mencari produk berdasarkan kata kunci (untuk picker).
+ * @param term - Kata kunci pencarian
+ */
+export const searchProducts = async (term: string): Promise<Product[]> => {
+  if (term.length < 2) {
+    return [];
+  }
+  const { data } = await api.get<Product[]>(`/products/search`, {
+    params: { term },
+  });
   return data;
 };
 

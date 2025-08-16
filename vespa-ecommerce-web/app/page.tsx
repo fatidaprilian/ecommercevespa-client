@@ -1,19 +1,22 @@
 // file: vespa-ecommerce-web/app/page.tsx
 'use client';
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import {
     ShieldCheck, Package, Wrench, ArrowRight, ShoppingCart,
     ChevronDown, Zap, Sparkles, Award, Users, Truck, Headphones, Phone, Star, CheckCircle, Clock
 } from "lucide-react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 
-// Impor hook dan tipe data yang sudah ada
+// Impor hook dan tipe data
 import { useProducts } from "@/hooks/use-products";
 import { useCategories } from "@/hooks/use-categories";
 import { useBrands } from "@/hooks/use-brands";
 import { Product, Category, Brand } from "@/types";
+import { useAuthStore } from "@/store/auth";
+import PriceDisplay from "@/components/molecules/PriceDisplay";
 
 // Helper untuk format harga
 const formatPrice = (price: string | number) => {
@@ -25,7 +28,7 @@ const formatPrice = (price: string | number) => {
 };
 
 // ====================================================================
-// Komponen Pembantu & Bagian Halaman (Reusable Components & Page Sections)
+// Komponen Pembantu & Bagian Halaman (Tidak ada perubahan)
 // ====================================================================
 
 const Section = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
@@ -84,7 +87,6 @@ const HeroSection = () => {
     );
 };
 
-// --- SECTION KATEGORI (DINAMIS) ---
 const CategoriesSection = () => {
   const { data: categories, isLoading, error } = useCategories();
   const categoryIcons: { [key: string]: React.ElementType } = {
@@ -117,7 +119,6 @@ const CategoriesSection = () => {
                 viewport={{ once: true, amount: 0.3 }} 
                 transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
               >
-                {/* Navigasi sekarang menggunakan ID kategori untuk konsistensi */}
                 <Link href={`/products?categoryId=${cat.id}`} className="group block cursor-pointer">
                   <div className="relative h-96 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
                     <img src={image} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -137,7 +138,6 @@ const CategoriesSection = () => {
   );
 };
 
-// --- SECTION MEREK (DINAMIS) ---
 const BrandsSection = () => {
     const { data: brands, isLoading, error } = useBrands();
 
@@ -174,21 +174,22 @@ const BrandsSection = () => {
     )
 }
 
-// --- SECTION PRODUK UNGGULAN (DINAMIS) ---
+// --- SECTION PRODUK UNGGULAN ---
 const FeaturedProducts = () => {
-    // --- PERBAIKAN DI SINI: Panggil hook dengan objek parameter ---
-    // Kita minta 4 produk terbaru untuk ditampilkan di halaman utama.
-    const { data: productsResponse, isLoading, error } = useProducts({ 
-        sortBy: 'createdAt', 
-        sortOrder: 'desc', 
-        limit: 4 
-    });
+    // ✅ KUNCI PERBAIKAN: Ambil status 'hasHydrated' dari store
+    const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
-    if (isLoading) {
+    const { data: productsResponse, isLoading, error } = useProducts(
+      { sortBy: 'createdAt', sortOrder: 'desc', limit: 4 },
+      // ✅ KUNCI PERBAIKAN: Hanya aktifkan query jika store sudah 'hydrated'
+      hasHydrated 
+    );
+    
+    // Tampilkan loading jika store belum hydrated ATAU react-query masih fetching
+    if (!hasHydrated || isLoading) {
       return <Section className="bg-white"><p className="text-center text-gray-500">Memuat produk unggulan...</p></Section>;
     }
     
-    // Akses array dari `productsResponse.data`
     const featuredProducts = productsResponse?.data;
 
     if (error || !featuredProducts || featuredProducts.length === 0) {
@@ -230,9 +231,9 @@ const FeaturedProducts = () => {
                                       <h3 className="font-bold text-md text-[#1E2022] flex-grow group-hover:text-[#52616B] transition-colors h-12" title={product.name}>
                                           {product.name}
                                       </h3>
-                                      <p className="text-xl font-bold mt-2 text-[#52616B]">
-                                          {formatPrice(product.price)}
-                                      </p>
+                                      <div className="mt-2">
+                                        <PriceDisplay priceInfo={product.priceInfo} className="text-xl" originalPriceClassName="text-base" />
+                                      </div>
                                     </div>
                                 </div>
                             </Link>
@@ -245,10 +246,17 @@ const FeaturedProducts = () => {
 };
 
 // ====================================================================
-// Komponen Utama Halaman (Main Page Component)
+// Komponen Utama Halaman
 // ====================================================================
 
 export default function HomePage() {
+  const { isAuthenticated } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+  }, [isAuthenticated, queryClient]);
+
   return (
     <div className="bg-[#F0F5F9]">
       <HeroSection />

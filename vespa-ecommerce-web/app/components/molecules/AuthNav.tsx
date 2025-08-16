@@ -1,64 +1,99 @@
-// file: vespa-ecommerce-web/app/components/molecules/AuthNav.tsx
+// file: app/components/molecules/AuthNav.tsx
 'use client';
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { User, LogOut, UserPlus } from 'lucide-react';
+import { User, LogOut, UserPlus, Archive, Settings } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
-import { useCartStore } from '@/store/cart'; // <-- 1. IMPORT CART STORE
+import { useCartStore } from '@/store/cart';
 import api from '@/lib/api';
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 export default function AuthNav() {
+  // --- PERBAIKAN DI SINI: Destructure user secara terpisah ---
   const { user, isAuthenticated, setAuth } = useAuthStore();
-  // --- 2. AMBIL AKSI DARI CART STORE ---
   const { fetchCart, clearClientCart } = useCartStore();
 
+  // --- PERBAIKAN UTAMA PADA useEffect ---
   useEffect(() => {
     const syncUserAndCart = async () => {
-      if (isAuthenticated && !user) {
+      // Hanya jalankan jika user terautentikasi
+      if (isAuthenticated) {
         try {
-          // Ambil profil user
-          const { data } = await api.get('/users/profile');
-          const token = useAuthStore.getState().token;
-          setAuth(data, token);
-
-          // --- 3. AMBIL DATA KERANJANG SETELAH USER ADA ---
+          // Ambil user profile jika belum ada di state
+          if (!useAuthStore.getState().user) {
+            const profileRes = await api.get('/users/profile');
+            const token = useAuthStore.getState().token;
+            setAuth(profileRes.data, token);
+          }
+          // Muat data keranjang
           await fetchCart();
-
         } catch (error) {
-          console.error("Sesi tidak valid, logout.", error);
+          console.error("Sesi tidak valid, melakukan logout...", error);
           setAuth(null, null);
-          clearClientCart(); // Bersihkan juga data keranjang
+          clearClientCart();
         }
-      } else if (isAuthenticated && user) {
-        // Jika user sudah ada (misal dari login langsung), cukup fetch cart
-        fetchCart();
       }
     };
+
     syncUserAndCart();
-  }, [isAuthenticated, user, setAuth, fetchCart, clearClientCart]);
+    // Dependensi diubah agar tidak memantau 'user', sehingga tidak menyebabkan loop
+  }, [isAuthenticated, setAuth, fetchCart, clearClientCart]);
 
   const handleLogout = () => {
     setAuth(null, null);
-    // --- 4. BERSIHKAN KERANJANG SAAT LOGOUT ---
     clearClientCart();
   };
 
-  // ... (Bagian JSX tidak ada perubahan, tetap sama)
   if (isAuthenticated && user) {
     return (
-      <div className="flex items-center space-x-4">
-        <span className="hidden sm:inline font-semibold">Halo, {user.name}!</span>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition-all transform hover:scale-105"
-        >
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="relative h-10 w-10 rounded-full flex items-center justify-center bg-gray-600 text-white font-bold text-lg transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            {user.name?.charAt(0).toUpperCase()}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">{user.name}</p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {user.email}
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+             <Link href="/profile/akun-saya">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Akun Saya</span>
+            </Link>
+          </DropdownMenuItem>
+           <DropdownMenuItem asChild>
+             <Link href="/orders">
+                <Archive className="mr-2 h-4 w-4" />
+                <span>Pesanan Saya</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Logout</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
+
+  // Tampilan saat pengguna belum login
   return (
     <div className="flex items-center space-x-2">
       <Link href="/login" className="flex items-center gap-2 hover:bg-gray-500/10 px-4 py-2 rounded-full text-sm font-semibold transition-all">

@@ -16,12 +16,9 @@ export class AuthService {
 
   /**
    * Memvalidasi pengguna berdasarkan email dan password.
-   * @param loginDto - Objek berisi email dan password.
-   * @returns Data pengguna tanpa password jika valid, selain itu null.
    */
   async validateUser(loginDto: LoginDto): Promise<any> {
     const user = await this.usersService.findByEmail(loginDto.email);
-    // Perbaikan utama: Menggunakan bcrypt.compare untuk membandingkan password
     if (user && (await bcrypt.compare(loginDto.password, user.password))) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
@@ -32,11 +29,17 @@ export class AuthService {
 
   /**
    * Menghasilkan token JWT untuk pengguna yang berhasil login.
-   * @param user - Objek pengguna yang telah divalidasi.
-   * @returns Object berisi access_token.
    */
   async login(user: any) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
+    // --- PERBAIKAN UTAMA DI SINI ---
+    // Tambahkan 'name' ke dalam payload token
+    const payload = { 
+      email: user.email, 
+      sub: user.id, 
+      role: user.role,
+      name: user.name, // Tambahkan baris ini
+    };
+    
     return {
       access_token: this.jwtService.sign(payload),
     };
@@ -44,8 +47,6 @@ export class AuthService {
 
   /**
    * Mendaftarkan pengguna baru.
-   * @param registerDto - Data untuk registrasi pengguna baru.
-   * @returns Pengguna yang baru dibuat (tanpa password).
    */
   async register(registerDto: RegisterDto) {
     return this.usersService.create(registerDto);

@@ -1,28 +1,18 @@
-// file: vespa-ecommerce-web/app/components/molecules/ProductCard.tsx
+// file: app/components/molecules/ProductCard.tsx
 'use client';
 
 import { Product } from '../../types';
 import Link from 'next/link';
+import PriceDisplay from './PriceDisplay'; // <-- Import komponen harga
 
 type ProductCardProps = {
   product: Product;
 };
 
-// Helper untuk format harga
-const formatPrice = (price: string) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(Number(price));
-};
-
 export function ProductCard({ product }: ProductCardProps) {
-  // --- PERUBAHAN DI SINI ---
-  // Ambil URL gambar pertama dari array 'images'
   const imageUrl = product.images && product.images.length > 0
     ? product.images[0].url
-    : 'https://placehold.co/400x400?text=VespaPart'; // URL placeholder
+    : 'https://placehold.co/400x400?text=VespaPart';
 
   return (
     <Link href={`/products/${product.id}`} className="block group">
@@ -36,12 +26,14 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
         <div className="p-4 flex flex-col flex-grow">
           <span className="text-xs text-gray-500 mb-1">{product.category?.name || 'Uncategorized'}</span>
-          <h3 className="font-bold text-md text-gray-800 flex-grow group-hover:text-primary transition-colors" title={product.name}>
+          <h3 className="font-bold text-md text-gray-800 flex-grow group-hover:text-primary transition-colors h-12" title={product.name}>
             {product.name}
           </h3>
-          <p className="text-2xl font-bold mt-2 text-gray-900">
-            {formatPrice(product.price)}
-          </p>
+          
+          {/* ✅ KUNCI PERBAIKAN: Gunakan komponen PriceDisplay */}
+          <div className="mt-2">
+            <PriceDisplay priceInfo={product.priceInfo} />
+          </div>
         </div>
       </div>
     </Link>
