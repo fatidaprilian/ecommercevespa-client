@@ -1,0 +1,92 @@
+# Dependencies stage
+FROM node:22.12.0-alpine AS deps
+
+# Security: Update packages
+RUN apk update && apk upgrade && \
+    apk add --no-cache libc6-compat && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+# Builder stage
+FROM node:22.12.0-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Logging: Disable telemetry and set environment
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Security: Run audit during build
+RUN npm audit --audit-level moderate || true
+
+# Build Next.js application
+RUN npm run build
+
+# Production stage
+FROM node:22.12.0-alpine AS runner
+
+# Security: Update and install minimal tools
+RUN apk update && apk upgrade && \
+    apk add --no-cache dumb-init curl && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+# Resource: Set memory and performance options
+ENV NODE_OPTIONS="--max-old-space-size=512"
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Security: Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy built application with proper ownership
+COPY --from=builder /app/next.config.* ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+
+# If using standalone output (recommended)
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# If NOT using standalone, use this instead:
+# COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+# COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Security: Set proper permissions and cleanup
+RUN chmod -R 750 /app && \
+    rm -rf /tmp/* /root/.npm
+
+USER nextjs
+
+EXPOSE 4002
+ENV PORT=4002
+ENV HOSTNAME="0.0.0.0"
+
+# Resource & Monitoring: Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:4002/api/health || curl -f http://localhost:4002 || exit 1
+
+# Security: Add metadata labels
+LABEL maintainer="fatidaprilian" \
+    security.scan="enabled" \
+    version="1.0" \
+    description="Vespa E-commerce Web Frontend"
+
+# Graceful: Signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start application (standalone version)
+CMD ["node", "server.js"]
+
+# If NOT using standalone, use this instead:
+# CMD ["npm", "start"]
