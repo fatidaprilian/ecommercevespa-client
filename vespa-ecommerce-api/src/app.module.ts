@@ -17,10 +17,12 @@ import { CartModule } from './cart/cart.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { UploadModule } from './upload/upload.module';
-import { MidtransModule } from './midtrans/midtrans.module'; // <-- Ganti Xendit dengan Midtrans
+import { MidtransModule } from './midtrans/midtrans.module'; 
 import { AddressesModule } from './addresses/addresses.module';
 import { DiscountsModule } from './discounts/discounts.module'; 
 import { ShipmentsModule } from './shipments/shipments.module';
+import { SettingsModule } from './settings/settings.module';
+import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 
 @Module({
   imports: [
@@ -37,9 +39,11 @@ import { ShipmentsModule } from './shipments/shipments.module';
     PaymentsModule,
     ShippingModule,
     UploadModule,
-    MidtransModule, // <-- Ganti Xendit dengan Midtrans
+    MidtransModule, 
     AddressesModule,
     ShipmentsModule,
+    SettingsModule,
+    PaymentMethodsModule,
   ],
   controllers: [AppController],
   providers: [

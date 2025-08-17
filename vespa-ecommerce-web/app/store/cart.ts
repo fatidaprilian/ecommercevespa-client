@@ -9,7 +9,7 @@ export type CartItem = {
   id: string;
   quantity: number;
   productId: string;
-  product: Product & { images: ProductImage[] };
+  product: Product & { images: ProductImage[]; weight?: number };
 };
 
 type Cart = {
@@ -22,6 +22,7 @@ const debouncedUpdateApi = debounce(async (cartItemId: string, quantity: number)
     await api.patch(`/cart/items/${cartItemId}`, { quantity });
   } catch (error) {
     console.error("Gagal sinkronisasi kuantitas:", error);
+    toast.error('Gagal memperbarui keranjang.');
   }
 }, 750);
 
@@ -39,7 +40,7 @@ type CartState = {
   toggleSelectAll: (forceSelect?: boolean) => void;
   clearClientCart: () => void;
   createOrder: (shippingAddress: string, shippingCost: number, courier: string) => Promise<any>;
-  getTotalWeight: () => number; // <-- Tambahkan fungsi ini
+  getTotalWeight: () => number;
 };
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -66,9 +67,11 @@ export const useCartStore = create<CartState>((set, get) => ({
     try {
       const { data } = await api.post('/cart/items', { productId, quantity });
       set({ cart: data });
-      const newItem = data.items.find((item: CartItem) => item.product.id === productId);
-      if (newItem) {
-        get().toggleItemSelected(newItem.id);
+      const updatedItem = data.items.find((item: CartItem) => item.productId === productId);
+      if (updatedItem) {
+        const currentSelected = get().selectedItems;
+        currentSelected.add(updatedItem.id);
+        set({ selectedItems: new Set(currentSelected) });
       }
     } catch (error: any) {
         const message = error.response?.data?.message || "Gagal menambah item ke keranjang.";
@@ -130,16 +133,13 @@ export const useCartStore = create<CartState>((set, get) => ({
     });
   },
 
-  // --- FUNGSI BARU UNTUK MENGHITUNG TOTAL BERAT ---
   getTotalWeight: () => {
     const { cart, selectedItems } = get();
     if (!cart) return 0;
     
-    // Hitung total berat dari item-item yang dipilih
     return cart.items
       .filter(item => selectedItems.has(item.id))
       .reduce((totalWeight, item) => {
-        // Gunakan berat produk jika ada, jika tidak, gunakan default 1000 gram (1kg)
         const itemWeight = item.product.weight || 1000; 
         return totalWeight + (itemWeight * item.quantity);
       }, 0);
@@ -163,10 +163,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         courier,
       });
       
-      await get().fetchCart();
       set({ isLoading: false });
       
-      return newOrder; 
+      return newOrder;
     } catch (error: any) {
       const message = error.response?.data?.message || "Gagal membuat pesanan.";
       toast.error(message);

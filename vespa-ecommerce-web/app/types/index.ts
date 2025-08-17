@@ -13,9 +13,9 @@ export type Category = {
 export type Brand = {
   id: string;
   name: string;
+  logoUrl?: string; // Pastikan ini opsional
 };
 
-// --- TIPE BARU UNTUK INFORMASI HARGA ---
 export type PriceInfo = {
   originalPrice: number;
   discountPercentage: number;
@@ -28,12 +28,13 @@ export type Product = {
   name: string;
   sku: string;
   description: string | null;
-  price: number; // Ini sekarang akan menjadi harga final/diskon
+  price: number;
   stock: number;
+  weight?: number; // Tambahkan weight
   images: ProductImage[];
   category: Category;
   brand: Brand | null;
-  priceInfo: PriceInfo; // <-- TAMBAHKAN FIELD INI
+  priceInfo: PriceInfo;
 };
 
 export type User = {
@@ -53,7 +54,16 @@ export type OrderItem = {
 export type Payment = {
     id: string;
     status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
-    invoiceUrl?: string;
+    method: 'MIDTRANS_SNAP' | 'MANUAL_TRANSFER'; // Perjelas method
+    transactionId?: string; // Token Midtrans, opsional
+    proofOfPayment?: string; // URL bukti bayar, opsional
+}
+
+export type Shipment = {
+    id: string;
+    trackingNumber: string | null;
+    courier: string;
+    createdAt: string;
 }
 
 export type Order = {
@@ -67,4 +77,5 @@ export type Order = {
     createdAt: string;
     items: OrderItem[];
     payment?: Payment;
+    shipment?: Shipment; // Tambahkan shipment
 };

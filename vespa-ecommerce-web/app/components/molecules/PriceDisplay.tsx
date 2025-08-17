@@ -23,7 +23,13 @@ export default function PriceDisplay({
   originalPriceClassName = 'text-lg',
 }: PriceDisplayProps) {
 
-  // Jika tidak ada diskon (harga final sama dengan harga asli)
+  // ✅ PERBAIKAN: Pemeriksaan defensif untuk mencegah crash
+  if (!priceInfo) {
+    // Tampilkan placeholder atau tidak sama sekali jika data tidak ada
+    return <div className={`font-bold text-gray-900 ${className}`}>-</div>;
+  }
+
+  // Jika tidak ada diskon (harga final sama dengan atau lebih besar dari harga asli)
   if (priceInfo.finalPrice >= priceInfo.originalPrice) {
     return (
       <p className={`font-bold text-gray-900 ${className}`}>

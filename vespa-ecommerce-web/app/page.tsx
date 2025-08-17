@@ -4,8 +4,12 @@
 import { useRef, useEffect } from "react";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import {
-    ShieldCheck, Package, Wrench, ArrowRight, ShoppingCart,
-    ChevronDown, Zap, Sparkles, Award, Users, Truck, Headphones, Phone, Star, CheckCircle, Clock
+    ArrowRight,
+    Award,
+    Wrench,
+    Package,
+    Zap,
+    Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,17 +22,8 @@ import { Product, Category, Brand } from "@/types";
 import { useAuthStore } from "@/store/auth";
 import PriceDisplay from "@/components/molecules/PriceDisplay";
 
-// Helper untuk format harga
-const formatPrice = (price: string | number) => {
-    const numericPrice = Number(price);
-    if (isNaN(numericPrice)) return 'N/A';
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency', currency: 'IDR', minimumFractionDigits: 0,
-    }).format(numericPrice);
-};
-
 // ====================================================================
-// Komponen Pembantu & Bagian Halaman (Tidak ada perubahan)
+// Komponen Pembantu & Bagian Halaman
 // ====================================================================
 
 const Section = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
@@ -147,10 +142,11 @@ const BrandsSection = () => {
     return (
         <Section className="bg-[#F0F5F9]">
             <div className="container mx-auto">
-                <div className="text-center mb-12">
-                  <h2 className="text-3xl font-bold text-gray-500">Merek Terpercaya Kami</h2>
+                <div className="text-center mb-16 max-w-3xl mx-auto">
+                  <h2 className="text-4xl sm:text-5xl font-bold text-[#1E2022] mb-4 font-playfair">Merek Terpercaya Kami</h2>
+                  <p className="text-lg text-gray-600">Pilih dari koleksi suku cadang dari merek-merek terbaik yang menjamin kualitas dan daya tahan.</p>
                 </div>
-                <div className="flex flex-wrap justify-center items-center gap-x-12 md:gap-x-20 gap-y-8">
+                <div className="flex flex-wrap justify-center items-center gap-x-16 md:gap-x-24 gap-y-10">
                     {brands.map((brand: Brand, index: number) => (
                         <motion.div 
                           key={brand.id} 
@@ -158,14 +154,14 @@ const BrandsSection = () => {
                           whileInView={{ opacity: 1, y: 0 }} 
                           viewport={{ once: true, amount: 0.5 }} 
                           transition={{ duration: 0.5, delay: index * 0.05 }}
-                          title={brand.name} 
-                          className="grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
                         >
-                            {brand.logoUrl ? (
-                                <img src={brand.logoUrl} alt={`${brand.name} logo`} className="h-8 md:h-12 object-contain" />
-                            ) : (
-                                <span className="text-xl font-semibold text-gray-500">{brand.name}</span>
-                            )}
+                            <Link href={`/products?brandId=${brand.id}`} title={`Lihat produk dari ${brand.name}`} className="grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300 transform hover:scale-110">
+                                {brand.logoUrl ? (
+                                    <img src={brand.logoUrl} alt={`${brand.name} logo`} className="h-10 md:h-16 object-contain" />
+                                ) : (
+                                    <span className="text-2xl font-semibold text-gray-500">{brand.name}</span>
+                                )}
+                            </Link>
                         </motion.div>
                     ))}
                 </div>
@@ -174,18 +170,13 @@ const BrandsSection = () => {
     )
 }
 
-// --- SECTION PRODUK UNGGULAN ---
 const FeaturedProducts = () => {
-    // ✅ KUNCI PERBAIKAN: Ambil status 'hasHydrated' dari store
     const hasHydrated = useAuthStore((state) => state._hasHydrated);
-
     const { data: productsResponse, isLoading, error } = useProducts(
       { sortBy: 'createdAt', sortOrder: 'desc', limit: 4 },
-      // ✅ KUNCI PERBAIKAN: Hanya aktifkan query jika store sudah 'hydrated'
       hasHydrated 
     );
     
-    // Tampilkan loading jika store belum hydrated ATAU react-query masih fetching
     if (!hasHydrated || isLoading) {
       return <Section className="bg-white"><p className="text-center text-gray-500">Memuat produk unggulan...</p></Section>;
     }

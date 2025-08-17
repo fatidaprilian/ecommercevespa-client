@@ -1,9 +1,10 @@
-// pages/components/layouts/AdminLayout.tsx
+// file: pages/components/layouts/AdminLayout.tsx
 
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Home, Package, ShoppingCart, Users, CircleUser } from 'lucide-react';
+// --- 1. TAMBAHKAN IKON BARU ---
+import { Home, Package, ShoppingCart, Users, CircleUser, Settings, Landmark } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +36,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { href: '/brands', label: 'Merek', icon: Package },
     { href: '/orders', label: 'Pesanan', icon: ShoppingCart },
     { href: '/users', label: 'Pengguna', icon: Users },
+    // --- 2. TAMBAHKAN ITEM MENU BARU DI SINI ---
+    { href: '/payment-methods', label: 'Metode Pembayaran', icon: Landmark },
+    { href: '/settings', label: 'Pengaturan', icon: Settings },
   ];
 
   return (
@@ -51,7 +55,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground',
-                pathname === item.href && 'bg-secondary text-secondary-foreground',
+                // Cek path agar menu aktif yang dipilih lebih akurat
+                (pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))) && 'bg-secondary text-secondary-foreground',
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -65,7 +70,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-card px-6">
           <h2 className="text-xl font-semibold text-foreground">
-            {navItems.find(item => item.href === pathname)?.label || 'Page'}
+            {navItems.find(item => pathname.startsWith(item.href))?.label || 'Dashboard'}
           </h2>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

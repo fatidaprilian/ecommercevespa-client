@@ -4,6 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
@@ -32,11 +33,12 @@ export class UsersService {
    * Mengubah role seorang pengguna.
    */
   async updateRole(userId: string, newRole: Role) {
-    await this.findById(userId); // Pastikan user ada
+    // Memanggil findById internal yang sudah menangani NotFoundException
+    await this.findById(userId);
     return this.prisma.user.update({
       where: { id: userId },
       data: { role: newRole },
-      select: { id: true, email: true, name: true, role: true },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
     });
   }
   
@@ -80,6 +82,19 @@ export class UsersService {
     if (!user) {
         throw new NotFoundException(`User dengan ID ${id} tidak ditemukan.`);
     }
-    return user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...result } = user;
+    return result;
+  }
+
+  /**
+   * Memperbarui profil (nama) pengguna.
+   */
+  async updateProfile(userId: string, data: UpdateProfileDto) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { name: data.name },
+      select: { id: true, email: true, name: true, role: true, createdAt: true, updatedAt: true },
+    });
   }
 }

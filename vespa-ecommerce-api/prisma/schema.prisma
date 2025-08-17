@@ -41,32 +41,25 @@ enum PaymentStatus {
 // =================================
 
 model User {
-  id              String         @id @default(cuid())
-  email           String         @unique
-  name            String?
-  password        String
-  role            Role           @default(MEMBER)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  // ATURAN #3: Diskon Dasar milik Reseller (Default)
-  defaultDiscountPercentage Float @default(0)
-
-  // Relasi ke aturan diskon yang lebih spesifik
-  productDiscounts  UserProductDiscount[]
-  categoryDiscounts UserCategoryDiscount[]
-
-  // Relasi lain
-  orders          Order[]
-  reviews         Review[]
-  wishlists       Wishlist[]
-  addresses       Address[]
-  cart            Cart?
-  tier            ResellerTier?  @relation(fields: [resellerTierId], references: [id])
-  resellerTierId  String?
+  id                      String                 @id @default(cuid())
+  email                   String                 @unique
+  name                    String?
+  password                String
+  role                    Role                   @default(MEMBER)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  defaultDiscountPercentage Float                  @default(0)
+  productDiscounts        UserProductDiscount[]
+  categoryDiscounts       UserCategoryDiscount[]
+  orders                  Order[]
+  reviews                 Review[]
+  wishlists               Wishlist[]
+  addresses               Address[]
+  cart                    Cart?
+  tier                    ResellerTier?          @relation(fields: [resellerTierId], references: [id])
+  resellerTierId          String?
 }
 
-// Model ini hanya untuk pengelompokan/labeling, BUKAN untuk aturan diskon.
 model ResellerTier {
   id          String @id @default(cuid())
   name        String @unique
@@ -74,11 +67,10 @@ model ResellerTier {
   users       User[]
 }
 
-// MODEL BARU untuk ATURAN #1: Diskon Spesifik per Produk (Prioritas Tertinggi)
 model UserProductDiscount {
-  id                 String @id @default(cuid())
+  id                 String  @id @default(cuid())
   discountPercentage Float
-  user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId             String
   product            Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId          String
@@ -86,7 +78,6 @@ model UserProductDiscount {
   @@unique([userId, productId])
 }
 
-// MODEL BARU untuk ATURAN #2: Diskon Spesifik per Kategori (Prioritas Menengah)
 model UserCategoryDiscount {
   id                 String   @id @default(cuid())
   discountPercentage Float
@@ -106,26 +97,25 @@ model Brand {
 }
 
 model Product {
-  id                 String                @id @default(cuid())
-  sku                String                @unique
-  name               String
-  description        String?
-  price              Float
-  stock              Int                   @default(0)
-  weight             Int                   @default(1000)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  images             ProductImage[]
-  category           Category?             @relation(fields: [categoryId], references: [id])
-  categoryId         String?
-  brand              Brand?                @relation(fields: [brandId], references: [id])
-  brandId            String?
-  orderItems         OrderItem[]
-  reviews            Review[]
-  wishlists          Wishlist[]
-  erpSyncLog         ErpSyncLog[]
-  cartItems          CartItem[]
-  // Relasi ke diskon spesifik per produk
+  id                   String                @id @default(cuid())
+  sku                  String                @unique
+  name                 String
+  description          String?
+  price                Float
+  stock                Int                   @default(0)
+  weight               Int                   @default(1000)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  images               ProductImage[]
+  category             Category?             @relation(fields: [categoryId], references: [id])
+  categoryId           String?
+  brand                Brand?                @relation(fields: [brandId], references: [id])
+  brandId              String?
+  orderItems           OrderItem[]
+  reviews              Review[]
+  wishlists            Wishlist[]
+  erpSyncLog           ErpSyncLog[]
+  cartItems            CartItem[]
   userProductDiscounts UserProductDiscount[]
 }
 
@@ -138,10 +128,9 @@ model ProductImage {
 }
 
 model Category {
-  id                  String                 @id @default(cuid())
-  name                String                 @unique
-  products            Product[]
-  // Relasi ke diskon spesifik per kategori
+  id                    String                 @id @default(cuid())
+  name                  String                 @unique
+  products              Product[]
   userCategoryDiscounts UserCategoryDiscount[]
 }
 
@@ -181,8 +170,9 @@ model Payment {
   amount         Float
   method         String
   status         PaymentStatus @default(PENDING)
-  transactionId  String?
+  transactionId  String?       // Ini adalah token atau ID dari Midtrans
   proofOfPayment String?
+  redirectUrl    String?       // <-- TAMBAHKAN KOLOM BARU INI
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 }
@@ -261,11 +251,11 @@ model Wishlist {
 }
 
 model Cart {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String   @unique
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id])
+  userId    String     @unique
   items     CartItem[]
 }
 
@@ -278,4 +268,23 @@ model CartItem {
   productId String
 
   @@unique([cartId, productId])
+}
+
+model AppSettings {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+// --- TAMBAHKAN MODEL BARU DI SINI ---
+model ManualPaymentMethod {
+  id            String   @id @default(cuid())
+  bankName      String   // Contoh: "BCA", "Mandiri"
+  accountHolder String   // Nama pemilik rekening
+  accountNumber String   @unique // Nomor rekening
+  logoUrl       String?  // URL logo bank (opsional)
+  isActive      Boolean  @default(true) // Untuk menonaktifkan sementara
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

@@ -10,11 +10,9 @@ import { Loader2, PackageCheck, PlusCircle, Check, ChevronsUpDown } from 'lucide
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
-// --- UBAH TIPE DATA SHIPPING COST AGAR SESUAI DENGAN API ---
 import { getProvinces, getCities, getDistricts, calculateCost } from '@/services/shippingService';
 import { ShippingCost as ApiShippingCost } from '@/types/checkout';
 type ShippingCost = ApiShippingCost['costs'][0];
-// -----------------------------------------------------------
 
 import { getAddresses, createAddress, Address, CreateAddressData } from '@/services/addressService';
 import { useCartStore } from '@/store/cart';
@@ -115,7 +113,6 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
 
                     if (allOptions.length > 0) {
                         setShippingOptions(allOptions);
-                        toast.success("Opsi pengiriman ditemukan!");
                     } else {
                         toast.error("Tidak ada opsi pengiriman untuk tujuan ini.");
                     }
@@ -145,7 +142,7 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
             onShippingSelect(null, null);
         }
     };
-
+    
     const handleCreateOrder = async () => {
       if (!selectedAddress || !selectedShippingService) {
         toast.error("Alamat dan layanan pengiriman harus dipilih.");
@@ -162,15 +159,21 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
       
       try {
         const newOrder = await createOrder(fullAddress, shippingCost, courier);
+
         if (newOrder && newOrder.redirect_url) {
+          // Alur MEMBER: Arahkan ke Midtrans
           window.location.href = newOrder.redirect_url;
+        } else if (newOrder) {
+          // Alur RESELLER: Arahkan ke halaman instruksi pembayaran
+          router.push(`/orders/${newOrder.id}/payment`);
         } else {
-          router.push(`/orders/${newOrder.id}`);
+          throw new Error('Respons pesanan tidak valid.');
         }
+
       } catch (error) {
+        toast.error("Gagal memproses pesanan. Silakan coba lagi.");
         console.error("Gagal melanjutkan ke pembayaran:", error);
-      } finally {
-        setIsCreatingOrder(false);
+        setIsCreatingOrder(false); // Pastikan loading berhenti jika ada error
       }
     };
 
@@ -196,7 +199,7 @@ export function AddressForm({ onShippingSelect }: AddressFormProps) {
                 </CardHeader>
                 <CardContent>
                     {isLoadingAddresses ? <p>Memuat alamat...</p> : (
-                        <RadioGroup onValueChange={(id) => setSelectedAddress(addresses?.find(a => a.id === id) || null)} value={selectedAddress?.id}>
+                        <RadioGroup onValueChange={(id) => setSelectedAddress(addresses?.find(a => a.id === id) || null)} value={selectedAddress?.id ?? ''}>
                             {addresses?.map(address => (
                                 <Label key={address.id} htmlFor={address.id} className="flex items-center space-x-3 border p-4 rounded-md has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary cursor-pointer">
                                     <RadioGroupItem value={address.id} id={address.id} />

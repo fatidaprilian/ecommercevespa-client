@@ -1,5 +1,4 @@
-// file: vespa-ecommerce-web/app/services/addressService.ts
-
+// file: app/services/addressService.ts
 import api from '@/lib/api';
 
 // Tipe data ini harus cocok dengan model Prisma Anda
@@ -36,3 +35,18 @@ export const createAddress = async (addressData: CreateAddressData): Promise<Add
   const { data } = await api.post('/addresses', addressData);
   return data;
 };
+
+/**
+ * Memperbarui alamat yang sudah ada.
+ */
+export const updateAddress = async ({ id, addressData }: { id: string, addressData: Partial<CreateAddressData> }): Promise<Address> => {
+    const { data } = await api.patch(`/addresses/${id}`, addressData);
+    return data;
+}
+
+/**
+ * Menghapus alamat.
+ */
+export const deleteAddress = async (id: string): Promise<void> => {
+    await api.delete(`/addresses/${id}`);
+}

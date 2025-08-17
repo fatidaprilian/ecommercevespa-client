@@ -1,3 +1,4 @@
+// pages/services/brandService.ts
 import api from '@/lib/api';
 
 // Define the Brand data structure
@@ -26,8 +27,6 @@ export const createBrand = async (data: BrandData): Promise<Brand> => {
   return response.data;
 };
 
-// --- TAMBAHKAN FUNGSI DI BAWAH INI ---
-
 /**
  * Mengambil satu merek berdasarkan ID.
  */
@@ -39,12 +38,10 @@ export const getBrandById = async (id: string): Promise<Brand> => {
 /**
  * Memperbarui data merek berdasarkan ID.
  */
-export const updateBrand = async (id: string, data: BrandData): Promise<Brand> => {
+export const updateBrand = async (id: string, data: Partial<BrandData>): Promise<Brand> => {
   const response = await api.patch(`/brands/${id}`, data);
   return response.data;
 };
-
-// --- FUNGSI HAPUS (SUDAH ADA) ---
 
 // Delete a brand by its ID
 export const deleteBrand = async (id: string): Promise<void> => {

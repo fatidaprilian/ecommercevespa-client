@@ -3,10 +3,12 @@
 import { Module } from '@nestjs/common';
 import { ShippingService } from './shipping.service';
 import { ShippingController } from './shipping.controller';
+import { SettingsModule } from 'src/settings/settings.module'; // <-- 1. IMPORT SettingsModule
 
 @Module({
+  imports: [SettingsModule], // <-- 2. DAFTARKAN DI SINI
   providers: [ShippingService],
   controllers: [ShippingController],
-  exports: [ShippingService], // Kita export agar bisa dipakai di modul Order nanti
+  exports: [ShippingService],
 })
 export class ShippingModule {}

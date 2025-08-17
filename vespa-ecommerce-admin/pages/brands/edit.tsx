@@ -1,5 +1,7 @@
-// vespa-ecommerce-admin/pages/brands/edit.tsx
-import { useEffect } from 'react';
+// pages/brands/edit.tsx
+'use client';
+
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -7,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, UploadCloud, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getBrandById, updateBrand, deleteBrand, BrandData } from '../services/brandService';
+import { uploadImage } from '../services/productService'; // Re-use from product service
 
 const brandFormSchema = z.object({
   name: z.string().min(2, { message: 'Nama merek minimal 2 karakter.' }),
@@ -34,6 +37,7 @@ export default function EditBrandPage() {
   const queryClient = useQueryClient();
   const { id } = router.query;
   const brandId = typeof id === 'string' ? id : '';
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: brand, isLoading, isError } = useQuery({
     queryKey: ['brand', brandId],
@@ -82,17 +86,29 @@ export default function EditBrandPage() {
     },
   });
 
-  const onSubmit = (values: BrandFormValues) => {
-    // PERBAIKAN: Buat objek data baru yang akan dikirim ke API
-    const dataToSend: BrandData = {
-      name: values.name,
-    };
-    // Hanya sertakan logoUrl jika nilainya tidak kosong
-    if (values.logoUrl) {
-      dataToSend.logoUrl = values.logoUrl;
-    }
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    updateMutation.mutate(dataToSend);
+    setIsUploading(true);
+    const toastId = toast.loading('Mengunggah logo...');
+    try {
+      const response = await uploadImage(file);
+      form.setValue('logoUrl', response.url, { shouldValidate: true });
+      toast.success('Logo berhasil diunggah!', { id: toastId });
+    } catch (error) {
+      toast.error('Gagal mengunggah logo.', { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeImage = () => {
+    form.setValue('logoUrl', '', { shouldValidate: true });
+  };
+
+  const onSubmit = (values: BrandFormValues) => {
+    updateMutation.mutate(values);
   };
   
   const handleDelete = () => {
@@ -103,6 +119,8 @@ export default function EditBrandPage() {
 
   if (isLoading) return <p className="text-center p-4">Memuat data merek...</p>;
   if (isError) return <p className="text-center p-4 text-red-500">Merek tidak ditemukan.</p>;
+
+  const logoUrlValue = form.watch('logoUrl');
 
   return (
     <div className="space-y-6">
@@ -137,10 +155,36 @@ export default function EditBrandPage() {
                 control={form.control}
                 name="logoUrl"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL Logo (Opsional)</FormLabel>
+                   <FormItem>
+                    <FormLabel>Logo Merek</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://example.com/logo.png" {...field} />
+                      <>
+                        {logoUrlValue ? (
+                          <div className="relative w-40 h-40 group">
+                            <img src={logoUrlValue} alt="Logo preview" className="w-full h-full object-contain rounded-md border p-2" />
+                            <button
+                              type="button"
+                              onClick={removeImage}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              disabled={isUploading}
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">
+                            <UploadCloud className="w-10 h-10 text-muted-foreground mb-2" />
+                            <span className="text-sm text-muted-foreground">Klik untuk mengunggah</span>
+                            <Input
+                              type="file"
+                              className="hidden"
+                              onChange={handleImageUpload}
+                              disabled={isUploading}
+                              accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                            />
+                          </label>
+                        )}
+                      </>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -156,7 +200,7 @@ export default function EditBrandPage() {
                   <Trash2 className="mr-2 h-4 w-4" />
                   {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}
                 </Button>
-                <Button type="submit" disabled={updateMutation.isPending}>
+                <Button type="submit" disabled={updateMutation.isPending || isUploading}>
                   {updateMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </Button>
               </div>

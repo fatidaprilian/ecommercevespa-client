@@ -1,17 +1,17 @@
-// file: src/payments/payments.service.ts
+// file: vespa-ecommerce-api/src/payments/payments.service.ts
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MidtransService } from 'src/midtrans/midtrans.service';
 import { PaymentStatus, OrderStatus, Order, User, Prisma } from '@prisma/client';
-import { ShipmentsService } from 'src/shipments/shipments.service'; // <-- 1. IMPORT SHIPMENT SERVICE
+import { ShipmentsService } from 'src/shipments/shipments.service';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private prisma: PrismaService,
     private midtransService: MidtransService,
-    private shipmentsService: ShipmentsService, // <-- 2. INJECT SERVICE
+    private shipmentsService: ShipmentsService,
   ) {}
 
   async createPaymentForOrder(
@@ -21,34 +21,35 @@ export class PaymentsService {
     prismaClient: Prisma.TransactionClient = this.prisma,
   ) {
     const totalAmount = order.totalAmount + shippingCost;
+    // Panggil Midtrans untuk membuat transaksi
     const midtransTransaction = await this.midtransService.createSnapTransaction(order, user, shippingCost);
 
+    // Simpan semua informasi penting ke database
     await prismaClient.payment.create({
       data: {
         order: { connect: { id: order.id } },
         amount: totalAmount,
         method: 'MIDTRANS_SNAP',
-        transactionId: midtransTransaction.token,
         status: PaymentStatus.PENDING,
+        transactionId: midtransTransaction.token, // Simpan token-nya
+        redirectUrl: midtransTransaction.redirect_url, // <-- SIMPAN URL PEMBAYARAN DI SINI
       },
     });
     
+    // Kembalikan redirect_url agar frontend bisa langsung mengarahkan pengguna
     return { redirect_url: midtransTransaction.redirect_url };
   }
 
   async handleMidtransCallback(payload: any) {
     const orderId = payload.order_id;
     const transactionStatus = payload.transaction_status;
-    const fraudStatus = payload.fraud_status;
-
+    
     let paymentStatus: PaymentStatus;
     let orderStatus: OrderStatus;
-    let shouldCreateShipment = false; // <-- Flag untuk membuat pengiriman
     
     if (transactionStatus == 'capture' || transactionStatus == 'settlement') {
         paymentStatus = PaymentStatus.SUCCESS;
-        orderStatus = OrderStatus.PAID;
-        shouldCreateShipment = true; // <-- Tandai untuk membuat pengiriman
+        orderStatus = OrderStatus.PROCESSING; // Otomatis ke "Processing"
     } else if (transactionStatus == 'pending') {
         paymentStatus = PaymentStatus.PENDING;
         orderStatus = OrderStatus.PENDING;
@@ -71,12 +72,7 @@ export class PaymentsService {
         });
       });
 
-      // --- 3. BUAT PENGIRIMAN JIKA PEMBAYARAN SUKSES ---
-      if (shouldCreateShipment) {
-        await this.shipmentsService.createShipment(orderId);
-      }
-
-      console.log(`Order ${orderId} status diperbarui ke ${orderStatus}`);
+      console.log(`Order ${orderId} status diperbarui secara otomatis ke ${orderStatus}`);
       return { message: 'Callback diterima dan diproses.' };
 
     } catch (error) {
