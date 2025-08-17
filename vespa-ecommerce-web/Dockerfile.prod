@@ -49,10 +49,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy built application with proper ownership
-COPY --from=builder /app/next.config.* ./
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
+# === PERUBAHAN DI SINI ===
+# Copy built application with proper ownership for ALL files
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.* ./
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
 # If using standalone output (recommended)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -63,6 +64,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Security: Set proper permissions and cleanup
+# Permissions are set before switching user
 RUN chmod -R 750 /app && \
     rm -rf /tmp/* /root/.npm
 
@@ -85,8 +87,5 @@ LABEL maintainer="fatidaprilian" \
 # Graceful: Signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application (standalone version)
+# Start application using the package script
 CMD ["npm", "start"]
-
-# If NOT using standalone, use this instead:
-# CMD ["npm", "start"]
