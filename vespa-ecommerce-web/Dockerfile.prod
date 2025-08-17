@@ -86,7 +86,7 @@ LABEL maintainer="fatidaprilian" \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start application (standalone version)
-CMD ["node", ".next/server/index.js"]
+CMD ["npm", "start"]
 
 # If NOT using standalone, use this instead:
 # CMD ["npm", "start"]
