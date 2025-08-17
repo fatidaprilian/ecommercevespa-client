@@ -12,12 +12,13 @@ ENV NPM_CONFIG_AUDIT_LEVEL=moderate
 
 COPY package*.json ./
 
-# Security: Run audit and install dependencies
-# We need devDependencies here for Prisma build steps
+# Security: Run audit and install dependencies (including devDependencies for build)
 RUN npm ci --only=production=false && \
     npm audit --audit-level moderate
 
 COPY . .
+
+# Build the app, then reinstall only production dependencies
 RUN npm run build && \
     npm ci --only=production && \
     npm cache clean --force
@@ -34,32 +35,21 @@ RUN apk update && apk upgrade && \
 ENV NODE_OPTIONS="--max-old-space-size=512"
 ENV NODE_ENV=production
 
-# Logging: Configure structured logging
-ENV LOG_LEVEL="info"
-ENV LOG_FORMAT="json"
-
 # Security: Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001 -G nodejs
 
 WORKDIR /app
 
-# Security: Set proper ownership and permissions
-# Hanya copy file yang dibutuhkan untuk runtime
+# Copy only the necessary production files
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/package.json ./
 
-# === PERUBAHAN DIMULAI DI SINI ===
-
-# 1. Salin script entrypoint dan berikan izin eksekusi
+# Copy and grant execution permission to the entrypoint script
 COPY --chown=nestjs:nodejs ./entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
-
-# 2. Hapus `prisma generate` dari sini dan pindahkan ke entrypoint.sh
-RUN chmod -R 750 /app && \
-    rm -rf /tmp/* /root/.npm
 
 USER nestjs
 
@@ -76,8 +66,8 @@ LABEL maintainer="fatidaprilian" \
     version="1.0" \
     description="Vespa E-commerce API"
 
-# 3. Tetapkan entrypoint ke script yang baru dibuat
+# Set the entrypoint to our custom script
 ENTRYPOINT ["./entrypoint.sh"]
 
-# 4. CMD sekarang menjadi perintah yang akan dieksekusi OLEH entrypoint.sh
+# The main command to start the app, executed by the entrypoint script
 CMD ["dumb-init", "--", "node", "dist/main"]
