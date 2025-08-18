@@ -13,22 +13,26 @@ ENV NODE_ENV=production
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies needed for the build)
-RUN npm ci --ignore-scripts
+# Install ALL dependencies (remove --ignore-scripts to ensure all binaries are installed)
+RUN npm ci
 
 # Copy the rest of the application source code
 COPY . .
 
 # Add node_modules/.bin to the PATH for subsequent commands
-ENV PATH /app/node_modules/.bin:$PATH
+ENV PATH=/app/node_modules/.bin:$PATH
 
 # Generate Prisma Client
 RUN npx prisma generate
 
-# ==================== PERBAIKAN UTAMA DI SINI ====================
-# Build the application using 'npx' to ensure the 'nest' command is found
-RUN npx nest build
-# ===============================================================
+# Build the application - try multiple approaches
+RUN if [ -f "node_modules/.bin/nest" ]; then \
+    ./node_modules/.bin/nest build; \
+    elif [ -f "node_modules/@nestjs/cli/bin/nest.js" ]; then \
+    node node_modules/@nestjs/cli/bin/nest.js build; \
+    else \
+    npm run build; \
+    fi
 
 # After the build is complete, remove devDependencies to lighten the layer
 RUN npm prune --production
