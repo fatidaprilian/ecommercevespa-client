@@ -75,4 +75,4 @@ LABEL maintainer="fatidaprilian" \
 ENTRYPOINT ["./entrypoint.sh"]
 
 # The main command to start the app, executed by the entrypoint script
-CMD ["dumb-init", "--", "node", "dist/main"]
+CMD ["dumb-init", "--", "node", "dist/src/main"]
