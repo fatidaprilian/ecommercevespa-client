@@ -57,6 +57,7 @@
     "rxjs": "^7.8.1",
     "slugify": "^1.6.6",
     "ts-node": "^10.9.1",
+    "@types/bcrypt": "^6.0.0",
     "xendit-node": "^7.0.0"
   },
   "devDependencies": {
@@ -67,7 +68,6 @@
     "@nestjs/testing": "^11.0.1",
     "@swc/cli": "^0.6.0",
     "@swc/core": "^1.10.7",
-    "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
