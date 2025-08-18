@@ -10,14 +10,16 @@ import { motion } from 'framer-motion';
 
 import { AddressForm } from './_components/AddressForm';
 import { OrderSummary } from './_components/OrderSummary';
+import { Address } from '@/services/addressService';
+import { ShippingRate } from '@/services/shippingService';
 
 export default function CheckoutPage() {
   const { cart, selectedItems } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
-  const [shippingCost, setShippingCost] = useState<number | null>(null);
-  const [shippingCourier, setShippingCourier] = useState<string | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [selectedShippingOption, setSelectedShippingOption] = useState<ShippingRate | null>(null);
 
   const selectedCartItems = cart?.items?.filter(item => selectedItems.has(item.id)) || [];
 
@@ -59,10 +61,11 @@ export default function CheckoutPage() {
             transition={{ delay: 0.1 }}
             className="lg:col-span-2"
           >
-            <AddressForm onShippingSelect={(cost, courier) => {
-                setShippingCost(cost);
-                setShippingCourier(courier);
-            }} />
+            <AddressForm 
+              onShippingSelect={setSelectedShippingOption}
+              selectedAddress={selectedAddress}
+              setSelectedAddress={setSelectedAddress}
+            />
           </motion.div>
 
           <motion.div 
@@ -71,7 +74,11 @@ export default function CheckoutPage() {
             transition={{ delay: 0.2 }}
             className="lg:col-span-1"
           >
-             <OrderSummary shippingCost={shippingCost} />
+             <OrderSummary 
+               shippingCost={selectedShippingOption?.price || null} 
+               selectedAddress={selectedAddress}
+               selectedShippingOption={selectedShippingOption}
+             />
           </motion.div>
 
         </div>

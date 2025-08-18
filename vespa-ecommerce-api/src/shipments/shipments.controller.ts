@@ -1,4 +1,4 @@
-// file: vespa-ecommerce-api/src/shipments/shipments.controller.ts
+// src/shipments/shipments.controller.ts
 
 import { Controller, Param, Post, UseGuards, Body } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -19,9 +19,11 @@ export class ShipmentsController {
     @Param('orderId') orderId: string,
     @Body() createShipmentDto: CreateShipmentDto,
   ) {
+    // Panggil service dengan data baru
     return this.shipmentsService.createShipment(
       orderId,
-      createShipmentDto.trackingNumber,
+      createShipmentDto.courier_company,
+      createShipmentDto.courier_type,
     );
   }
 }

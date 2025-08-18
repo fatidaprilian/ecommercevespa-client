@@ -23,6 +23,8 @@ import { DiscountsModule } from './discounts/discounts.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { SettingsModule } from './settings/settings.module';
 import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+
 
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
     AddressesModule,
     ShipmentsModule,
     SettingsModule,
+    WebhooksModule,
     PaymentMethodsModule,
   ],
   controllers: [AppController],

@@ -1,4 +1,4 @@
-// file: src/products/products.service.ts
+// src/products/products.service.ts
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,7 +21,6 @@ export class ProductsService {
           const fullUser = await this.prisma.user.findUnique({ where: { id: user.id }});
           
           if (!fullUser) {
-              // Jika data user lengkap tidak ditemukan, kembalikan harga normal agar tidak error.
               return { 
                   ...product, 
                   priceInfo: { originalPrice: product.price, discountPercentage: 0, finalPrice: product.price, appliedRule: 'NONE' } 
@@ -33,7 +32,6 @@ export class ProductsService {
           return { ...product, price: priceInfo.finalPrice, priceInfo };
       }
       
-      // Jika pengguna bukan reseller atau tidak login, kembalikan harga normal.
       return { 
           ...product, 
           priceInfo: { 
@@ -154,6 +152,43 @@ export class ProductsService {
     }
     return this.processProductPrice(product, user);
   }
+
+  // 👇 **START OF CHANGES** 👇
+  async findRelated(productId: string, type: 'brand' | 'category', user?: UserPayload) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Produk dengan ID ${productId} tidak ditemukan`);
+    }
+
+    let where: Prisma.ProductWhereInput = {
+      id: { not: productId },
+    };
+
+    if (type === 'brand' && product.brandId) {
+      where.brandId = product.brandId;
+    } else if (type === 'category' && product.categoryId) {
+      where.categoryId = product.categoryId;
+    } else {
+      return [];
+    }
+
+    const relatedProducts = await this.prisma.product.findMany({
+      where,
+      take: 8,
+      include: {
+        images: true,
+        category: true,
+        brand: true,
+      },
+    });
+    
+    // Process each related product to include priceInfo
+    return Promise.all(relatedProducts.map(p => this.processProductPrice(p, user)));
+  }
+  // 👆 **END OF CHANGES** 👆
 
   async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
     const { categoryId, brandId, images, ...productData } = updateProductDto;

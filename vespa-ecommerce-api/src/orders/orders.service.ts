@@ -22,7 +22,8 @@ export class OrdersService {
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
-    const { items, shippingAddress, shippingCost, courier } = createOrderDto;
+    // Ambil semua data dari DTO, termasuk yang baru
+    const { items, shippingAddress, shippingCost, courier, destinationPostalCode, destinationAreaId } = createOrderDto;
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Pengguna tidak ditemukan.');
@@ -51,7 +52,12 @@ export class OrdersService {
       const createdOrder = await tx.order.create({
         data: {
           user: { connect: { id: userId } },
-          totalAmount, shippingAddress, courier, shippingCost,
+          totalAmount, 
+          shippingAddress, 
+          courier, 
+          shippingCost,
+          destinationPostalCode,
+          destinationAreaId, // Simpan areaId di sini
           status: OrderStatus.PENDING,
           items: { create: orderItemsData },
         },
@@ -86,16 +92,12 @@ export class OrdersService {
 
   async findAll(user: UserPayload) {
     const whereClause: Prisma.OrderWhereInput = {};
-
-    // Jika bukan admin, filter berdasarkan userId
     if (user.role !== Role.ADMIN) {
       whereClause.userId = user.id;
     }
-
     return this.prisma.order.findMany({
       where: whereClause,
       include: {
-        // Untuk admin, kita sertakan info user. Untuk pelanggan, tidak perlu.
         ...(user.role === Role.ADMIN && {
             user: { select: { id: true, name: true, email: true } }
         }),
@@ -123,22 +125,18 @@ export class OrdersService {
   
   async updateStatus(orderId: string, newStatus: OrderStatus) {
     const order = await this.findOne(orderId);
-
     if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAID) {
         throw new ForbiddenException(`Pesanan dengan status ${order.status} tidak dapat diubah.`);
     }
-
     if (newStatus !== OrderStatus.PROCESSING) {
         throw new UnprocessableEntityException('Perubahan status manual hanya diizinkan menjadi "PROCESSING".');
     }
-
     if (order.payment) {
         await this.prisma.payment.update({
             where: { id: order.payment.id },
             data: { status: PaymentStatus.SUCCESS }
         });
     }
-
     return this.prisma.order.update({
       where: { id: orderId },
       data: { status: newStatus },

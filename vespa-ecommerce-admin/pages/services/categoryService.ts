@@ -1,67 +1,37 @@
-import axios from 'axios';
+// pages/services/categoryService.ts
+import api from '@/lib/api'; // Pastikan Anda mengimpor instance axios yang benar
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-// Tipe data untuk satu kategori (sesuaikan jika perlu)
 export interface Category {
   id: string;
   name: string;
-  // createdAt?: string; // Jika Anda ingin menampilkannya
+  imageUrl?: string; // Tambahkan imageUrl
 }
 
-interface CategoryData {
-  name:string;
+export interface CategoryData {
+  name: string;
+  imageUrl?: string; // Tambahkan imageUrl
 }
 
-/**
- * Mengambil semua data kategori dari API.
- */
 export const getCategories = async (): Promise<Category[]> => {
-  const { data } = await axios.get(`${API_URL}/categories`, {
-    withCredentials: true,
-  });
+  const { data } = await api.get('/categories');
   return data;
 };
 
-/**
- * Mengirim data kategori baru ke API backend.
- * @param categoryData - Objek yang berisi data kategori baru.
- */
-export const createCategory = async (categoryData: CategoryData) => {
-    const { data } = await axios.post(`${API_URL}/categories`, categoryData, {
-      withCredentials: true,
-    });
-    return data;
+export const createCategory = async (categoryData: CategoryData): Promise<Category> => {
+  const { data } = await api.post('/categories', categoryData);
+  return data;
 };
 
-/**
- * --- BARU ---
- * Mengambil satu kategori berdasarkan ID.
- */
 export const getCategoryById = async (id: string): Promise<Category> => {
-  const { data } = await axios.get(`${API_URL}/categories/${id}`, {
-    withCredentials: true,
-  });
+  const { data } = await api.get(`/categories/${id}`);
   return data;
 };
 
-/**
- * --- BARU ---
- * Memperbarui data kategori berdasarkan ID.
- */
-export const updateCategory = async (id: string, categoryData: CategoryData): Promise<Category> => {
-  const { data } = await axios.patch(`${API_URL}/categories/${id}`, categoryData, {
-    withCredentials: true,
-  });
+export const updateCategory = async (id: string, categoryData: Partial<CategoryData>): Promise<Category> => {
+  const { data } = await api.patch(`/categories/${id}`, categoryData);
   return data;
 };
 
-/**
- * --- BARU ---
- * Menghapus kategori berdasarkan ID.
- */
 export const deleteCategory = async (id: string): Promise<void> => {
-  await axios.delete(`${API_URL}/categories/${id}`, {
-    withCredentials: true,
-  });
+  await api.delete(`/categories/${id}`);
 };

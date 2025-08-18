@@ -43,12 +43,10 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlacehold
     );
 };
 
-interface FilterPopupProps {
+function FilterPopup({ onApplyFilters, currentFilters }: {
   onApplyFilters: (filters: { categoryId?: string, brandId?: string }) => void;
   currentFilters: { categoryId?: string, brandId?: string };
-}
-
-function FilterPopup({ onApplyFilters, currentFilters }: FilterPopupProps) {
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [tempCategoryId, setTempCategoryId] = useState(currentFilters.categoryId);
   const [tempBrandId, setTempBrandId] = useState(currentFilters.brandId);
@@ -57,12 +55,12 @@ function FilterPopup({ onApplyFilters, currentFilters }: FilterPopupProps) {
   const { data: allCategories } = useCategories();
   const { data: allBrands } = useBrands();
 
-  const filteredCategories = useMemo(() => 
-    allCategories?.filter(c => c.name.toLowerCase().includes(searchTerm.category.toLowerCase())) || [], 
+  const filteredCategories = useMemo(() =>
+    allCategories?.filter(c => c.name.toLowerCase().includes(searchTerm.category.toLowerCase())) || [],
   [allCategories, searchTerm.category]);
-  
-  const filteredBrands = useMemo(() => 
-    allBrands?.filter(b => b.name.toLowerCase().includes(searchTerm.brand.toLowerCase())) || [], 
+
+  const filteredBrands = useMemo(() =>
+    allBrands?.filter(b => b.name.toLowerCase().includes(searchTerm.brand.toLowerCase())) || [],
   [allBrands, searchTerm.brand]);
 
   const handleApply = () => {
@@ -76,7 +74,7 @@ function FilterPopup({ onApplyFilters, currentFilters }: FilterPopupProps) {
     onApplyFilters({});
     setIsOpen(false);
   };
-  
+
   useEffect(() => {
     if (isOpen) {
       setTempCategoryId(currentFilters.categoryId);
@@ -140,79 +138,91 @@ function FilterPopup({ onApplyFilters, currentFilters }: FilterPopupProps) {
   );
 }
 
-// === PERUBAHAN HANYA DI SINI ===
 export default function ProductClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const searchTermFromUrl = searchParams.get('search');
-  
-  const { isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuthStore();
 
-  const [queryParams, setQueryParams] = useState<ProductQueryParams>({
-    page: 1, limit: 12, sortBy: 'createdAt', sortOrder: 'desc',
-    search: searchTermFromUrl || undefined,
+  const buildQueryParams = (params: URLSearchParams): ProductQueryParams => ({
+    page: Number(params.get('page')) || 1,
+    limit: 12,
+    sortBy: (params.get('sortBy') as 'price' | 'createdAt') || 'createdAt',
+    sortOrder: (params.get('sortOrder') as 'asc' | 'desc') || 'desc',
+    search: params.get('search') || undefined,
+    categoryId: params.get('categoryId') || undefined,
+    brandId: params.get('brandId') || undefined,
   });
 
-  const { data: productsResponse, isLoading, isError, isPlaceholderData } = useProducts(queryParams);
-  
+  const [queryParams, setQueryParams] = useState<ProductQueryParams>(() => buildQueryParams(searchParams));
+
+  useEffect(() => {
+    setQueryParams(buildQueryParams(searchParams));
+  }, [searchParams]);
+
   useEffect(() => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
   }, [isAuthenticated, queryClient]);
 
-  useEffect(() => {
-    setQueryParams(prev => ({ ...prev, page: 1, search: searchTermFromUrl || undefined }));
-  }, [searchTermFromUrl]);
-
+  const { data: productsResponse, isLoading, isError, isPlaceholderData } = useProducts(queryParams);
   const products = productsResponse?.data;
   const meta = productsResponse?.meta;
 
-  const handleApplyFilters = (filters: { categoryId?: string, brandId?: string }) => {
-    setQueryParams(prev => ({
-      ...prev, page: 1,
-      categoryId: filters.categoryId || undefined,
-      brandId: filters.brandId || undefined,
-    }));
+  const updateUrlParams = (newParams: Partial<ProductQueryParams>) => {
+    const currentParams = new URLSearchParams(searchParams.toString());
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value) {
+        currentParams.set(key, String(value));
+      } else {
+        currentParams.delete(key);
+      }
+    });
+    router.push(`/products?${currentParams.toString()}`);
   };
-  
-  const handleClearSearch = () => {
-    setQueryParams(prev => ({ ...prev, page: 1, search: undefined }));
-    router.push('/products');
+
+  const handleApplyFilters = (filters: { categoryId?: string, brandId?: string }) => {
+    updateUrlParams({ page: 1, ...filters });
+  };
+
+  const handleClearFilters = () => {
+    updateUrlParams({ categoryId: undefined, brandId: undefined, search: undefined });
   };
 
   const handleSortChange = (value: string) => {
-    const [sortBy, sortOrder] = value.split('-') as ['price' | 'createdAt', 'asc' | 'desc'];
-    setQueryParams(prev => ({ ...prev, sortBy, sortOrder, page: 1 }));
+    const [sortBy, sortOrder] = value.split('-');
+    updateUrlParams({ page: 1, sortBy, sortOrder });
   };
 
   const handlePageChange = (page: number) => {
-    setQueryParams(prev => ({ ...prev, page }));
+    updateUrlParams({ page });
   };
-  
+
+  const activeFiltersCount = [queryParams.categoryId, queryParams.brandId, queryParams.search].filter(Boolean).length;
+
   return (
     <div className="bg-gray-50 min-h-screen">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20">
-        
+
         <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="text-center mb-12">
           <h1 className="text-5xl md:text-6xl font-bold text-[#1E2022] mb-4 font-playfair">Katalog Produk</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">Temukan semua suku cadang original dan performa tinggi untuk menyempurnakan Vespa Anda.</p>
         </motion.div>
 
-        {searchTermFromUrl && (
+        {activeFiltersCount > 0 && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center items-center gap-4 bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl shadow-sm mb-8">
-            <span className="font-medium">Hasil pencarian untuk: "{searchTermFromUrl}"</span>
-            <Button variant="ghost" size="sm" onClick={handleClearSearch} className="gap-1.5 text-blue-700 hover:bg-blue-100">
-              <X className="h-4 w-4"/> Hapus
+            <span className="font-medium">Menampilkan hasil untuk filter yang aktif.</span>
+            <Button variant="ghost" size="sm" onClick={handleClearFilters} className="gap-1.5 text-blue-700 hover:bg-blue-100">
+              <X className="h-4 w-4"/> Hapus Semua Filter
             </Button>
           </motion.div>
         )}
 
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }} className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-md mb-10 sticky top-24 z-10 border">
-          <FilterPopup 
-            onApplyFilters={handleApplyFilters} 
+          <FilterPopup
+            onApplyFilters={handleApplyFilters}
             currentFilters={{ categoryId: queryParams.categoryId, brandId: queryParams.brandId }}
           />
-          <Select onValueChange={handleSortChange} defaultValue="createdAt-desc">
+          <Select onValueChange={handleSortChange} value={`${queryParams.sortBy}-${queryParams.sortOrder}`}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Urutkan" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="createdAt-desc">Terbaru</SelectItem>
@@ -221,18 +231,19 @@ export default function ProductClient() {
             </SelectContent>
           </Select>
         </motion.div>
-        
+
         <div>
           <AnimatePresence mode="wait">
             <motion.div
-              key={queryParams.page + (queryParams.categoryId || '') + (queryParams.brandId || '') + (queryParams.search || '')}
+              key={JSON.stringify(queryParams)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
               {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                // 👇 **DI SINI PERBAIKANNYA** 👇
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
                   {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
                 </div>
               ) : isError ? (
@@ -242,7 +253,8 @@ export default function ProductClient() {
                   <p className="text-gray-500 mt-2">Gagal memuat data produk. Silakan coba lagi nanti.</p>
                 </div>
               ) : products && products.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                // 👇 **DAN DI SINI JUGA PERBAIKANNYA** 👇
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
                   {products.map((product: Product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -256,8 +268,8 @@ export default function ProductClient() {
             </motion.div>
           </AnimatePresence>
         </div>
-        
-        <PaginationControls 
+
+        <PaginationControls
           currentPage={meta?.page || 1}
           totalPages={meta?.lastPage || 1}
           onPageChange={handlePageChange}

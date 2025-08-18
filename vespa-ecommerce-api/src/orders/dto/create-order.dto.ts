@@ -9,7 +9,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-// Mendefinisikan struktur objek yang valid di dalam array 'items'
 class OrderItemDto {
   @IsString()
   @IsNotEmpty()
@@ -22,13 +21,23 @@ class OrderItemDto {
 
 export class CreateOrderDto {
   @IsArray()
-  @ValidateNested({ each: true }) // Terapkan validasi OrderItemDto ke setiap objek dalam array
-  @Type(() => OrderItemDto) // Bantu NestJS mengubah payload menjadi class
+  @ValidateNested({ each: true })
+  @Type(() => OrderItemDto)
   items: OrderItemDto[];
 
   @IsString()
   @IsNotEmpty()
   shippingAddress: string;
+  
+  @IsString()
+  @IsNotEmpty()
+  destinationPostalCode: string;
+
+  // 👇 **PERBAIKAN UTAMA DI SINI** 👇
+  @IsString()
+  @IsNotEmpty()
+  destinationAreaId: string; // Tambahkan properti ini
+  // 👆 **END OF CHANGES** 👆
 
   @IsNumber()
   @IsNotEmpty()

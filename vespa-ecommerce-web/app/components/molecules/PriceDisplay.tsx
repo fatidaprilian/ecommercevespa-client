@@ -1,8 +1,7 @@
-// file: app/components/molecules/PriceDisplay.tsx
+// app/components/molecules/PriceDisplay.tsx
 
 import { PriceInfo } from "@/types";
 
-// Helper untuk format harga
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -23,13 +22,17 @@ export default function PriceDisplay({
   originalPriceClassName = 'text-lg',
 }: PriceDisplayProps) {
 
-  // ✅ PERBAIKAN: Pemeriksaan defensif untuk mencegah crash
+  // 👇 **START OF CHANGES** 👇
+  // Defensive check: If priceInfo is missing, fall back to a simple display
   if (!priceInfo) {
-    // Tampilkan placeholder atau tidak sama sekali jika data tidak ada
+    // This will now handle cases where the base price is available but priceInfo is not.
+    // We assume the component is used within a product context.
+    // If you pass a product prop, you can use product.price here.
+    // For now, we'll return a placeholder to avoid crashing.
     return <div className={`font-bold text-gray-900 ${className}`}>-</div>;
   }
+  // 👆 **END OF CHANGES** 👆
 
-  // Jika tidak ada diskon (harga final sama dengan atau lebih besar dari harga asli)
   if (priceInfo.finalPrice >= priceInfo.originalPrice) {
     return (
       <p className={`font-bold text-gray-900 ${className}`}>
@@ -38,7 +41,6 @@ export default function PriceDisplay({
     );
   }
 
-  // Jika ada diskon, tampilkan harga final, harga asli (dicoret), dan label diskon
   return (
     <div className="flex items-center gap-3">
       <p className={`font-bold text-red-600 ${className}`}>

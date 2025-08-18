@@ -9,7 +9,8 @@ import {
     Wrench,
     Package,
     Zap,
-    Sparkles
+    Sparkles,
+    Tag
 } from "lucide-react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -60,14 +61,14 @@ const HeroSection = () => {
                         <Award className="w-4 h-4 text-[#C9D6DF]" /> Spesialis Suku Cadang Vespa
                     </span>
                 </motion.div>
-                <motion.h1 
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.4, ease: "easeOut" }} 
+                <motion.h1
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
                     className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 font-playfair"
                 >
                     Anatomi Sang Legenda
                 </motion.h1>
-                <motion.p 
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6, ease: "easeOut" }} 
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
                     className="text-lg md:text-xl text-[#C9D6DF] max-w-2xl mx-auto mb-10 leading-relaxed"
                 >
                     Setiap komponen adalah sebuah warisan. Suku cadang original yang menjaga keaslian dan menyempurnakan performa ikonik Vespa Anda.
@@ -82,6 +83,7 @@ const HeroSection = () => {
     );
 };
 
+// 👇 **START OF CHANGES** 👇
 const CategoriesSection = () => {
   const { data: categories, isLoading, error } = useCategories();
   const categoryIcons: { [key: string]: React.ElementType } = {
@@ -89,7 +91,7 @@ const CategoriesSection = () => {
     'Body & Frame': Package,
     'Electrical': Zap,
     'Accessories': Sparkles,
-    'default': Package
+    'default': Tag // Mengganti default icon
   };
 
   if (isLoading) return <Section className="bg-white"><p className="text-center text-gray-500">Memuat kategori...</p></Section>;
@@ -105,18 +107,20 @@ const CategoriesSection = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories.map((cat: Category, index: number) => {
             const Icon = categoryIcons[cat.name] || categoryIcons.default;
-            const image = `https://source.unsplash.com/400x500/?${cat.name.split(' ')[0].toLowerCase()}`;
+            // Gunakan imageUrl dari data, jika tidak ada, gunakan placeholder
+            const imageSrc = cat.imageUrl || `https://source.unsplash.com/400x500/?${cat.name.split(' ')[0].toLowerCase()}`;
+            
             return (
-              <motion.div 
-                key={cat.id} 
-                initial={{ opacity: 0, y: 30 }} 
-                whileInView={{ opacity: 1, y: 0 }} 
-                viewport={{ once: true, amount: 0.3 }} 
+              <motion.div
+                key={cat.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
                 transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
               >
                 <Link href={`/products?categoryId=${cat.id}`} className="group block cursor-pointer">
                   <div className="relative h-96 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
-                    <img src={image} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={imageSrc} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
                     <div className="absolute bottom-0 left-0 p-6">
                       <div className="bg-[#C9D6DF] text-[#1E2022] p-3 rounded-full w-fit mb-3 transition-transform group-hover:scale-105"><Icon className="w-6 h-6" /></div>
@@ -132,6 +136,7 @@ const CategoriesSection = () => {
     </Section>
   );
 };
+// 👆 **END OF CHANGES** 👆
 
 const BrandsSection = () => {
     const { data: brands, isLoading, error } = useBrands();
@@ -148,11 +153,11 @@ const BrandsSection = () => {
                 </div>
                 <div className="flex flex-wrap justify-center items-center gap-x-16 md:gap-x-24 gap-y-10">
                     {brands.map((brand: Brand, index: number) => (
-                        <motion.div 
-                          key={brand.id} 
-                          initial={{ opacity: 0, y: 20 }} 
-                          whileInView={{ opacity: 1, y: 0 }} 
-                          viewport={{ once: true, amount: 0.5 }} 
+                        <motion.div
+                          key={brand.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, amount: 0.5 }}
                           transition={{ duration: 0.5, delay: index * 0.05 }}
                         >
                             <Link href={`/products?brandId=${brand.id}`} title={`Lihat produk dari ${brand.name}`} className="grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300 transform hover:scale-110">
@@ -174,7 +179,7 @@ const FeaturedProducts = () => {
     const hasHydrated = useAuthStore((state) => state._hasHydrated);
     const { data: productsResponse, isLoading, error } = useProducts(
       { sortBy: 'createdAt', sortOrder: 'desc', limit: 4 },
-      hasHydrated 
+      hasHydrated
     );
     
     if (!hasHydrated || isLoading) {
@@ -201,11 +206,11 @@ const FeaturedProducts = () => {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {featuredProducts.map((product: Product, index: number) => (
-                        <motion.div 
-                          key={product.id} 
-                          initial={{ opacity: 0, y: 30 }} 
-                          whileInView={{ opacity: 1, y: 0 }} 
-                          viewport={{ once: true, amount: 0.3 }} 
+                        <motion.div
+                          key={product.id}
+                          initial={{ opacity: 0, y: 30 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, amount: 0.3 }}
                           transition={{ duration: 0.6, delay: index * 0.1 }}
                         >
                             <Link href={`/products/${product.id}`} className="block group">

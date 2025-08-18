@@ -5,6 +5,7 @@ import api from '@/lib/api';
 export interface Address {
   id: string;
   street: string;
+  phone: string; // <-- Menjadi wajib
   provinceId: string;
   province: string;
   cityId: string;

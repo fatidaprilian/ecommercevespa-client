@@ -1,13 +1,18 @@
-// file: vespa-ecommerce-api/src/addresses/dto/create-address.dto.ts
+// file: src/addresses/dto/create-address.dto.ts
 
-import { IsString, IsNotEmpty, IsBoolean, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsBoolean, IsOptional, IsPhoneNumber } from 'class-validator';
 
 export class CreateAddressDto {
   @IsString() @IsNotEmpty() street: string;
   @IsString() @IsNotEmpty() postalCode: string;
-  @IsString() @IsNotEmpty() provinceId: string;
+  
+  @IsPhoneNumber('ID', { message: 'Format nomor telepon tidak valid.' })
+  @IsNotEmpty({ message: 'Nomor telepon tidak boleh kosong.' })
+  phone: string;
+
+  @IsString() @IsOptional() provinceId?: string;
   @IsString() @IsNotEmpty() province: string;
-  @IsString() @IsNotEmpty() cityId: string;
+  @IsString() @IsOptional() cityId?: string;
   @IsString() @IsNotEmpty() city: string;
   @IsString() @IsNotEmpty() districtId: string;
   @IsString() @IsNotEmpty() district: string;

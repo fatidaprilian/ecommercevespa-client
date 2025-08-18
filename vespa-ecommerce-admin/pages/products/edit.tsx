@@ -17,14 +17,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getCategories, getBrands } from '../services/pageService';
-import { getProductById, updateProduct, uploadImage, deleteProduct } from '../services/productService';
+import { getProductById, updateProduct, uploadImage, deleteProduct, Product } from '../services/productService'; // Import Product type
 
-// Skema validasi sama dengan halaman 'new'
 const productFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama produk minimal 3 karakter.' }),
   sku: z.string().min(3, { message: 'SKU minimal 3 karakter.' }),
   price: z.coerce.number().min(1, { message: 'Harga harus lebih dari 0.' }),
   stock: z.coerce.number().int().min(0, { message: 'Stok tidak boleh negatif.' }),
+  weight: z.coerce.number().int().min(1, { message: 'Berat minimal 1 gram.' }),
   description: z.string().optional(),
   categoryId: z.string().min(1, { message: 'Kategori harus dipilih.' }),
   brandId: z.string().optional(),
@@ -41,7 +41,8 @@ export default function EditProductPage() {
 
   const [isUploading, setIsUploading] = useState(false);
 
-  const { data: product, isLoading: isLoadingProduct, isError } = useQuery({
+  // Fetching data tetap sama
+  const { data: product, isLoading: isLoadingProduct, isError } = useQuery<Product, Error>({
     queryKey: ['product', productId],
     queryFn: () => getProductById(productId),
     enabled: !!productId,
@@ -50,25 +51,27 @@ export default function EditProductPage() {
   const { data: categories, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: getCategories });
   const { data: brands, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: getBrands });
 
+  // 👇 **START OF FIX** 👇
+  // We use the `values` option to make the form fully controlled by our query data.
+  // This is a more robust pattern for handling forms with async default data
+  // than using useEffect + form.reset().
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
-    defaultValues: { name: '', sku: '', price: 0, stock: 0, description: '', categoryId: '', brandId: '', images: [] },
+    values: {
+      name: product?.name || '',
+      sku: product?.sku || '',
+      price: product?.price || 0,
+      stock: product?.stock || 0,
+      weight: product?.weight || 1000,
+      description: product?.description || '',
+      categoryId: product?.categoryId || '',
+      brandId: product?.brandId || '',
+      images: product?.images || [],
+    },
   });
+  // 👆 **END OF FIX** 👆
 
-  useEffect(() => {
-    if (product) {
-      form.reset({
-        name: product.name,
-        sku: product.sku,
-        price: product.price,
-        stock: product.stock,
-        description: product.description || '',
-        categoryId: product.categoryId || '',
-        brandId: product.brandId || '',
-        images: product.images || [],
-      });
-    }
-  }, [product, form]);
+  // useEffect for form.reset() is no longer needed and has been removed.
 
   const updateMutation = useMutation({
     mutationFn: (values: ProductFormValues) => updateProduct(productId, values),
@@ -146,17 +149,16 @@ export default function EditProductPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* === KODE FORM LENGKAP DIMULAI DI SINI === */}
-
             <Card>
                 <CardHeader><CardTitle>Informasi Dasar Produk</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
                 <FormField name="name" control={form.control} render={({ field }) => (<FormItem><FormLabel>Nama Produk</FormLabel><FormControl><Input placeholder="Contoh: Kampas Rem Depan" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="description" control={form.control} render={({ field }) => (<FormItem><FormLabel>Deskripsi</FormLabel><FormControl><Textarea placeholder="Jelaskan detail produk di sini..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField name="price" control={form.control} render={({ field }) => (<FormItem><FormLabel>Harga</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField name="stock" control={form.control} render={({ field }) => (<FormItem><FormLabel>Stok</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField name="weight" control={form.control} render={({ field }) => (<FormItem><FormLabel>Berat (gram)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
                 </CardContent>
             </Card>
@@ -196,6 +198,7 @@ export default function EditProductPage() {
             <Card>
                 <CardHeader><CardTitle>Organisasi</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 👇 **NO CHANGE NEEDED HERE, BUT IT NOW WORKS CORRECTLY** 👇 */}
                 <FormField name="categoryId" control={form.control} render={({ field }) => (
                     <FormItem>
                     <FormLabel>Kategori</FormLabel>
@@ -209,7 +212,7 @@ export default function EditProductPage() {
                 <FormField name="brandId" control={form.control} render={({ field }) => (
                     <FormItem>
                     <FormLabel>Merek (Opsional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingBrands}>
+                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingBrands}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Pilih merek..." /></SelectTrigger></FormControl>
                         <SelectContent>{brands?.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                     </Select>
@@ -218,8 +221,6 @@ export default function EditProductPage() {
                 )} />
                 </CardContent>
             </Card>
-
-            {/* === KODE FORM LENGKAP BERAKHIR DI SINI === */}
 
           <div className="flex justify-end">
             <Button type="submit" disabled={updateMutation.isPending || isUploading}>

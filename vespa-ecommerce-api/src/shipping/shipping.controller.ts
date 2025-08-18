@@ -4,32 +4,28 @@ import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { ShippingService } from './shipping.service';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { AuthGuard } from '@nestjs/passport';
+import { CalculateCostDto } from './dto/calculate-cost.dto';
 
 @Controller('shipping')
 export class ShippingController {
   constructor(private readonly shippingService: ShippingService) {}
 
+  @Get('areas')
   @Public()
-  @Get('provinces')
-  getProvinces() {
-    return this.shippingService.getProvinces();
-  }
-
-  @Public()
-  @Get('cities')
-  getCities(@Query('provinceId') provinceId: string) {
-    return this.shippingService.getCities(provinceId);
-  }
-  
-  @Public() 
-  @Get('districts')
-  getDistricts(@Query('cityId') cityId: string) {
-    return this.shippingService.getDistricts(cityId);
+  searchAreas(@Query('q') searchTerm: string) {
+    return this.shippingService.searchAreas(searchTerm);
   }
 
   @Post('cost')
   @UseGuards(AuthGuard('jwt'))
-  calculateCost(@Body() body: { destination: string; weight: number; courier: string }) {
-    return this.shippingService.calculateShippingCost(body.destination, body.weight, body.courier);
+  calculateCost(@Body() body: CalculateCostDto) {
+    // 👇 **PERBAIKAN UTAMA DI SINI** 👇
+    // Hapus argumen kedua (destination_postal_code) agar sesuai dengan
+    // definisi fungsi di shipping.service.ts.
+    return this.shippingService.calculateShippingCost(
+        body.destination_area_id, 
+        body.items
+    );
+    // 👆 **END OF CHANGES** 👆
   }
 }

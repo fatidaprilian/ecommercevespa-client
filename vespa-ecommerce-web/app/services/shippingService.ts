@@ -1,50 +1,70 @@
-// file: vespa-ecommerce-web/app/services/shippingService.ts
+// file: app/services/shippingService.ts
 
 import api from '@/lib/api';
-import { ShippingCost } from '@/types/checkout';
 
-// Tipe data ini harus cocok dengan model Prisma Anda
-export interface LocationData {
+// Definisikan tipe data yang lebih ketat, hanya yang dibutuhkan form
+export interface AreaData {
   id: string;
-  name: string;
+  label: string;
+  postalCode: string;
 }
 
-export type Province = LocationData;
-export type City = LocationData;
-export type District = LocationData;
+export interface ShippingRate {
+  courier_name: string;
+  courier_service_name: string;
+  price: number;
+  estimation: string;
+}
 
-/**
- * Mengambil daftar semua provinsi.
- */
-export const getProvinces = async (): Promise<Province[]> => {
-  const { data } = await api.get('/shipping/provinces');
-  return data;
+export const searchAreas = async (query: string): Promise<AreaData[]> => {
+    if (query.length < 3) return [];
+    const { data } = await api.get('/shipping/areas', { params: { q: query } });
+    
+    if (!Array.isArray(data)) {
+        return [];
+    }
+    
+    const uniqueAreas = new Map<string, AreaData>();
+
+    data.forEach((area: any) => {
+        const label = `${area.administrative_division_level_3_name}, ${area.administrative_division_level_2_name}, ${area.administrative_division_level_1_name}`;
+        
+        if (area.id && !uniqueAreas.has(label)) {
+            let postalCode = String(area.postal_code || '');
+            
+            if (!/^\d{5}$/.test(postalCode)) {
+                const match = area.name?.match(/\b\d{5}\b/);
+                if (match) {
+                  postalCode = match[0];
+                }
+            }
+
+            if (/^\d{5}$/.test(postalCode)) {
+                uniqueAreas.set(label, {
+                    id: area.id,
+                    label: label,
+                    postalCode: postalCode
+                });
+            }
+        }
+    });
+
+    return Array.from(uniqueAreas.values());
 };
 
-/**
- * Mengambil daftar kota berdasarkan ID provinsi.
- */
-export const getCities = async (provinceId: string): Promise<City[]> => {
-  const { data } = await api.get(`/shipping/cities?provinceId=${provinceId}`);
-  return data;
-};
-
-/**
- * Mengambil daftar kecamatan berdasarkan ID kota.
- */
-export const getDistricts = async (cityId: string): Promise<District[]> => {
-    const { data } = await api.get(`/shipping/districts?cityId=${cityId}`);
-    return data;
-};
-
-/**
- * Menghitung estimasi ongkos kirim.
- */
 export const calculateCost = async (payload: {
-  destination: string; // district_id
-  weight: number; 
-  courier: 'jne' | 'tiki' | 'pos' | 'jnt';
-}): Promise<ShippingCost[]> => {
-  const { data } = await api.post('/shipping/cost', payload);
-  return data;
+  destination_area_id: string;
+  destination_postal_code: string;
+  items: { name: string, value: number, quantity: number, weight: number }[]
+}): Promise<ShippingRate[]> => {
+  const { data } = await api.post('/shipping/cost', payload); 
+  return data.map((rate: any) => ({
+      courier_name: rate.company,
+      courier_service_name: rate.type,
+      price: rate.price,
+      // 👇 **PERBAIKAN UTAMA DI SINI** 👇
+      // Ganti 'estimation_in_day' menjadi 'duration' agar sesuai dengan respons API Biteship
+      estimation: rate.duration || 'N/A'
+      // 👆 **END OF CHANGES** 👆
+  }));
 };

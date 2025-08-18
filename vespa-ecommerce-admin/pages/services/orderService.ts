@@ -1,7 +1,7 @@
 // file: vespa-ecommerce-admin/pages/services/orderService.ts
 import api from '@/lib/api';
 
-// --- TAMBAHKAN ENUM INI DI SINI ---
+// Enum ini membantu menjaga konsistensi status di frontend
 export enum OrderStatus {
   PENDING = 'PENDING',
   PAID = 'PAID',
@@ -11,7 +11,6 @@ export enum OrderStatus {
   CANCELLED = 'CANCELLED',
   REFUNDED = 'REFUNDED',
 }
-// ------------------------------------
 
 export interface OrderItem {
     id: string;
@@ -21,6 +20,7 @@ export interface OrderItem {
         id: string;
         name: string;
         sku: string;
+        weight?: number; // Pastikan weight ada untuk kalkulasi ulang jika perlu
     };
 }
 
@@ -37,8 +37,10 @@ export interface Order {
   totalAmount: number;
   shippingCost: number;
   shippingAddress: string;
+  destinationPostalCode?: string; // Diperlukan untuk kalkulasi ulang ongkir di admin
+  destinationAreaId?: string;     // Diperlukan untuk kalkulasi ulang ongkir di admin
   courier: string;
-  status: string; // Biarkan ini sebagai string, enum hanya untuk referensi di frontend
+  status: string; // Tetap string agar fleksibel, tapi gunakan OrderStatus untuk perbandingan
   createdAt: string;
   user: {
       id: string;
@@ -47,6 +49,9 @@ export interface Order {
   };
   items: OrderItem[];
   shipment: Shipment | null;
+  payment?: {
+      proofOfPayment?: string | null;
+  } | null;
 }
 
 export const getOrders = async (): Promise<Order[]> => {

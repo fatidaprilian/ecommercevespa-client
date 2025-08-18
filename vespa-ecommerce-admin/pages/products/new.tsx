@@ -16,20 +16,22 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getCategories, getBrands } from '../services/pageService'; // Ganti service
-import { createProduct, uploadImage } from '../services/productService'; // Ganti service
+import { getCategories, getBrands } from '../services/pageService';
+import { createProduct, uploadImage } from '../services/productService';
 
-// Skema validasi diperbarui untuk menangani gambar
+// 👇 **START OF CHANGES** 👇
 const productFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama produk minimal 3 karakter.' }),
   sku: z.string().min(3, { message: 'SKU minimal 3 karakter.' }),
   price: z.coerce.number().min(1, { message: 'Harga harus lebih dari 0.' }),
   stock: z.coerce.number().int().min(0, { message: 'Stok tidak boleh negatif.' }),
+  weight: z.coerce.number().int().min(1, { message: 'Berat minimal 1 gram.' }), // Field baru ditambahkan
   description: z.string().optional(),
   categoryId: z.string().min(1, { message: 'Kategori harus dipilih.' }),
   brandId: z.string().optional(),
   images: z.array(z.object({ url: z.string() })).optional(),
 });
+// 👆 **END OF CHANGES** 👆
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
@@ -43,7 +45,9 @@ export default function NewProductPage() {
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
-    defaultValues: { name: '', sku: '', price: 0, stock: 0, description: '', categoryId: '', brandId: '', images: [] },
+    // 👇 **START OF CHANGES** 👇
+    defaultValues: { name: '', sku: '', price: 0, stock: 0, weight: 1000, description: '', categoryId: '', brandId: '', images: [] },
+    // 👆 **END OF CHANGES** 👆
   });
 
   const mutation = useMutation({
@@ -99,14 +103,16 @@ export default function NewProductPage() {
           <Card>
             <CardHeader><CardTitle>Informasi Dasar Produk</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              {/* Fields for name, description, SKU, price, stock */}
               <FormField name="name" control={form.control} render={({ field }) => (<FormItem><FormLabel>Nama Produk</FormLabel><FormControl><Input placeholder="Contoh: Kampas Rem Depan" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField name="description" control={form.control} render={({ field }) => (<FormItem><FormLabel>Deskripsi</FormLabel><FormControl><Textarea placeholder="Jelaskan detail produk di sini..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* 👇 **START OF CHANGES** 👇 */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="price" control={form.control} render={({ field }) => (<FormItem><FormLabel>Harga</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="stock" control={form.control} render={({ field }) => (<FormItem><FormLabel>Stok</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField name="weight" control={form.control} render={({ field }) => (<FormItem><FormLabel>Berat (gram)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
+              {/* 👆 **END OF CHANGES** 👆 */}
             </CardContent>
           </Card>
 
@@ -145,7 +151,6 @@ export default function NewProductPage() {
           <Card>
             <CardHeader><CardTitle>Organisasi</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Fields for category and brand */}
               <FormField name="categoryId" control={form.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Kategori</FormLabel>

@@ -1,32 +1,108 @@
-// file: app/products/[id]/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { ShoppingCart, Check, Minus, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShoppingCart, Check, Minus, Plus, Package, Ruler, Tag, Edit, Info, ShieldCheck, Heart, Star, CreditCard, UserCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 
 import { useProduct } from '@/hooks/use-product';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
-import PriceDisplay from '@/components/molecules/PriceDisplay'; // <-- Import komponen harga
+import PriceDisplay from '@/components/molecules/PriceDisplay';
+import { RelatedProducts } from './RelatedProducts';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
+
+// --- Helper untuk format harga ---
+const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
+
+// --- Komponen Skeleton Loading (tidak berubah) ---
+const ProductDetailSkeleton = () => (
+    <div className="bg-white min-h-screen pt-28 animate-pulse">
+        <div className="container mx-auto px-4 py-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+                <div>
+                    <div className="bg-gray-200 h-[450px] rounded-xl"></div>
+                    <div className="flex gap-4 mt-4">
+                        <div className="bg-gray-200 h-24 w-24 rounded-lg"></div>
+                        <div className="bg-gray-200 h-24 w-24 rounded-lg"></div>
+                        <div className="bg-gray-200 h-24 w-24 rounded-lg"></div>
+                    </div>
+                </div>
+                <div className="flex flex-col space-y-6">
+                    <div className="h-6 w-1/3 bg-gray-200 rounded"></div>
+                    <div className="h-12 w-full bg-gray-300 rounded"></div>
+                    <div className="h-16 w-1/2 bg-gray-300 rounded my-4"></div>
+                    <div className="h-24 w-full bg-gray-200 rounded"></div>
+                    <div className="h-10 w-full bg-gray-200 rounded"></div>
+                    <div className="flex gap-4 mt-4">
+                        <div className="h-14 w-1/3 bg-gray-200 rounded-lg"></div>
+                        <div className="h-14 flex-grow bg-gray-300 rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+// --- Komponen Bintang Rating ---
+const StarRating = ({ rating, totalReviews }: { rating: number; totalReviews: number }) => (
+  <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                  key={star}
+                  className={cn(
+                      "h-5 w-5",
+                      rating >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+                  )}
+              />
+          ))}
+      </div>
+      <a href="#reviews-section" className="text-sm text-gray-600 hover:text-primary transition-colors">
+        ({totalReviews} ulasan)
+      </a>
+  </div>
+);
+
 
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = params.id as string;
-  
+
   const { addItem, isLoading: isCartLoading } = useCartStore();
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { data: product, isLoading, error } = useProduct(productId);
-  
+
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+
+  useEffect(() => {
+    if (product && product.images && product.images.length > 0) {
+      setSelectedImage(product.images[0].url);
+    }
+  }, [product]);
 
   const handleAddToCart = () => {
     if (!isAuthenticated) {
-      toast.error("Silakan login terlebih dahulu untuk menambah item.");
+      toast.error("Silakan login terlebih dahulu.");
       router.push('/login');
       return;
     }
@@ -38,106 +114,188 @@ export default function ProductDetailPage() {
     }
   };
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen"><p>Memuat detail produk...</p></div>;
-  }
-  if (error) {
-    return <div className="text-center p-10 text-red-500">Error: {error.message}</div>;
-  }
-  if (!product) {
-    return <div className="text-center p-10">Produk tidak ditemukan.</div>;
-  }
+  const handleToggleWishlist = () => {
+    if (!isAuthenticated) {
+        toast.error("Silakan login untuk menambahkan ke wishlist.");
+        router.push('/login');
+        return;
+    }
+    setIsInWishlist(!isInWishlist);
+    toast.success(
+        !isInWishlist ? "Produk ditambahkan ke wishlist!" : "Produk dihapus dari wishlist."
+    );
+  };
   
-  const imageUrl = product.images?.[0]?.url || 'https://placehold.co/600x600';
+  const handleBuyNow = () => {
+    if (!isAuthenticated) {
+        toast.error("Silakan login untuk melanjutkan pembelian.");
+        router.push('/login');
+        return;
+    }
+    toast('Mengarahkan ke halaman checkout...', { icon: '🚀' });
+  };
+
+  if (isLoading) return <ProductDetailSkeleton />;
+  if (error) return <div className="text-center py-20 text-red-500">Error: {error.message}</div>;
+  if (!product) return <div className="text-center py-20">Produk tidak ditemukan.</div>;
+
+  const isAdmin = user?.role === 'ADMIN';
+  const reviews = [
+    { id: 1, author: 'Budi Santoso', rating: 5, comment: 'Mantap, barang original dan pengiriman super cepat! Vespa saya jadi ngacir lagi.', date: '1 hari yang lalu' },
+    { id: 2, author: 'Citra Lestari', rating: 4, comment: 'Kualitasnya bagus, sesuai deskripsi. Tapi packingnya bisa lebih tebal lagi biar lebih aman.', date: '3 hari yang lalu' },
+  ];
 
   return (
-    <div className="bg-gray-50 min-h-screen pt-28">
+    <div className="bg-white min-h-screen pt-28">
+      {isAdmin && (
+         <div className="bg-yellow-400 text-yellow-900 text-center p-3 font-semibold flex items-center justify-center gap-4 sticky top-[80px] z-40">
+           <Info size={18}/> Anda melihat sebagai Admin.
+           <a href={`http://localhost:3001/products/edit?id=${product.id}`} target="_blank" rel="noopener noreferrer" className="bg-yellow-900 text-white px-4 py-1 rounded-md text-sm hover:bg-black transition-colors flex items-center gap-2">
+               <Edit size={14}/> Edit di Panel Admin
+           </a>
+         </div>
+       )}
       <div className="container mx-auto px-4 py-12">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="bg-white p-8 rounded-2xl shadow-lg grid grid-cols-1 md:grid-cols-2 gap-12"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start"
         >
-          {/* Galeri Gambar */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="flex items-center justify-center bg-gray-100 h-96 rounded-xl overflow-hidden"
-          >
-            <img 
-              src={imageUrl} 
-              alt={product.name}
-              className="w-full h-full object-contain"
-            />
-          </motion.div>
-          
-          {/* Info Produk */}
-          <div className="flex flex-col justify-center">
-            <span className="text-sm font-semibold text-gray-500 bg-gray-100 w-fit px-3 py-1 rounded-full mb-3">
-              {product.category?.name || 'Uncategorized'}
-            </span>
-            <h1 className="text-4xl font-bold text-[#1E2022] mb-2 font-playfair">{product.name}</h1>
-            <p className="text-md text-gray-500 mb-4">SKU: {product.sku}</p>
-            
-            {/* --- PERUBAHAN UTAMA DI SINI --- */}
-            <div className="mb-6">
-              <PriceDisplay 
-                priceInfo={product.priceInfo} 
-                className="text-5xl" 
-                originalPriceClassName="text-2xl" 
-              />
-            </div>
-
-            <div className="mb-6 border-t pt-6">
-              <h2 className="font-semibold text-xl mb-2 text-gray-800">Deskripsi</h2>
-              <p className="text-gray-600 leading-relaxed">{product.description || 'Tidak ada deskripsi untuk produk ini.'}</p>
-            </div>
-            
-            <div className="text-lg mb-6">
-              <span className="text-gray-600">Stok: </span>
-              <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                {product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center border rounded-lg">
-                <button 
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))} 
-                  className="px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-l-lg disabled:opacity-50"
-                  disabled={quantity <= 1}
-                >
-                  <Minus size={16} />
-                </button>
-                <span className="px-6 font-semibold text-lg">{quantity}</span>
-                <button 
-                  onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} 
-                  className="px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-r-lg disabled:opacity-50"
-                  disabled={quantity >= product.stock}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-
-              <button 
-                onClick={handleAddToCart}
-                disabled={isAdded || product.stock === 0 || isCartLoading}
-                className={`w-full flex items-center justify-center gap-2 font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105
-                  ${isAdded ? 'bg-green-500 text-white' : 'bg-[#52616B] text-white hover:bg-[#1E2022]'}
-                  ${product.stock === 0 ? 'bg-gray-400 cursor-not-allowed hover:scale-100' : ''}
-                `}
+          {/* 👇 [PERBAIKAN] KODE GALERI FOTO YANG KEMARIN HILANG, SAYA KEMBALIKAN LAGI KE SINI 👇 */}
+          <div className="sticky top-28">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selectedImage}
+                initial={{ opacity: 0.8 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0.8 }}
+                transition={{ duration: 0.2 }}
+                className="relative flex items-center justify-center bg-gray-100 aspect-square rounded-2xl overflow-hidden mb-4"
               >
-                {isAdded ? (
-                  <><Check size={20} /> Ditambahkan</>
-                ) : (
-                  <><ShoppingCart size={20} /><span>{product.stock > 0 ? 'Tambah ke Keranjang' : 'Stok Habis'}</span></>
+                <img
+                  src={selectedImage || 'https://placehold.co/600x600'}
+                  alt={product.name}
+                  className="w-full h-full object-contain mix-blend-multiply"
+                />
+              </motion.div>
+            </AnimatePresence>
+            <div className="grid grid-cols-5 gap-3">
+              {product.images?.map((image) => (
+                <button key={image.id} onClick={() => setSelectedImage(image.url)} className={cn('aspect-square rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 ring-offset-2 hover:ring-2 hover:ring-primary', selectedImage === image.url ? 'ring-2 ring-primary' : 'ring-0')}>
+                   <img src={image.url} alt="" className="w-full h-full object-cover"/>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3 mb-3">
+                {product.category && (
+                    <Link href={`/products?categoryId=${product.category.id}`} className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors">
+                        {product.category.name}
+                    </Link>
                 )}
-              </button>
+                {product.brand && (
+                    <Link href={`/products?brandId=${product.brand.id}`} className="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full hover:bg-primary/20 transition-colors">
+                        {product.brand.name}
+                    </Link>
+                )}
+            </div>
+            
+            <div className="flex items-start justify-between gap-4">
+                <h1 className="text-4xl lg:text-5xl font-bold text-gray-800 mb-2 font-playfair">{product.name}</h1>
+                <Button onClick={handleToggleWishlist} variant="outline" size="icon" className="rounded-full h-12 w-12 flex-shrink-0 border-2 hover:bg-red-50">
+                    <Heart className={cn("h-6 w-6 transition-all duration-300", isInWishlist ? "text-red-500 fill-red-500" : "text-gray-400" )} />
+                </Button>
+            </div>
+
+            <StarRating rating={4.5} totalReviews={reviews.length} />
+            
+            <div className="mb-6">
+              <PriceDisplay priceInfo={product.priceInfo} className="text-5xl" originalPriceClassName="text-2xl" />
+              {isAdmin && <p className="text-xs text-red-500 mt-1">Harga asli (sebelum diskon): {formatPrice(product.price)}</p>}
+            </div>
+
+            <p className="text-gray-600 leading-relaxed mb-8">{product.description || 'Tidak ada deskripsi untuk produk ini.'}</p>
+
+            <div className="bg-gray-50 border rounded-lg p-4 space-y-3 mb-8">
+                <div className="flex items-center gap-3 text-sm"><Tag size={16} className="text-gray-500"/><span>SKU: <span className="font-semibold text-gray-800">{product.sku}</span></span></div>
+                <div className="flex items-center gap-3 text-sm"><Package size={16} className="text-gray-500"/><span>Stok: <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}</span></span></div>
+                <div className="flex items-center gap-3 text-sm"><Ruler size={16} className="text-gray-500"/><span>Berat: <span className="font-semibold text-gray-800">{product.weight} gram</span></span></div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 items-center">
+              <div className="flex items-center justify-center border rounded-lg w-full sm:w-auto">
+                <Button variant="ghost" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-5 py-3 h-14" disabled={quantity <= 1}><Minus /></Button>
+                <span className="px-6 font-bold text-xl w-16 text-center">{quantity}</span>
+                <Button variant="ghost" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} className="px-5 py-3 h-14" disabled={quantity >= product.stock}><Plus /></Button>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                     <Button size="lg" className="w-full h-14 text-base" disabled={isAdded || product.stock === 0 || isCartLoading}>
+                       {isAdded ? <><Check size={20} className="mr-2"/> Ditambahkan</> : <><ShoppingCart size={20} className="mr-2"/><span>{product.stock > 0 ? 'Tambah Keranjang' : 'Stok Habis'}</span></>}
+                     </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Konfirmasi Penambahan</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Anda akan menambahkan {quantity} x "{product.name}" ke keranjang. Lanjutkan?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleAddToCart}>Lanjutkan</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                
+                <Button size="lg" variant="default" className="w-full h-14 text-base bg-green-600 hover:bg-green-700" disabled={product.stock === 0} onClick={handleBuyNow}>
+                    <CreditCard size={20} className="mr-2"/>
+                    Beli Sekarang
+                </Button>
+              </div>
+            </div>
+
+             <div className="flex items-center gap-3 mt-6 text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
+                <ShieldCheck className="h-8 w-8 text-green-600 flex-shrink-0"/>
+                <span>Garansi produk original. Kami menjamin keaslian dan kualitas setiap suku cadang yang kami jual.</span>
             </div>
           </div>
         </motion.div>
+
+        <div id="reviews-section" className="mt-20 pt-10">
+            <Separator className="mb-10"/>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 font-playfair">Ulasan Pelanggan</h2>
+            <div className="space-y-8">
+                {reviews.map(review => (
+                    <div key={review.id} className="flex flex-col sm:flex-row gap-4 border-b pb-6">
+                        <div className="flex-shrink-0 text-center sm:text-left">
+                            <UserCircle className="h-12 w-12 text-gray-300 mx-auto sm:mx-0" />
+                            <p className="mt-2 text-sm font-semibold text-gray-800">{review.author}</p>
+                            <p className="text-xs text-gray-500">{review.date}</p>
+                        </div>
+                        <div className="border-l pl-6">
+                            <div className="flex items-center gap-1 mb-2">
+                                {[1,2,3,4,5].map(star => <Star key={star} className={cn("h-4 w-4", review.rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />)}
+                            </div>
+                            <p className="text-gray-600 leading-relaxed">{review.comment}</p>
+                        </div>
+                    </div>
+                ))}
+                 {reviews.length === 0 && (
+                    <p className="text-gray-500 py-8 text-center">Belum ada ulasan untuk produk ini. Jadilah yang pertama!</p>
+                )}
+            </div>
+        </div>
+
+        <div className="mt-24">
+            <Separator className="mb-12"/>
+            {product.brand && <RelatedProducts productId={product.id} type="brand" title={`Produk Lainnya dari ${product.brand.name}`} />}
+        </div>
       </div>
     </div>
   );

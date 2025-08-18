@@ -7,21 +7,19 @@ import { Loader2, Edit, Save } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel as RHFormLabel } from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 
-import { getProvinces, getCities, getDistricts, LocationData } from '../services/shippingService';
-import { getAllSettings, updateSetting, updateMultipleSettings, SettingPayload, AppSetting } from '../services/settingsService';
+import { searchAreas, LocationData } from '../services/shippingService';
+import { getAllSettings, updateMultipleSettings, SettingPayload, AppSetting } from '../services/settingsService';
 
-// --- TIPE DATA ---
-type OriginFormValues = {
-  provinceId: string;
-  cityId: string;
-  districtId: string;
-};
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type WarehouseAddressFormValues = {
     WAREHOUSE_PIC_NAME: string;
@@ -29,7 +27,6 @@ type WarehouseAddressFormValues = {
     WAREHOUSE_FULL_ADDRESS: string;
 };
 
-// --- Komponen Form Alamat Gudang (dengan Mode Edit) ---
 function WarehouseAddressForm({ allSettings, isLoading }: { allSettings: AppSetting[] | undefined, isLoading: boolean }) {
     const queryClient = useQueryClient();
     const [isEditing, setIsEditing] = useState(false);
@@ -40,13 +37,11 @@ function WarehouseAddressForm({ allSettings, isLoading }: { allSettings: AppSett
 
     useEffect(() => {
         if (allSettings) {
-            // Isi form dengan data dari query saat komponen dimuat
             warehouseForm.reset({
                 WAREHOUSE_PIC_NAME: settingsMap.get('WAREHOUSE_PIC_NAME') || '',
                 WAREHOUSE_PHONE: settingsMap.get('WAREHOUSE_PHONE') || '',
                 WAREHOUSE_FULL_ADDRESS: settingsMap.get('WAREHOUSE_FULL_ADDRESS') || '',
             });
-            // Jika belum ada alamat, langsung masuk mode edit
             if (!hasExistingAddress) {
                 setIsEditing(true);
             }
@@ -57,7 +52,7 @@ function WarehouseAddressForm({ allSettings, isLoading }: { allSettings: AppSett
         mutationFn: (payload: SettingPayload[]) => updateMultipleSettings(payload),
         onSuccess: () => {
             toast.success('Alamat gudang berhasil diperbarui!');
-            setIsEditing(false); // Keluar dari mode edit setelah berhasil
+            setIsEditing(false);
             queryClient.invalidateQueries({ queryKey: ['settings'] });
         },
         onError: (err: any) => {
@@ -71,7 +66,6 @@ function WarehouseAddressForm({ allSettings, isLoading }: { allSettings: AppSett
     };
     
     const handleCancel = () => {
-        // Reset form ke nilai awal dari server dan keluar mode edit
         warehouseForm.reset();
         setIsEditing(false);
     }
@@ -98,13 +92,13 @@ function WarehouseAddressForm({ allSettings, isLoading }: { allSettings: AppSett
                     <Form {...warehouseForm}>
                         <form onSubmit={warehouseForm.handleSubmit(onWarehouseSubmit)} className="space-y-4">
                              <FormField control={warehouseForm.control} name="WAREHOUSE_PIC_NAME" render={({ field }) => (
-                                <FormItem><FormLabel>Nama Penanggung Jawab (PIC)</FormLabel><FormControl><Input placeholder="Contoh: Budi Santoso" {...field} /></FormControl></FormItem>
+                                <FormItem><RHFormLabel>Nama Penanggung Jawab (PIC)</RHFormLabel><FormControl><Input placeholder="Contoh: Budi Santoso" {...field} /></FormControl></FormItem>
                             )}/>
                              <FormField control={warehouseForm.control} name="WAREHOUSE_PHONE" render={({ field }) => (
-                                <FormItem><FormLabel>Nomor Telepon PIC</FormLabel><FormControl><Input placeholder="Contoh: 081234567890" {...field} /></FormControl></FormItem>
+                                <FormItem><RHFormLabel>Nomor Telepon PIC</RHFormLabel><FormControl><Input placeholder="Contoh: 081234567890" {...field} /></FormControl></FormItem>
                             )}/>
                              <FormField control={warehouseForm.control} name="WAREHOUSE_FULL_ADDRESS" render={({ field }) => (
-                                <FormItem><FormLabel>Alamat Lengkap Gudang</FormLabel><FormControl><Textarea placeholder="Jl. Raya Vespa No. 123, RT 01/RW 02, Kelurahan Cirimekar..." {...field} /></FormControl></FormItem>
+                                <FormItem><RHFormLabel>Alamat Lengkap Gudang</RHFormLabel><FormControl><Textarea placeholder="Jl. Raya Vespa No. 123, RT 01/RW 02, Kelurahan Cirimekar..." {...field} /></FormControl></FormItem>
                             )}/>
                              <div className="flex justify-end gap-2 pt-4">
                                 {hasExistingAddress && <Button type="button" variant="ghost" onClick={handleCancel}>Batal</Button>}
@@ -127,51 +121,108 @@ function WarehouseAddressForm({ allSettings, isLoading }: { allSettings: AppSett
     );
 }
 
-// --- Komponen Halaman Utama ---
+function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, isLoading }: any) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    {selectedValue ? selectedValue.label : "Pilih lokasi..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" sideOffset={5} align="start">
+                <Command shouldFilter={false}>
+                    <CommandInput
+                        placeholder="Ketik nama kecamatan atau kode pos..."
+                        value={query}
+                        onValueChange={onQueryChange}
+                    />
+                    <CommandEmpty>
+                        {isLoading ? 'Mencari...' : 'Lokasi tidak ditemukan.'}
+                    </CommandEmpty>
+                    <CommandGroup className="max-h-60 overflow-y-auto">
+                        {options?.map((option: LocationData) => (
+                            <CommandItem
+                                key={option.id}
+                                value={option.label}
+                                onSelect={() => {
+                                    onSelect(option);
+                                    setOpen(false);
+                                }}
+                            >
+                                <Check className={cn("mr-2 h-4 w-4", selectedValue?.id === option.id ? "opacity-100" : "opacity-0")} />
+                                <div className="flex-1">
+                                    <p className="text-sm">{option.label}</p>
+                                    <p className="text-xs text-muted-foreground">Kode Pos: {option.postalCode}</p>
+                                </div>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export default function SettingsPage() {
   const queryClient = useQueryClient();
-  const originForm = useForm<OriginFormValues>({
-    defaultValues: { provinceId: '', cityId: '', districtId: '' },
-  });
+  const [originSearchQuery, setOriginSearchQuery] = useState('');
+  const [selectedOrigin, setSelectedOrigin] = useState<LocationData | null>(null);
+  const [originPostalCode, setOriginPostalCode] = useState('');
 
-  const selectedProvince = originForm.watch('provinceId');
-  const selectedCity = originForm.watch('cityId');
-
-  // HANYA SATU QUERY UNTUK SEMUA PENGATURAN
   const { data: allSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: getAllSettings,
     refetchOnWindowFocus: false,
+    onSuccess: (data) => {
+        const currentPostalCode = data.find(s => s.key === 'BITESHIP_ORIGIN_POSTAL_CODE')?.value;
+        if (currentPostalCode) {
+            setOriginPostalCode(currentPostalCode);
+        }
+    }
   });
 
-  const currentOrigin = allSettings?.find(s => s.key === 'RAJAONGKIR_ORIGIN_DISTRICT_ID');
+  const currentOriginLabel = allSettings?.find(s => s.key === 'BITESHIP_ORIGIN_AREA_LABEL')?.value;
 
-  const { data: provinces, isLoading: isLoadingProvinces } = useQuery<LocationData[]>({ queryKey: ['provinces'], queryFn: getProvinces });
-  const { data: cities, isLoading: isLoadingCities } = useQuery<LocationData[]>({ queryKey: ['cities', selectedProvince], queryFn: () => getCities(selectedProvince!), enabled: !!selectedProvince });
-  const { data: districts, isLoading: isLoadingDistricts } = useQuery<LocationData[]>({ queryKey: ['districts', selectedCity], queryFn: () => getDistricts(selectedCity!), enabled: !!selectedCity });
+  const { data: originOptions, isLoading: isLoadingOriginOptions } = useQuery({
+      queryKey: ['shippingAreas', originSearchQuery],
+      queryFn: () => searchAreas(originSearchQuery),
+      enabled: originSearchQuery.length >= 3,
+  });
 
   const originMutation = useMutation({
-    mutationFn: (newDistrictId: string) => updateSetting({
-      key: 'RAJAONGKIR_ORIGIN_DISTRICT_ID',
-      value: newDistrictId,
-      description: 'ID Kecamatan asal pengiriman untuk perhitungan ongkos kirim RajaOngkir.',
-    }),
+    mutationFn: (newOrigin: { id: string; label: string; postalCode: string }) => updateMultipleSettings([
+        { key: 'BITESHIP_ORIGIN_AREA_ID', value: newOrigin.id },
+        { key: 'BITESHIP_ORIGIN_AREA_LABEL', value: newOrigin.label },
+        { key: 'BITESHIP_ORIGIN_POSTAL_CODE', value: newOrigin.postalCode }
+    ]),
     onSuccess: () => {
       toast.success('Lokasi asal pengiriman berhasil diperbarui!');
-      // Invalidate query utama agar semua komponen di halaman ini mendapat data baru
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      setSelectedOrigin(null);
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Gagal menyimpan pengaturan.');
     },
   });
 
-  const onOriginSubmit = (data: OriginFormValues) => {
-    if (data.districtId) {
-      originMutation.mutate(data.districtId);
-    } else {
-      toast.error('Harap lengkapi pilihan sampai tingkat Kecamatan.');
-    }
+  const handleSaveOrigin = () => {
+      if ((selectedOrigin || currentOriginLabel) && originPostalCode) {
+          const areaToSave = selectedOrigin || { id: allSettings?.find(s => s.key === 'BITESHIP_ORIGIN_AREA_ID')?.value, label: currentOriginLabel, postalCode: originPostalCode };
+          if (areaToSave.id && areaToSave.label) {
+            originMutation.mutate({ 
+                id: areaToSave.id, 
+                label: areaToSave.label, 
+                postalCode: originPostalCode 
+            });
+          } else {
+             toast.error('Harap pilih lokasi terlebih dahulu.');
+          }
+      } else {
+          toast.error('Harap pilih lokasi dan isi kode pos asal.');
+      }
   };
 
   return (
@@ -183,52 +234,50 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Asal Pengiriman (RajaOngkir)</CardTitle>
-          <CardDescription>Pilih lokasi gudang untuk perhitungan ongkos kirim.</CardDescription>
+          <CardTitle>Asal Pengiriman (Biteship)</CardTitle>
+          <CardDescription>Pilih lokasi dan masukkan kode pos gudang untuk perhitungan ongkos kirim.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingSettings ? (
             <div className="flex items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat...</div>
           ) : (
             <p className="text-sm text-muted-foreground mb-4">
-              ID Kecamatan saat ini:{' '}
-              <span className="font-mono bg-secondary px-2 py-1 rounded-md">{currentOrigin?.value || 'Belum diatur'}</span>
+              Lokasi saat ini:{' '}
+              <span className="font-mono bg-secondary px-2 py-1 rounded-md">{currentOriginLabel || 'Belum diatur'}</span>
             </p>
           )}
 
-          <Form {...originForm}>
-            <form onSubmit={originForm.handleSubmit(onOriginSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField control={originForm.control} name="provinceId" render={({ field }) => (
-                  <FormItem><FormLabel>Provinsi</FormLabel>
-                    <Select onValueChange={(value) => { field.onChange(value); originForm.setValue('cityId', ''); originForm.setValue('districtId', ''); }} value={field.value || ''} disabled={isLoadingProvinces}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Pilih provinsi..." /></SelectTrigger></FormControl>
-                      <SelectContent>{provinces?.map((p) => (<SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>))}</SelectContent>
-                    </Select>
-                  </FormItem>
-                )}/>
-                <FormField control={originForm.control} name="cityId" render={({ field }) => (
-                  <FormItem><FormLabel>Kota/Kabupaten</FormLabel>
-                    <Select onValueChange={(value) => { field.onChange(value); originForm.setValue('districtId', ''); }} value={field.value || ''} disabled={!selectedProvince || isLoadingCities}>
-                      <FormControl><SelectTrigger><SelectValue placeholder={isLoadingCities ? 'Memuat...' : 'Pilih kota...'} /></SelectTrigger></FormControl>
-                      <SelectContent>{cities?.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))}</SelectContent>
-                    </Select>
-                  </FormItem>
-                )}/>
-                <FormField control={originForm.control} name="districtId" render={({ field }) => (
-                  <FormItem><FormLabel>Kecamatan</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedCity || isLoadingDistricts}>
-                      <FormControl><SelectTrigger><SelectValue placeholder={isLoadingDistricts ? 'Memuat...' : 'Pilih kecamatan...'} /></SelectTrigger></FormControl>
-                      <SelectContent>{districts?.map((d) => (<SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>))}</SelectContent>
-                    </Select>
-                  </FormItem>
-                )}/>
-              </div>
-              <div className="flex justify-end pt-4">
-                <Button type="submit" disabled={originMutation.isPending}><Save className="mr-2 h-4 w-4"/> Simpan Lokasi Origin</Button>
-              </div>
-            </form>
-          </Form>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2 md:col-span-1">
+                    <Label>Cari Kecamatan Asal (ganti jika perlu)</Label>
+                    <AreaCombobox
+                        query={originSearchQuery}
+                        onQueryChange={setOriginSearchQuery}
+                        options={originOptions}
+                        onSelect={(area: LocationData) => {
+                            setSelectedOrigin(area);
+                            setOriginPostalCode(area.postalCode);
+                        }}
+                        selectedValue={selectedOrigin}
+                        isLoading={isLoadingOriginOptions}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label>Kode Pos Asal</Label>
+                    <Input 
+                        placeholder="Pilih area dahulu"
+                        value={originPostalCode}
+                        onChange={(e) => setOriginPostalCode(e.target.value)}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
+                    />
+                </div>
+                 <Button onClick={handleSaveOrigin} disabled={originMutation.isPending}>
+                    <Save className="mr-2 h-4 w-4"/> Simpan Lokasi Asal
+                 </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
       

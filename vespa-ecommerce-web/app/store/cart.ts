@@ -39,7 +39,14 @@ type CartState = {
   toggleItemSelected: (cartItemId: string) => void;
   toggleSelectAll: (forceSelect?: boolean) => void;
   clearClientCart: () => void;
-  createOrder: (shippingAddress: string, shippingCost: number, courier: string) => Promise<any>;
+  // 👇 **PERUBAHAN UTAMA DI SINI** 👇
+  createOrder: (
+    shippingAddress: string, 
+    shippingCost: number, 
+    courier: string, 
+    destinationPostalCode: string, 
+    destinationAreaId: string // Tambah parameter baru
+  ) => Promise<any>;
   getTotalWeight: () => number;
 };
 
@@ -144,8 +151,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         return totalWeight + (itemWeight * item.quantity);
       }, 0);
   },
-
-  createOrder: async (shippingAddress: string, shippingCost: number, courier: string) => {
+  
+  // 👇 **PERUBAHAN UTAMA DI SINI** 👇
+  createOrder: async (shippingAddress, shippingCost, courier, destinationPostalCode, destinationAreaId) => {
     const { cart, selectedItems } = get();
     if (!cart || selectedItems.size === 0) {
       throw new Error("Tidak ada item yang dipilih untuk di-checkout.");
@@ -161,10 +169,11 @@ export const useCartStore = create<CartState>((set, get) => ({
         shippingAddress,
         shippingCost,
         courier,
+        destinationPostalCode,
+        destinationAreaId, // Kirimkan areaId ke backend
       });
       
       set({ isLoading: false });
-      
       return newOrder;
     } catch (error: any) {
       const message = error.response?.data?.message || "Gagal membuat pesanan.";

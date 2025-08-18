@@ -1,10 +1,10 @@
-// file: src/products/products.controller.ts
+// src/products/products.controller.ts
 
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Req } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard'; // <-- Guard utama kita
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
@@ -14,38 +14,46 @@ import { SearchProductDto } from './dto/search-product.dto';
 import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 
 @Controller('products')
-@UseGuards(JwtAuthGuard) // <-- Terapkan guard di level controller
+@UseGuards(JwtAuthGuard)
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @Public() // Endpoint ini tetap bisa diakses publik
+  @Public()
   @Get('search')
   searchProducts(@Query() query: SearchProductDto) {
     return this.productsService.search(query.term || '');
   }
 
   @Post()
-  @UseGuards(RolesGuard) // Tambahan guard untuk role
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.create(createProductDto);
   }
 
-  // ✅ KUNCI PERBAIKAN: Endpoint ini sekarang opsional terautentikasi
   @Public()
   @Get()
   findAll(@Query() queryProductDto: QueryProductDto, @Req() req: AuthenticatedRequest) {
-    // Kirim 'req.user' (yang bisa jadi null) ke service
     return this.productsService.findAll(queryProductDto, req.user);
   }
 
-  // ✅ KUNCI PERBAIKAN: Endpoint ini juga opsional terautentikasi
   @Public()
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    // Kirim 'req.user' (yang bisa jadi null) ke service
     return this.productsService.findOne(id, req.user);
   }
+
+  // 👇 **START OF CHANGES** 👇
+  @Public()
+  @Get(':id/related')
+  findRelated(
+    @Param('id') id: string, 
+    @Query('type') type: 'brand' | 'category',
+    @Req() req: AuthenticatedRequest
+  ) {
+    return this.productsService.findRelated(id, type, req.user);
+  }
+  // 👆 **END OF CHANGES** 👆
 
   @Patch(':id')
   @UseGuards(RolesGuard)
