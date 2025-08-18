@@ -1,7 +1,6 @@
 import Head from 'next/head'; // 1. Import Head
 import type { AppProps } from "next/app";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
