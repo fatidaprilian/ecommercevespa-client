@@ -12,7 +12,7 @@
     ]
   },
   "scripts": {
-    "build": "nest build && tsc prisma/seed.ts --outDir dist/prisma",
+    "build": "nest build && tsc prisma/seed.ts --outDir dist/prisma --target ES2017 --module commonjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
