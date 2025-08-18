@@ -12,15 +12,18 @@ ENV NPM_CONFIG_AUDIT_LEVEL=moderate
 
 COPY package*.json ./
 
-# Security: Run audit and install dependencies (including devDependencies for build)
-RUN npm ci --only=production=false && \
+# ==================== PERBAIKAN UTAMA DI SINI ====================
+# Gunakan flag --ignore-scripts untuk mencegah 'husky' berjalan
+RUN npm ci --ignore-scripts --only=production=false && \
     npm audit --audit-level moderate
+# ===============================================================
 
 COPY . .
 
 # Build the app, then reinstall only production dependencies
+# Tambahkan --ignore-scripts di sini juga untuk konsistensi
 RUN npm run build && \
-    npm ci --only=production && \
+    npm ci --ignore-scripts --only=production && \
     npm cache clean --force
 
 # --- Production stage ---
@@ -58,7 +61,7 @@ ENV PORT=4000
 
 # Resource & Monitoring: Enhanced health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:4000/health || exit 1
+    CMD curl -f http://localhost:4000 || exit 1 # Disederhanakan untuk kompatibilitas
 
 # Security: Add metadata labels
 LABEL maintainer="fatidaprilian" \
