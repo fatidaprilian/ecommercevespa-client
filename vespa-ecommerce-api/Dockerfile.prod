@@ -1,57 +1,41 @@
-# --- Builder stage ---
-# Security: Use a specific version of Node.js on Alpine Linux
+# ===================================
+# Stage 1: Build the application
+# ===================================
 FROM node:22.12.0-alpine AS builder
-
-# Security: Update and upgrade base packages
-RUN apk update && apk upgrade
 
 # Set the working directory
 WORKDIR /app
 
-# Set build-time environment variables
-ENV NODE_ENV=production
-
-# Copy package files
+# Copy package files first to leverage Docker cache
 COPY package*.json ./
 
-# Install dependencies with --ignore-scripts to skip prepare scripts (including husky)
+# Install ALL dependencies (including devDependencies needed for the build)
 RUN npm ci --ignore-scripts
-
-# Install only necessary CLIs for building
-RUN npm install --save-dev @nestjs/cli
 
 # Copy the rest of the application source code
 COPY . .
 
-# Add node_modules/.bin to the PATH for subsequent commands
-ENV PATH=/app/node_modules/.bin:$PATH
-
-# Generate Prisma Client
+# Generate Prisma Client to ensure it's available for the build
 RUN npx prisma generate
 
-# Build the application - try multiple approaches
-RUN if [ -f "node_modules/.bin/nest" ]; then \
-    ./node_modules/.bin/nest build; \
-    elif [ -f "node_modules/@nestjs/cli/bin/nest.js" ]; then \
-    node node_modules/@nestjs/cli/bin/nest.js build; \
-    else \
-    npm run build; \
-    fi
+# Build the application using the now-robust npm script
+RUN npm run build
 
 # After the build is complete, remove devDependencies to lighten the layer
 RUN npm prune --production
 
-# --- Production stage ---
-# Start fresh from a clean Node.js image
+
+# ===================================
+# Stage 2: Create the final production image
+# ===================================
 FROM node:22.12.0-alpine AS production
 
-# Security: Install essential tools and update
+# Install only essential packages for security and functionality
 RUN apk update && apk upgrade && \
     apk add --no-cache dumb-init curl && \
     rm -rf /var/cache/apk/*
 
 # Set environment for production
-ENV NODE_OPTIONS="--max-old-space-size=512"
 ENV NODE_ENV=production
 
 # Security: Create a non-root user for running the application
