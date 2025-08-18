@@ -13,8 +13,11 @@ ENV NODE_ENV=production
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (remove --ignore-scripts to ensure all binaries are installed)
-RUN npm ci
+# Install dependencies with --ignore-scripts to skip prepare scripts (including husky)
+RUN npm ci --ignore-scripts
+
+# Install only necessary CLIs for building
+RUN npm install --save-dev @nestjs/cli
 
 # Copy the rest of the application source code
 COPY . .
