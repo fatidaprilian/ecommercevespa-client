@@ -16,8 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getCategories, getBrands } from '../services/pageService';
-import { getProductById, updateProduct, uploadImage, deleteProduct, Product } from '../services/productService'; // Import Product type
+import { getCategories, getBrands } from '@/services/pageService';
+import { getProductById, updateProduct, uploadImage, deleteProduct, Product } from '@/services/productService'; // Import Product type
 
 const productFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama produk minimal 3 karakter.' }),

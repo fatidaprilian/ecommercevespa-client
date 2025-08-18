@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getUsers, deleteUser, User } from '../services/userService';
+import { getUsers, deleteUser, User } from '@/services/userService';
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('id-ID', {

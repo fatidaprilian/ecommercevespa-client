@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 // --- PERBAIKAN 1: Impor tipe data PaginatedProducts ---
-import { getProducts, PaginatedProducts } from '../services/productService'; 
+import { getProducts, PaginatedProducts } from '@/services/productService'; 
 
 export default function ProductsPage() {
   // --- PERBAIKAN 2: Gunakan tipe PaginatedProducts untuk useQuery ---

@@ -13,8 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createCategory, CategoryData } from '../services/categoryService';
-import { uploadImage } from '../services/productService'; // Kita gunakan ulang service upload dari produk
+import { createCategory, CategoryData } from '@/services/categoryService';
+import { uploadImage } from '@/services/productService'; // Kita gunakan ulang service upload dari produk
 
 // 👇 **START OF CHANGES** 👇
 const categoryFormSchema = z.object({

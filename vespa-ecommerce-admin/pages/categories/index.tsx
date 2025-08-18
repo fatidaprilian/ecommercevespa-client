@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getCategories, deleteCategory, Category } from '../services/categoryService';
+import { getCategories, deleteCategory, Category } from '@/services/categoryService';
 
 export default function CategoriesPage() {
   const queryClient = useQueryClient();

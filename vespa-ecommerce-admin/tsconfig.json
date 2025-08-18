@@ -19,8 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./pages/*"]
-    }
+      "@/*": ["./*"]
+}
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../vespa-ecommerce-web/app/components/ui/accordion.tsx"],
   "exclude": ["node_modules"]

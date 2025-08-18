@@ -6,7 +6,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Loader2, User, Package, MapPin, Truck, CheckCircle, ChevronsRight } from 'lucide-react';
 
-import { getOrderById, Order, OrderItem, OrderStatus } from '../services/orderService';
+import { getOrderById, Order, OrderItem, OrderStatus } from '@/services/orderService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';

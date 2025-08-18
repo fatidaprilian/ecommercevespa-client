@@ -11,7 +11,7 @@ import { ArrowLeft } from 'lucide-react';
 
 // --- PERBAIKAN UTAMA DI SINI ---
 // Impor 'Role' dari service, bukan dari @prisma/client
-import { getUserById, updateUserRole, Role } from '../services/userService';
+import { getUserById, updateUserRole, Role } from '@/services/userService';
 // --------------------------------
 
 import { Button } from '@/components/ui/button';

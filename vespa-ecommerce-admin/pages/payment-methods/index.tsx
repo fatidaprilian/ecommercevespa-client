@@ -15,7 +15,7 @@ import {
   deletePaymentMethod,
   PaymentMethod,
   PaymentMethodData,
-} from '../services/paymentMethodService';
+} from '@/services/paymentMethodService';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

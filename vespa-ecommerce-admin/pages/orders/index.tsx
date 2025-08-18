@@ -17,7 +17,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { getOrders, Order } from '../services/orderService';
+import { getOrders, Order } from '@/services/orderService';
+
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('id-ID', {

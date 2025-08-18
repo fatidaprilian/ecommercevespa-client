@@ -22,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getBrands, deleteBrand } from '../services/brandService';
+import { getBrands, deleteBrand } from '@/services/brandService';
 
 export default function BrandsPage() {
   const queryClient = useQueryClient();

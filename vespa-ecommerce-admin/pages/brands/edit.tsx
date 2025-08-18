@@ -22,8 +22,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getBrandById, updateBrand, deleteBrand, BrandData } from '../services/brandService';
-import { uploadImage } from '../services/productService'; // Re-use from product service
+import { getBrandById, updateBrand, deleteBrand, BrandData } from '@/services/brandService';
+import { uploadImage } from '@/services/productService'; // Re-use from product service
 
 const brandFormSchema = z.object({
   name: z.string().min(2, { message: 'Nama merek minimal 2 karakter.' }),

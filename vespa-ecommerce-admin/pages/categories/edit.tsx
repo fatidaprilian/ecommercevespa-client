@@ -13,8 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getCategoryById, updateCategory, deleteCategory, CategoryData } from '../services/categoryService';
-import { uploadImage } from '../services/productService'; // Re-use from product service
+import { getCategoryById, updateCategory, deleteCategory, CategoryData } from '@/services/categoryService';
+import { uploadImage } from '@/services/productService'; // Re-use from product service
 
 // 👇 **START OF CHANGES** 👇
 const categoryFormSchema = z.object({

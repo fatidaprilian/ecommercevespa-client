@@ -16,9 +16,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { getUserById } from '../services/userService';
-import { getCategories, Category } from '../services/categoryService';
-import { searchProducts, Product } from '../services/productService';
+import { getUserById } from '@/services/userService';
+import { getCategories, Category } from '@/services/categoryService';
+import { searchProducts, Product } from '@/services/productService';
 import api from '@/lib/api';
 
 // ==================================

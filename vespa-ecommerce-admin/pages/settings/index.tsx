@@ -13,8 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 
-import { searchAreas, LocationData } from '../services/shippingService';
-import { getAllSettings, updateMultipleSettings, SettingPayload, AppSetting } from '../services/settingsService';
+import { searchAreas, LocationData } from '@/services/shippingService';
+import { getAllSettings, updateMultipleSettings, SettingPayload, AppSetting } from '@/services/settingsService';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
