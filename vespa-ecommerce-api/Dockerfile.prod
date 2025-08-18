@@ -19,10 +19,16 @@ RUN npm ci --ignore-scripts
 # Copy the rest of the application source code
 COPY . .
 
-# Generate Prisma Client
+# ==================== PERBAIKAN UTAMA DI SINI ====================
+# Tambahkan direktori bin dari node_modules ke PATH.
+# Ini akan memastikan perintah seperti 'nest' dan 'prisma' dapat ditemukan.
+ENV PATH /app/node_modules/.bin:$PATH
+# ===============================================================
+
+# Generate Prisma Client (sekarang menggunakan npx tidak lagi wajib, tapi ini praktik yang aman)
 RUN npx prisma generate
 
-# Build the application
+# Build the application (sekarang perintah 'nest' akan ditemukan)
 RUN npm run build
 
 # After the build is complete, remove devDependencies to lighten the layer
