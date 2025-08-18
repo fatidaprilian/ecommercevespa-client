@@ -13,15 +13,16 @@ ENV NPM_CONFIG_AUDIT_LEVEL=moderate
 COPY package*.json ./
 
 # ==================== PERBAIKAN UTAMA DI SINI ====================
-# Gunakan flag --ignore-scripts untuk mencegah 'husky' berjalan
-RUN npm ci --ignore-scripts --only=production=false && \
+# Hapus flag '--only=production=false' yang tidak valid.
+# 'npm ci' secara default akan menginstal devDependencies, yang kita butuhkan untuk build.
+RUN npm ci --ignore-scripts && \
     npm audit --audit-level moderate
 # ===============================================================
 
 COPY . .
 
 # Build the app, then reinstall only production dependencies
-# Tambahkan --ignore-scripts di sini juga untuk konsistensi
+# Perintah ini sudah benar, karena setelah build kita hanya butuh node_modules untuk produksi.
 RUN npm run build && \
     npm ci --ignore-scripts --only=production && \
     npm cache clean --force
@@ -61,7 +62,7 @@ ENV PORT=4000
 
 # Resource & Monitoring: Enhanced health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:4000 || exit 1 # Disederhanakan untuk kompatibilitas
+    CMD curl -f http://localhost:4000 || exit 1
 
 # Security: Add metadata labels
 LABEL maintainer="fatidaprilian" \
