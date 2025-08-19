@@ -1,9 +1,10 @@
+// file: app/products/[id]/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Check, Minus, Plus, Package, Ruler, Tag, Edit, Info, ShieldCheck, Heart, Star, CreditCard, UserCircle } from 'lucide-react';
+import { ShoppingCart, Check, Minus, Plus, Package, Ruler, Tag, Edit, Info, ShieldCheck, Heart, Star, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -27,10 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 
-// --- Helper untuk format harga ---
-const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 
-// --- Komponen Skeleton Loading (tidak berubah) ---
 const ProductDetailSkeleton = () => (
     <div className="bg-white min-h-screen pt-28 animate-pulse">
         <div className="container mx-auto px-4 py-12">
@@ -58,27 +56,6 @@ const ProductDetailSkeleton = () => (
         </div>
     </div>
 );
-
-// --- Komponen Bintang Rating ---
-const StarRating = ({ rating, totalReviews }: { rating: number; totalReviews: number }) => (
-  <div className="flex items-center gap-3 mb-4">
-      <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map((star) => (
-              <Star
-                  key={star}
-                  className={cn(
-                      "h-5 w-5",
-                      rating >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-                  )}
-              />
-          ))}
-      </div>
-      <a href="#reviews-section" className="text-sm text-gray-600 hover:text-primary transition-colors">
-        ({totalReviews} ulasan)
-      </a>
-  </div>
-);
-
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -126,35 +103,24 @@ export default function ProductDetailPage() {
     );
   };
   
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!isAuthenticated) {
         toast.error("Silakan login untuk melanjutkan pembelian.");
         router.push('/login');
         return;
     }
-    toast('Mengarahkan ke halaman checkout...', { icon: '🚀' });
+    if (product) {
+      await addItem(product.id, quantity);
+      router.push('/checkout');
+    }
   };
 
   if (isLoading) return <ProductDetailSkeleton />;
   if (error) return <div className="text-center py-20 text-red-500">Error: {error.message}</div>;
   if (!product) return <div className="text-center py-20">Produk tidak ditemukan.</div>;
 
-  const isAdmin = user?.role === 'ADMIN';
-  const reviews = [
-    { id: 1, author: 'Budi Santoso', rating: 5, comment: 'Mantap, barang original dan pengiriman super cepat! Vespa saya jadi ngacir lagi.', date: '1 hari yang lalu' },
-    { id: 2, author: 'Citra Lestari', rating: 4, comment: 'Kualitasnya bagus, sesuai deskripsi. Tapi packingnya bisa lebih tebal lagi biar lebih aman.', date: '3 hari yang lalu' },
-  ];
-
   return (
     <div className="bg-white min-h-screen pt-28">
-      {isAdmin && (
-         <div className="bg-yellow-400 text-yellow-900 text-center p-3 font-semibold flex items-center justify-center gap-4 sticky top-[80px] z-40">
-           <Info size={18}/> Anda melihat sebagai Admin.
-           <a href={`http://localhost:3001/products/edit?id=${product.id}`} target="_blank" rel="noopener noreferrer" className="bg-yellow-900 text-white px-4 py-1 rounded-md text-sm hover:bg-black transition-colors flex items-center gap-2">
-               <Edit size={14}/> Edit di Panel Admin
-           </a>
-         </div>
-       )}
       <div className="container mx-auto px-4 py-12">
         <motion.div
           initial={{ opacity: 0 }}
@@ -162,7 +128,6 @@ export default function ProductDetailPage() {
           transition={{ duration: 0.6 }}
           className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start"
         >
-          {/* 👇 [PERBAIKAN] KODE GALERI FOTO YANG KEMARIN HILANG, SAYA KEMBALIKAN LAGI KE SINI 👇 */}
           <div className="sticky top-28">
             <AnimatePresence mode="wait">
               <motion.div
@@ -209,12 +174,9 @@ export default function ProductDetailPage() {
                     <Heart className={cn("h-6 w-6 transition-all duration-300", isInWishlist ? "text-red-500 fill-red-500" : "text-gray-400" )} />
                 </Button>
             </div>
-
-            <StarRating rating={4.5} totalReviews={reviews.length} />
             
             <div className="mb-6">
               <PriceDisplay priceInfo={product.priceInfo} className="text-5xl" originalPriceClassName="text-2xl" />
-              {isAdmin && <p className="text-xs text-red-500 mt-1">Harga asli (sebelum diskon): {formatPrice(product.price)}</p>}
             </div>
 
             <p className="text-gray-600 leading-relaxed mb-8">{product.description || 'Tidak ada deskripsi untuk produk ini.'}</p>
@@ -267,34 +229,10 @@ export default function ProductDetailPage() {
           </div>
         </motion.div>
 
-        <div id="reviews-section" className="mt-20 pt-10">
-            <Separator className="mb-10"/>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6 font-playfair">Ulasan Pelanggan</h2>
-            <div className="space-y-8">
-                {reviews.map(review => (
-                    <div key={review.id} className="flex flex-col sm:flex-row gap-4 border-b pb-6">
-                        <div className="flex-shrink-0 text-center sm:text-left">
-                            <UserCircle className="h-12 w-12 text-gray-300 mx-auto sm:mx-0" />
-                            <p className="mt-2 text-sm font-semibold text-gray-800">{review.author}</p>
-                            <p className="text-xs text-gray-500">{review.date}</p>
-                        </div>
-                        <div className="border-l pl-6">
-                            <div className="flex items-center gap-1 mb-2">
-                                {[1,2,3,4,5].map(star => <Star key={star} className={cn("h-4 w-4", review.rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />)}
-                            </div>
-                            <p className="text-gray-600 leading-relaxed">{review.comment}</p>
-                        </div>
-                    </div>
-                ))}
-                 {reviews.length === 0 && (
-                    <p className="text-gray-500 py-8 text-center">Belum ada ulasan untuk produk ini. Jadilah yang pertama!</p>
-                )}
-            </div>
-        </div>
-
         <div className="mt-24">
             <Separator className="mb-12"/>
             {product.brand && <RelatedProducts productId={product.id} type="brand" title={`Produk Lainnya dari ${product.brand.name}`} />}
+            {product.category && <RelatedProducts productId={product.id} type="category" title={`Anda Mungkin Juga Suka`} />}
         </div>
       </div>
     </div>

@@ -19,19 +19,15 @@ export class ProductsService {
   private async processProductPrice(product: any, user?: UserPayload) {
       if (user && user.role === Role.RESELLER) {
           const fullUser = await this.prisma.user.findUnique({ where: { id: user.id }});
-          
           if (!fullUser) {
               return { 
                   ...product, 
                   priceInfo: { originalPrice: product.price, discountPercentage: 0, finalPrice: product.price, appliedRule: 'NONE' } 
               };
           }
-
           const priceInfo = await this.discountsCalcService.calculatePrice(fullUser, product);
-          
           return { ...product, price: priceInfo.finalPrice, priceInfo };
       }
-      
       return { 
           ...product, 
           priceInfo: { 
@@ -43,38 +39,24 @@ export class ProductsService {
       };
   }
 
-  async search(term: string) {
-    if (!term || term.trim() === '') {
-      return [];
-    }
-    return this.prisma.product.findMany({
-      where: {
-        OR: [
-          { name: { contains: term, mode: 'insensitive' } },
-          { sku: { contains: term, mode: 'insensitive' } },
-        ],
-      },
-      take: 10,
-      include: {
-        images: true,
-        category: { select: { name: true } },
-        brand: { select: { name: true } },
-      },
-    });
-  }
-
   async create(createProductDto: CreateProductDto): Promise<Product> {
-    const { categoryId, brandId, images, ...productData } = createProductDto;
-    const skuPrefix = productData.name.substring(0, 3).toUpperCase();
-    const uniqueTimestamp = Date.now().toString().slice(-6);
-    const generatedSku = `${skuPrefix}-${uniqueTimestamp}`;
+    const { categoryId, brandId, images, sku, ...productData } = createProductDto;
+
+    let finalSku = sku;
+    if (!finalSku) {
+        const namePrefix = productData.name.substring(0, 3).toUpperCase();
+        const timestamp = Date.now().toString().slice(-6);
+        finalSku = `${namePrefix}-${timestamp}`;
+    }
+
     const data: Prisma.ProductCreateInput = {
       ...productData,
-      sku: generatedSku,
+      sku: finalSku,
       category: { connect: { id: categoryId } },
       ...(brandId && { brand: { connect: { id: brandId } } }),
       ...(images && { images: { create: images } }),
     };
+
     return this.prisma.product.create({
       data,
       include: {
@@ -84,7 +66,7 @@ export class ProductsService {
       },
     });
   }
-  
+
   async findAll(queryDto: QueryProductDto, user?: UserPayload) {
     const {
       page = 1,
@@ -100,7 +82,13 @@ export class ProductsService {
 
     const where: Prisma.ProductWhereInput = {};
     if (categoryId) where.categoryId = categoryId;
-    if (brandId) where.brandId = brandId;
+    
+    if (brandId && brandId.length > 0) {
+      where.brandId = {
+        in: brandId,
+      };
+    }
+    
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -153,7 +141,6 @@ export class ProductsService {
     return this.processProductPrice(product, user);
   }
 
-  // 👇 **START OF CHANGES** 👇
   async findRelated(productId: string, type: 'brand' | 'category', user?: UserPayload) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
@@ -185,10 +172,8 @@ export class ProductsService {
       },
     });
     
-    // Process each related product to include priceInfo
     return Promise.all(relatedProducts.map(p => this.processProductPrice(p, user)));
   }
-  // 👆 **END OF CHANGES** 👆
 
   async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
     const { categoryId, brandId, images, ...productData } = updateProductDto;
@@ -226,6 +211,26 @@ export class ProductsService {
     }
     return this.prisma.product.delete({
       where: { id },
+    });
+  }
+
+  async search(term: string) {
+    if (!term || term.trim() === '') {
+      return [];
+    }
+    return this.prisma.product.findMany({
+      where: {
+        OR: [
+          { name: { contains: term, mode: 'insensitive' } },
+          { sku: { contains: term, mode: 'insensitive' } },
+        ],
+      },
+      take: 10,
+      include: {
+        images: true,
+        category: { select: { name: true } },
+        brand: { select: { name: true } },
+      },
     });
   }
 }

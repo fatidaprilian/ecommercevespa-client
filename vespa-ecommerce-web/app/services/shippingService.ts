@@ -2,13 +2,14 @@
 
 import api from '@/lib/api';
 
-// Definisikan tipe data yang lebih ketat, hanya yang dibutuhkan form
+// Tipe data yang dibutuhkan untuk form alamat
 export interface AreaData {
   id: string;
   label: string;
   postalCode: string;
 }
 
+// Tipe data untuk hasil kalkulasi ongkos kirim
 export interface ShippingRate {
   courier_name: string;
   courier_service_name: string;
@@ -16,6 +17,36 @@ export interface ShippingRate {
   estimation: string;
 }
 
+// Tipe data untuk hasil tracking, sesuai respons Biteship
+export interface TrackingHistory {
+  note: string;
+  updated_at: string;
+  status: string;
+}
+
+export interface TrackingDetails {
+  success: boolean;
+  waybill_id: string;
+  courier: {
+    company: string;
+    driver_name?: string;
+    driver_phone?: string;
+  };
+  origin: {
+    contact_name: string;
+    address: string;
+  };
+  destination: {
+    contact_name: string;
+    address: string;
+  };
+  history: TrackingHistory[];
+  status: string;
+}
+
+/**
+ * Mencari data area/kecamatan dari Biteship.
+ */
 export const searchAreas = async (query: string): Promise<AreaData[]> => {
     if (query.length < 3) return [];
     const { data } = await api.get('/shipping/areas', { params: { q: query } });
@@ -52,6 +83,9 @@ export const searchAreas = async (query: string): Promise<AreaData[]> => {
     return Array.from(uniqueAreas.values());
 };
 
+/**
+ * Menghitung estimasi ongkos kirim dari Biteship.
+ */
 export const calculateCost = async (payload: {
   destination_area_id: string;
   destination_postal_code: string;
@@ -62,9 +96,20 @@ export const calculateCost = async (payload: {
       courier_name: rate.company,
       courier_service_name: rate.type,
       price: rate.price,
-      // 👇 **PERBAIKAN UTAMA DI SINI** 👇
-      // Ganti 'estimation_in_day' menjadi 'duration' agar sesuai dengan respons API Biteship
       estimation: rate.duration || 'N/A'
-      // 👆 **END OF CHANGES** 👆
   }));
+};
+
+
+/**
+ * Mengambil detail pelacakan pengiriman dari API backend kita.
+ * @param waybillId - Nomor resi (AWB).
+ * @param courierCode - Kode kurir.
+ */
+export const getTrackingDetails = async (waybillId: string, courierCode: string): Promise<TrackingDetails> => {
+  if (!waybillId || !courierCode) {
+    throw new Error('Nomor resi dan kode kurir dibutuhkan.');
+  }
+  const { data } = await api.get(`/shipping/track/${waybillId}/${courierCode}`);
+  return data;
 };

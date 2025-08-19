@@ -35,7 +35,7 @@ export function RelatedProducts({ productId, type, title }: RelatedProductsProps
   }
 
   if (!products || products.length === 0) {
-    return null; // Jangan tampilkan apa-apa jika tidak ada produk terkait
+    return null;
   }
 
   return (
@@ -47,8 +47,7 @@ export function RelatedProducts({ productId, type, title }: RelatedProductsProps
       className="py-12"
     >
       <h2 className="text-3xl font-bold text-center mb-8 font-playfair">{title}</h2>
-      <div className="relative">
-        <div className="flex overflow-x-auto gap-6 pb-4 -mx-4 px-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {products.map((product, index) => (
             <motion.div
               key={product.id}
@@ -56,12 +55,10 @@ export function RelatedProducts({ productId, type, title }: RelatedProductsProps
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="w-72 flex-shrink-0"
             >
               <ProductCard product={product} />
             </motion.div>
           ))}
-        </div>
       </div>
     </motion.div>
   );

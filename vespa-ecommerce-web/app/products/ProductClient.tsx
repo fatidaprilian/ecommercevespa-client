@@ -1,3 +1,4 @@
+// file: app/products/ProductClient.tsx
 'use client';
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'; // Import RadioGroup
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
 
@@ -43,13 +45,17 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlacehold
     );
 };
 
+// ====================================================================
+// KOMPONEN FILTER POPUP YANG DIROMBAK
+// ====================================================================
 function FilterPopup({ onApplyFilters, currentFilters }: {
-  onApplyFilters: (filters: { categoryId?: string, brandId?: string }) => void;
-  currentFilters: { categoryId?: string, brandId?: string };
+  onApplyFilters: (filters: { categoryId?: string, brandId?: string[] }) => void;
+  currentFilters: { categoryId?: string, brandId?: string[] };
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  
   const [tempCategoryId, setTempCategoryId] = useState(currentFilters.categoryId);
-  const [tempBrandId, setTempBrandId] = useState(currentFilters.brandId);
+  const [tempBrandIds, setTempBrandIds] = useState(new Set(currentFilters.brandId));
   const [searchTerm, setSearchTerm] = useState({ category: '', brand: '' });
 
   const { data: allCategories } = useCategories();
@@ -63,73 +69,97 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
     allBrands?.filter(b => b.name.toLowerCase().includes(searchTerm.brand.toLowerCase())) || [],
   [allBrands, searchTerm.brand]);
 
+  const handleBrandSelect = (brandId: string) => {
+    setTempBrandIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(brandId)) {
+        newSet.delete(brandId);
+      } else {
+        newSet.add(brandId);
+      }
+      return newSet;
+    });
+  };
+
   const handleApply = () => {
-    onApplyFilters({ categoryId: tempCategoryId, brandId: tempBrandId });
+    onApplyFilters({ categoryId: tempCategoryId, brandId: Array.from(tempBrandIds) });
     setIsOpen(false);
   };
 
   const handleReset = () => {
     setTempCategoryId(undefined);
-    setTempBrandId(undefined);
-    onApplyFilters({});
+    setTempBrandIds(new Set());
+    onApplyFilters({ categoryId: undefined, brandId: [] });
     setIsOpen(false);
   };
-
+  
   useEffect(() => {
     if (isOpen) {
       setTempCategoryId(currentFilters.categoryId);
-      setTempBrandId(currentFilters.brandId);
+      setTempBrandIds(new Set(currentFilters.brandId));
     }
   }, [isOpen, currentFilters]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2 relative">
           <SlidersHorizontal className="h-4 w-4" /> Filter
+          {(currentFilters.brandId.length > 0 || currentFilters.categoryId) && (
+            <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+              {currentFilters.brandId.length + (currentFilters.categoryId ? 1 : 0)}
+            </span>
+          )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] grid-rows-[auto_1fr_auto] p-0" style={{maxHeight: '90vh'}}>
-        <DialogHeader className="p-6 pb-4">
+      <DialogContent className="sm:max-w-[700px] grid-rows-[auto_1fr_auto] p-0 max-h-[90vh] flex flex-col">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="text-xl">Filter Produk</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-x-6 px-6 overflow-hidden">
-          <div className="flex flex-col gap-3 overflow-hidden">
-            <Label className="font-semibold">Kategori</Label>
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
-                <Input placeholder="Cari kategori..." className="pl-9" value={searchTerm.category} onChange={e => setSearchTerm(p => ({...p, category: e.target.value}))}/>
+        <div className="grid grid-cols-2 gap-x-6 px-6 py-4 overflow-hidden">
+            {/* Kolom Kategori */}
+            <div className="flex flex-col gap-3 overflow-hidden">
+                <Label className="font-semibold">Kategori</Label>
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
+                    <Input placeholder="Cari kategori..." className="pl-9" value={searchTerm.category} onChange={e => setSearchTerm(p => ({...p, category: e.target.value}))}/>
+                </div>
+                {/* Menggunakan RadioGroup untuk Kategori */}
+                <RadioGroup value={tempCategoryId} onValueChange={setTempCategoryId} className="flex-1 space-y-1 pr-3 -mr-4 overflow-y-auto">
+                    {filteredCategories.map((cat: Category) => (
+                      <div key={cat.id} className="flex items-center space-x-3 p-2 rounded-md has-[[data-state=checked]]:bg-accent hover:bg-accent">
+                          <RadioGroupItem value={cat.id} id={`cat-${cat.id}`} />
+                          <Label htmlFor={`cat-${cat.id}`} className="font-normal cursor-pointer w-full">
+                              {cat.name}
+                          </Label>
+                      </div>
+                    ))}
+                </RadioGroup>
             </div>
-            <div className="flex-1 space-y-1 pr-2 -mr-3 overflow-y-auto">
-              <RadioGroup value={tempCategoryId} onValueChange={setTempCategoryId} className="space-y-1">
-                {filteredCategories.map((cat: Category) => (
-                  <Label key={cat.id} htmlFor={`cat-${cat.id}`} className="flex items-center space-x-3 p-2 rounded-md cursor-pointer hover:bg-accent has-[[data-state=checked]]:bg-accent">
-                    <RadioGroupItem value={cat.id} id={`cat-${cat.id}`} />
-                    <span className="font-normal">{cat.name}</span>
-                  </Label>
-                ))}
-              </RadioGroup>
+            {/* Kolom Merek */}
+            <div className="flex flex-col gap-3 overflow-hidden border-l pl-6">
+                <Label className="font-semibold">Merek</Label>
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
+                    <Input placeholder="Cari merek..." className="pl-9" value={searchTerm.brand} onChange={e => setSearchTerm(p => ({...p, brand: e.target.value}))}/>
+                </div>
+                <div className="flex-1 space-y-1 pr-3 -mr-4 overflow-y-auto">
+                    {filteredBrands.map((brand: Brand) => (
+                      <div key={brand.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent">
+                        <Checkbox 
+                          id={`brand-${brand.id}`} 
+                          checked={tempBrandIds.has(brand.id)}
+                          onCheckedChange={() => handleBrandSelect(brand.id)}
+                        />
+                        <Label htmlFor={`brand-${brand.id}`} className="font-normal cursor-pointer">
+                          {brand.name}
+                        </Label>
+                      </div>
+                    ))}
+                </div>
             </div>
-          </div>
-          <div className="flex flex-col gap-3 overflow-hidden border-l pl-6">
-            <Label className="font-semibold">Merek</Label>
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
-                <Input placeholder="Cari merek..." className="pl-9" value={searchTerm.brand} onChange={e => setSearchTerm(p => ({...p, brand: e.target.value}))}/>
-            </div>
-            <div className="flex-1 space-y-1 pr-2 -mr-3 overflow-y-auto">
-              <RadioGroup value={tempBrandId} onValueChange={setTempBrandId} className="space-y-1">
-                {filteredBrands.map((brand: Brand) => (
-                  <Label key={brand.id} htmlFor={`brand-${brand.id}`} className="flex items-center space-x-3 p-2 rounded-md cursor-pointer hover:bg-accent has-[[data-state=checked]]:bg-accent">
-                    <RadioGroupItem value={brand.id} id={`brand-${brand.id}`} />
-                    <span className="font-normal">{brand.name}</span>
-                  </Label>
-                ))}
-              </RadioGroup>
-            </div>
-          </div>
         </div>
-        <DialogFooter className="p-6 pt-4 mt-2 border-t">
+        <DialogFooter className="p-6 pt-4 mt-auto border-t">
           <Button variant="ghost" onClick={handleReset}>Reset Filter</Button>
           <Button onClick={handleApply}>Terapkan</Button>
         </DialogFooter>
@@ -137,6 +167,7 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
     </Dialog>
   );
 }
+
 
 export default function ProductClient() {
   const router = useRouter();
@@ -151,7 +182,7 @@ export default function ProductClient() {
     sortOrder: (params.get('sortOrder') as 'asc' | 'desc') || 'desc',
     search: params.get('search') || undefined,
     categoryId: params.get('categoryId') || undefined,
-    brandId: params.get('brandId') || undefined,
+    brandId: params.getAll('brandId') || [],
   });
 
   const [queryParams, setQueryParams] = useState<ProductQueryParams>(() => buildQueryParams(searchParams));
@@ -170,8 +201,13 @@ export default function ProductClient() {
 
   const updateUrlParams = (newParams: Partial<ProductQueryParams>) => {
     const currentParams = new URLSearchParams(searchParams.toString());
+    
+    currentParams.delete('brandId');
+
     Object.entries(newParams).forEach(([key, value]) => {
-      if (value) {
+      if (key === 'brandId' && Array.isArray(value)) {
+          value.forEach(id => currentParams.append(key, id));
+      } else if (value) {
         currentParams.set(key, String(value));
       } else {
         currentParams.delete(key);
@@ -180,12 +216,12 @@ export default function ProductClient() {
     router.push(`/products?${currentParams.toString()}`);
   };
 
-  const handleApplyFilters = (filters: { categoryId?: string, brandId?: string }) => {
+  const handleApplyFilters = (filters: { categoryId?: string, brandId?: string[] }) => {
     updateUrlParams({ page: 1, ...filters });
   };
 
   const handleClearFilters = () => {
-    updateUrlParams({ categoryId: undefined, brandId: undefined, search: undefined });
+    updateUrlParams({ categoryId: undefined, brandId: [], search: undefined });
   };
 
   const handleSortChange = (value: string) => {
@@ -197,7 +233,7 @@ export default function ProductClient() {
     updateUrlParams({ page });
   };
 
-  const activeFiltersCount = [queryParams.categoryId, queryParams.brandId, queryParams.search].filter(Boolean).length;
+  const activeFiltersCount = [queryParams.categoryId, ...(queryParams.brandId || []), queryParams.search].filter(Boolean).length;
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -220,7 +256,7 @@ export default function ProductClient() {
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }} className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-md mb-10 sticky top-24 z-10 border">
           <FilterPopup
             onApplyFilters={handleApplyFilters}
-            currentFilters={{ categoryId: queryParams.categoryId, brandId: queryParams.brandId }}
+            currentFilters={{ categoryId: queryParams.categoryId, brandId: queryParams.brandId || [] }}
           />
           <Select onValueChange={handleSortChange} value={`${queryParams.sortBy}-${queryParams.sortOrder}`}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Urutkan" /></SelectTrigger>
@@ -242,7 +278,6 @@ export default function ProductClient() {
               transition={{ duration: 0.3 }}
             >
               {isLoading ? (
-                // 👇 **DI SINI PERBAIKANNYA** 👇
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
                   {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
                 </div>
@@ -253,7 +288,6 @@ export default function ProductClient() {
                   <p className="text-gray-500 mt-2">Gagal memuat data produk. Silakan coba lagi nanti.</p>
                 </div>
               ) : products && products.length > 0 ? (
-                // 👇 **DAN DI SINI JUGA PERBAIKANNYA** 👇
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
                   {products.map((product: Product) => (
                     <ProductCard key={product.id} product={product} />

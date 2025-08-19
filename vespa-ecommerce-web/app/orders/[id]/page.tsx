@@ -1,10 +1,10 @@
 // file: app/orders/[id]/page.tsx
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Wallet } from 'lucide-react';
+import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Wallet, Copy } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -12,18 +12,77 @@ import api from '@/lib/api';
 import { Order } from '@/types';
 import { useAuthStore } from '@/store/auth';
 import { getOrderById } from '@/services/orderService';
-import { getActivePaymentMethods, ManualPaymentMethod } from '@/services/paymentService';
+import { getActivePaymentMethods } from '@/services/paymentService';
 import { Button } from '@/components/ui/button';
+import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
 
 // Helper functions
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
-const copyToClipboard = (text: string, bankName: string) => {
+const copyToClipboard = (text: string, label: string) => {
   navigator.clipboard.writeText(text);
-  toast.success(`Nomor rekening ${bankName} disalin!`);
+  toast.success(`${label} disalin!`);
 };
 
-// Komponen untuk menampilkan detail rekening bank (untuk reseller)
+// Komponen untuk menampilkan detail pelacakan
+function ShipmentTracking({ order }: { order: Order }) {
+    if (!order.shipment?.trackingNumber || !order.courier) {
+        return null;
+    }
+
+    const courierCode = order.courier.split(' - ')[0].trim().toLowerCase();
+    const waybillId = order.shipment.trackingNumber;
+
+    const { data: trackingInfo, isLoading, isError } = useQuery<TrackingDetails>({
+        queryKey: ['tracking', waybillId, courierCode],
+        queryFn: () => getTrackingDetails(waybillId, courierCode),
+        enabled: !!waybillId && !!courierCode,
+    });
+
+    return (
+        <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="font-bold text-xl mb-4 flex items-center gap-2"><Truck size={20}/> Informasi Pengiriman</h2>
+            <div className="mb-4 pb-4 border-b">
+                <p className="text-sm text-gray-500">Kurir</p>
+                <p className="font-semibold text-gray-800">{order.courier}</p>
+            </div>
+            <div className="mb-4 pb-4 border-b">
+                <p className="text-sm text-gray-500">Nomor Resi</p>
+                <div className="flex items-center gap-2">
+                    <p className="font-mono font-semibold text-gray-800">{waybillId}</p>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(waybillId, 'Nomor resi')}>
+                        <Copy className="h-4 w-4"/>
+                    </Button>
+                </div>
+            </div>
+            
+            {isLoading && <div className="flex items-center gap-2 text-gray-500 py-4"><Loader2 className="animate-spin h-4 w-4"/> Memuat riwayat pelacakan...</div>}
+            {isError && <p className="text-red-500 text-sm py-4">Gagal memuat riwayat pelacakan. Pastikan nomor resi sudah benar.</p>}
+
+            {trackingInfo && (
+                <div className="space-y-4">
+                    <h3 className="font-semibold text-md text-gray-700">Riwayat Perjalanan:</h3>
+                    {trackingInfo.history.map((item, index) => (
+                        <div key={index} className="flex items-start gap-4">
+                            <div className="flex flex-col items-center mt-1">
+                                <div className={`h-4 w-4 rounded-full flex items-center justify-center ${index === 0 ? 'bg-primary' : 'bg-gray-300'}`}>
+                                    {index === 0 && <div className="h-2 w-2 bg-white rounded-full"></div>}
+                                </div>
+                                {index < trackingInfo.history.length - 1 && <div className="w-0.5 h-16 bg-gray-300"></div>}
+                            </div>
+                            <div>
+                                <p className={`font-semibold ${index === 0 ? 'text-primary' : 'text-gray-800'}`}>{item.note}</p>
+                                <p className="text-xs text-gray-500">{formatDate(item.updated_at)}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Komponen Pembayaran Manual (Reseller)
 function ManualPaymentDetails() {
     const { data: paymentMethods, isLoading } = useQuery({
         queryKey: ['activePaymentMethods'],
@@ -55,7 +114,7 @@ function ManualPaymentDetails() {
     );
 }
 
-// Komponen untuk form upload (untuk reseller)
+// Komponen Upload Bukti Bayar (Reseller)
 function UploadProofForm({ orderId }: { orderId: string }) {
     const queryClient = useQueryClient();
     const [isUploading, setIsUploading] = useState(false);
@@ -107,12 +166,10 @@ export default function OrderDetailPage() {
   if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin h-8 w-8" /></div>;
   if (isError || !order) return <div className="text-center py-20">Pesanan tidak ditemukan atau terjadi kesalahan.</div>;
   
-  // Variabel kondisional untuk logika tampilan
   const isResellerPending = user?.role === 'RESELLER' && order.status === 'PENDING';
   const isMemberPending = user?.role === 'MEMBER' && order.status === 'PENDING';
   const proofHasBeenUploaded = isResellerPending && order.payment?.proofOfPayment;
   const showUploadForm = isResellerPending && !proofHasBeenUploaded;
-
   const paymentUrl = order.payment?.redirectUrl;
 
   return (
@@ -155,13 +212,11 @@ export default function OrderDetailPage() {
                 ))}
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-                 <h2 className="font-bold text-xl mb-4 flex items-center gap-2"><Truck size={20}/> Detail Pengiriman</h2>
-                 <div className="space-y-2 text-gray-700">
-                    <p><span className="font-semibold">Kurir:</span> {order.courier}</p>
-                    <p><span className="font-semibold">Alamat:</span> {order.shippingAddress}</p>
-                 </div>
-            </div>
+
+            {(order.status === 'SHIPPED' || order.status === 'DELIVERED') && (
+                <ShipmentTracking order={order} />
+            )}
+
           </motion.div>
           
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-1">

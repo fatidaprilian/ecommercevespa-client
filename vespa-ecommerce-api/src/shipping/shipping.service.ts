@@ -3,6 +3,7 @@
 import {
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
@@ -116,8 +117,6 @@ export class ShippingService {
       });
 
       const payload = {
-          // ==================== PERBAIKAN UTAMA DI SINI ====================
-          // Mengganti nama field agar sesuai dengan dokumentasi API Orders Biteship
           origin_contact_name: settingsMap.get('WAREHOUSE_PIC_NAME') || 'Admin VespaParts',
           origin_contact_phone: settingsMap.get('WAREHOUSE_PHONE') || '081234567890',
           origin_address: settingsMap.get('WAREHOUSE_FULL_ADDRESS') || 'Cibinong, Bogor',
@@ -128,7 +127,6 @@ export class ShippingService {
           destination_contact_phone: userAddress?.phone || '080000000000',
           destination_address: order.shippingAddress,
           destination_area_id: order.destinationAreaId,
-          // ===============================================================
 
           courier_company: courierData.company,
           courier_type: courierData.type,
@@ -156,5 +154,32 @@ export class ShippingService {
           console.error('---------------------------------');
           throw new InternalServerErrorException(biteshipError?.error || 'Gagal membuat pesanan pengiriman ke Biteship');
       }
+  }
+
+  /**
+   * Mengambil informasi pelacakan dari Biteship.
+   * @param waybillId - Nomor resi (AWB).
+   * @param courierCode - Kode kurir (e.g., 'jne', 'sicepat').
+   */
+  async getTrackingInfo(waybillId: string, courierCode: string) {
+    try {
+      const response = await axios.get(
+        `${this.biteshipApiUrl}/v1/trackings/${waybillId}/couriers/${courierCode}`,
+        {
+          headers: { Authorization: this.biteshipApiKey },
+        },
+      );
+
+      if (!response.data.success) {
+        throw new NotFoundException(response.data.message || 'Informasi pelacakan tidak ditemukan.');
+      }
+      return response.data;
+    } catch (error) {
+      const biteshipError = error.response?.data;
+      console.error('Biteship Tracking Error:', biteshipError);
+      throw new NotFoundException(
+        biteshipError?.message || `Gagal mengambil data pelacakan untuk resi ${waybillId}.`
+      );
+    }
   }
 }

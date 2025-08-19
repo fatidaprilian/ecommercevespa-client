@@ -22,7 +22,6 @@ export class OrdersService {
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
-    // Ambil semua data dari DTO, termasuk yang baru
     const { items, shippingAddress, shippingCost, courier, destinationPostalCode, destinationAreaId } = createOrderDto;
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -57,7 +56,7 @@ export class OrdersService {
           courier, 
           shippingCost,
           destinationPostalCode,
-          destinationAreaId, // Simpan areaId di sini
+          destinationAreaId,
           status: OrderStatus.PENDING,
           items: { create: orderItemsData },
         },
@@ -101,7 +100,14 @@ export class OrdersService {
         ...(user.role === Role.ADMIN && {
             user: { select: { id: true, name: true, email: true } }
         }),
-        items: { include: { product: { include: { images: true } } } },
+        items: { 
+          include: { 
+            product: { 
+              // ✅ FIX: Tambahkan baris ini untuk mengambil data gambar
+              include: { images: true } 
+            } 
+          } 
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -112,7 +118,14 @@ export class OrdersService {
       where: { id },
       include: {
         user: true,
-        items: { include: { product: true } },
+        items: { 
+          include: { 
+            product: { 
+              // ✅ FIX: Tambahkan baris ini juga di sini
+              include: { images: true } 
+            } 
+          } 
+        },
         payment: true,
         shipment: true,
       },

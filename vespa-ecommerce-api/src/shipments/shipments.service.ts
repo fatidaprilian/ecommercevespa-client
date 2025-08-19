@@ -13,9 +13,6 @@ export class ShipmentsService {
   ) {}
 
   async createShipment(orderId: string, courierCompany: string, courierType: string) {
-    // ==================== PERBAIKAN UTAMA DI SINI ====================
-    // Query ini sekarang mengambil semua field dari Order, termasuk
-    // `destinationAreaId` yang kita butuhkan.
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { 
@@ -23,13 +20,11 @@ export class ShipmentsService {
         items: { include: { product: true } } 
       },
     });
-    // ===============================================================
 
     if (!order) {
       throw new NotFoundException(`Order dengan ID ${orderId} tidak ditemukan.`);
     }
 
-    // Tambahkan validasi untuk memastikan destinationAreaId ada, terutama untuk order lama
     if (!order.destinationAreaId) {
         throw new BadRequestException(`Pesanan ini tidak memiliki data Area ID tujuan yang diperlukan untuk membuat pengiriman.`);
     }
@@ -43,11 +38,19 @@ export class ShipmentsService {
         { company: courierCompany, type: courierType }
     );
 
+    // FIX UTAMA: Pastikan kita menyimpan waybill_id, bukan id order Biteship.
+    // biteship-go terkadang mengembalikan waybill_id, biteship-node mengembalikan tracking_id
+    const trackingNumber = bookingResult.courier.waybill_id || bookingResult.courier.tracking_id;
+
+    if (!trackingNumber) {
+        throw new NotFoundException('Nomor resi (waybill_id) tidak ditemukan dari respons Biteship.');
+    }
+
     const shipment = await this.prisma.shipment.create({
       data: {
         orderId: order.id,
         courier: bookingResult.courier.company.toUpperCase(),
-        trackingNumber: bookingResult.courier.tracking_id,
+        trackingNumber: trackingNumber, // Menyimpan nomor resi yang benar
         shippingCost: bookingResult.price,
       },
     });
@@ -57,7 +60,7 @@ export class ShipmentsService {
       data: { status: OrderStatus.SHIPPED },
     });
 
-    console.log(`Shipment created for order ${orderId} with tracking number ${bookingResult.courier.tracking_id}`);
+    console.log(`Shipment created for order ${orderId} with tracking number ${trackingNumber}`);
     return shipment;
   }
 }

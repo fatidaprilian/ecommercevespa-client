@@ -3,7 +3,7 @@
 
 import { Product } from '../../types';
 import Link from 'next/link';
-import PriceDisplay from './PriceDisplay'; // <-- Import komponen harga
+import PriceDisplay from './PriceDisplay';
 
 type ProductCardProps = {
   product: Product;
@@ -30,7 +30,6 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
           
-          {/* ✅ KUNCI PERBAIKAN: Gunakan komponen PriceDisplay */}
           <div className="mt-2">
             <PriceDisplay priceInfo={product.priceInfo} />
           </div>

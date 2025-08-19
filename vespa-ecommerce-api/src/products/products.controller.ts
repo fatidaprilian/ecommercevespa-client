@@ -43,7 +43,6 @@ export class ProductsController {
     return this.productsService.findOne(id, req.user);
   }
 
-  // 👇 **START OF CHANGES** 👇
   @Public()
   @Get(':id/related')
   findRelated(
@@ -53,7 +52,6 @@ export class ProductsController {
   ) {
     return this.productsService.findRelated(id, type, req.user);
   }
-  // 👆 **END OF CHANGES** 👆
 
   @Patch(':id')
   @UseGuards(RolesGuard)
