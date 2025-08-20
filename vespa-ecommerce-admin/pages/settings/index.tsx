@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Edit, Save } from 'lucide-react';
+import { Loader2, Edit, Save, Check, ChevronsUpDown, XCircle } from 'lucide-react'; // <-- Tambah icon XCircle
+import axios from 'axios';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,9 +19,132 @@ import { getAllSettings, updateMultipleSettings, SettingPayload, AppSetting } fr
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
-import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+// AdminLayout tidak perlu di-import
 
+// ====================================================================
+// KOMPONEN BARU: Tampilan Status Integrasi
+// ====================================================================
+const IntegrationStatusView = ({ isLoading, isConnected, error, onConnectClick }: {
+    isLoading: boolean;
+    isConnected: boolean;
+    error: string | null;
+    onConnectClick: () => void;
+}) => {
+    if (isLoading) {
+        return (
+            <div className="flex items-center text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memeriksa status koneksi...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-start space-y-3">
+                <div className="flex items-center text-destructive">
+                    <XCircle className="mr-2 h-4 w-4" />
+                    <p>Gagal terhubung: {error}</p>
+                </div>
+                <Button onClick={onConnectClick} variant="outline">Coba Lagi</Button>
+            </div>
+        );
+    }
+
+    if (isConnected) {
+        return (
+            <div className="flex items-center space-x-2">
+                <span className="text-green-600 font-semibold">✅ Terhubung</span>
+                <Button variant="outline" disabled>Sudah Terhubung</Button>
+            </div>
+        );
+    }
+
+    return (
+        <Button onClick={onConnectClick}>Hubungkan ke Accurate</Button>
+    );
+};
+
+// ====================================================================
+// KOMPONEN: Logika Integrasi Accurate
+// ====================================================================
+const AccurateIntegration = () => {
+    const [isConnected, setIsConnected] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [authError, setAuthError] = useState<string | null>(null);
+
+    const api = axios.create({
+        baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+    });
+
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                setIsLoading(true);
+                const response = await api.get('/accurate/status');
+                setIsConnected(response.data.isConnected);
+            } catch (error) {
+                console.error('Error fetching Accurate status:', error);
+                setAuthError('Gagal memeriksa status integrasi.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorParam = urlParams.get('error');
+
+        if (errorParam) {
+            setAuthError(decodeURIComponent(errorParam));
+            toast.error(`Gagal terhubung: ${decodeURIComponent(errorParam)}`);
+            window.history.replaceState(null, '', window.location.pathname);
+        } else {
+            checkStatus(); // Hanya cek status jika tidak ada error dari redirect
+        }
+        
+        const successParam = urlParams.get('success');
+        if (successParam) {
+            toast.success('Berhasil terhubung dengan Accurate!');
+            window.history.replaceState(null, '', window.location.pathname);
+            setIsConnected(true); // Langsung update status di UI
+        }
+    }, []);
+
+    const handleConnectClick = async () => {
+        try {
+            const response = await api.get('/accurate/authorize-url');
+            const { url } = response.data;
+            window.location.href = url;
+        } catch (error) {
+            console.error('Failed to get authorization URL:', error);
+            toast.error('Gagal memulai koneksi. Cek konsol untuk detail.');
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Integrasi Accurate ERP</CardTitle>
+                <CardDescription>
+                    Hubungkan toko Anda dengan Accurate untuk sinkronisasi data secara otomatis.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <IntegrationStatusView
+                    isLoading={isLoading}
+                    isConnected={isConnected}
+                    error={authError}
+                    onConnectClick={handleConnectClick}
+                />
+            </CardContent>
+        </Card>
+    );
+};
+
+
+// ====================================================================
+// KOMPONEN YANG SUDAH ADA (TIDAK DIUBAH)
+// ====================================================================
 type WarehouseAddressFormValues = {
     WAREHOUSE_PIC_NAME: string;
     WAREHOUSE_PHONE: string;
@@ -64,7 +188,7 @@ function WarehouseAddressForm({ allSettings, isLoading }: { allSettings: AppSett
         const payload: SettingPayload[] = Object.entries(data).map(([key, value]) => ({ key, value }));
         warehouseMutation.mutate(payload);
     };
-    
+
     const handleCancel = () => {
         warehouseForm.reset();
         setIsEditing(false);
@@ -79,28 +203,28 @@ function WarehouseAddressForm({ allSettings, isLoading }: { allSettings: AppSett
                 </div>
                 {!isEditing && hasExistingAddress && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                        <Edit className="mr-2 h-4 w-4"/> Edit Alamat
+                        <Edit className="mr-2 h-4 w-4" /> Edit Alamat
                     </Button>
                 )}
             </CardHeader>
             <CardContent>
                 {isLoading ? (
-                     <div className="flex items-center text-muted-foreground">
+                    <div className="flex items-center text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat data alamat...
                     </div>
                 ) : isEditing ? (
                     <Form {...warehouseForm}>
                         <form onSubmit={warehouseForm.handleSubmit(onWarehouseSubmit)} className="space-y-4">
-                             <FormField control={warehouseForm.control} name="WAREHOUSE_PIC_NAME" render={({ field }) => (
+                            <FormField control={warehouseForm.control} name="WAREHOUSE_PIC_NAME" render={({ field }) => (
                                 <FormItem><RHFormLabel>Nama Penanggung Jawab (PIC)</RHFormLabel><FormControl><Input placeholder="Contoh: Budi Santoso" {...field} /></FormControl></FormItem>
-                            )}/>
-                             <FormField control={warehouseForm.control} name="WAREHOUSE_PHONE" render={({ field }) => (
+                            )} />
+                            <FormField control={warehouseForm.control} name="WAREHOUSE_PHONE" render={({ field }) => (
                                 <FormItem><RHFormLabel>Nomor Telepon PIC</RHFormLabel><FormControl><Input placeholder="Contoh: 081234567890" {...field} /></FormControl></FormItem>
-                            )}/>
-                             <FormField control={warehouseForm.control} name="WAREHOUSE_FULL_ADDRESS" render={({ field }) => (
+                            )} />
+                            <FormField control={warehouseForm.control} name="WAREHOUSE_FULL_ADDRESS" render={({ field }) => (
                                 <FormItem><RHFormLabel>Alamat Lengkap Gudang</RHFormLabel><FormControl><Textarea placeholder="Jl. Raya Vespa No. 123, RT 01/RW 02, Kelurahan Cirimekar..." {...field} /></FormControl></FormItem>
-                            )}/>
-                             <div className="flex justify-end gap-2 pt-4">
+                            )} />
+                            <div className="flex justify-end gap-2 pt-4">
                                 {hasExistingAddress && <Button type="button" variant="ghost" onClick={handleCancel}>Batal</Button>}
                                 <Button type="submit" disabled={warehouseMutation.isPending}>
                                     {warehouseMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -166,122 +290,129 @@ function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, 
     );
 }
 
+
+// ====================================================================
+// KOMPONEN UTAMA HALAMAN SETTINGS
+// ====================================================================
 export default function SettingsPage() {
-  const queryClient = useQueryClient();
-  const [originSearchQuery, setOriginSearchQuery] = useState('');
-  const [selectedOrigin, setSelectedOrigin] = useState<LocationData | null>(null);
-  const [originPostalCode, setOriginPostalCode] = useState('');
+    const queryClient = useQueryClient();
+    const [originSearchQuery, setOriginSearchQuery] = useState('');
+    const [selectedOrigin, setSelectedOrigin] = useState<LocationData | null>(null);
+    const [originPostalCode, setOriginPostalCode] = useState('');
 
-  const { data: allSettings, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: getAllSettings,
-    refetchOnWindowFocus: false,
-    onSuccess: (data) => {
-        const currentPostalCode = data.find(s => s.key === 'BITESHIP_ORIGIN_POSTAL_CODE')?.value;
-        if (currentPostalCode) {
-            setOriginPostalCode(currentPostalCode);
+    const { data: allSettings, isLoading: isLoadingSettings } = useQuery({
+        queryKey: ['settings'],
+        queryFn: getAllSettings,
+        refetchOnWindowFocus: false,
+        onSuccess: (data) => {
+            const currentPostalCode = data.find(s => s.key === 'BITESHIP_ORIGIN_POSTAL_CODE')?.value;
+            if (currentPostalCode) {
+                setOriginPostalCode(currentPostalCode);
+            }
         }
-    }
-  });
+    });
 
-  const currentOriginLabel = allSettings?.find(s => s.key === 'BITESHIP_ORIGIN_AREA_LABEL')?.value;
+    const currentOriginLabel = allSettings?.find(s => s.key === 'BITESHIP_ORIGIN_AREA_LABEL')?.value;
 
-  const { data: originOptions, isLoading: isLoadingOriginOptions } = useQuery({
-      queryKey: ['shippingAreas', originSearchQuery],
-      queryFn: () => searchAreas(originSearchQuery),
-      enabled: originSearchQuery.length >= 3,
-  });
+    const { data: originOptions, isLoading: isLoadingOriginOptions } = useQuery({
+        queryKey: ['shippingAreas', originSearchQuery],
+        queryFn: () => searchAreas(originSearchQuery),
+        enabled: originSearchQuery.length >= 3,
+    });
 
-  const originMutation = useMutation({
-    mutationFn: (newOrigin: { id: string; label: string; postalCode: string }) => updateMultipleSettings([
-        { key: 'BITESHIP_ORIGIN_AREA_ID', value: newOrigin.id },
-        { key: 'BITESHIP_ORIGIN_AREA_LABEL', value: newOrigin.label },
-        { key: 'BITESHIP_ORIGIN_POSTAL_CODE', value: newOrigin.postalCode }
-    ]),
-    onSuccess: () => {
-      toast.success('Lokasi asal pengiriman berhasil diperbarui!');
-      queryClient.invalidateQueries({ queryKey: ['settings'] });
-      setSelectedOrigin(null);
-    },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Gagal menyimpan pengaturan.');
-    },
-  });
+    const originMutation = useMutation({
+        mutationFn: (newOrigin: { id: string; label: string; postalCode: string }) => updateMultipleSettings([
+            { key: 'BITESHIP_ORIGIN_AREA_ID', value: newOrigin.id },
+            { key: 'BITESHIP_ORIGIN_AREA_LABEL', value: newOrigin.label },
+            { key: 'BITESHIP_ORIGIN_POSTAL_CODE', value: newOrigin.postalCode }
+        ]),
+        onSuccess: () => {
+            toast.success('Lokasi asal pengiriman berhasil diperbarui!');
+            queryClient.invalidateQueries({ queryKey: ['settings'] });
+            setSelectedOrigin(null);
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.message || 'Gagal menyimpan pengaturan.');
+        },
+    });
 
-  const handleSaveOrigin = () => {
-      if ((selectedOrigin || currentOriginLabel) && originPostalCode) {
-          const areaToSave = selectedOrigin || { id: allSettings?.find(s => s.key === 'BITESHIP_ORIGIN_AREA_ID')?.value, label: currentOriginLabel, postalCode: originPostalCode };
-          if (areaToSave.id && areaToSave.label) {
-            originMutation.mutate({ 
-                id: areaToSave.id, 
-                label: areaToSave.label, 
-                postalCode: originPostalCode 
-            });
-          } else {
-             toast.error('Harap pilih lokasi terlebih dahulu.');
-          }
-      } else {
-          toast.error('Harap pilih lokasi dan isi kode pos asal.');
-      }
-  };
+    const handleSaveOrigin = () => {
+        if ((selectedOrigin || currentOriginLabel) && originPostalCode) {
+            const areaToSave = selectedOrigin || { id: allSettings?.find(s => s.key === 'BITESHIP_ORIGIN_AREA_ID')?.value, label: currentOriginLabel, postalCode: originPostalCode };
+            if (areaToSave.id && areaToSave.label) {
+                originMutation.mutate({
+                    id: areaToSave.id,
+                    label: areaToSave.label,
+                    postalCode: originPostalCode
+                });
+            } else {
+                toast.error('Harap pilih lokasi terlebih dahulu.');
+            }
+        } else {
+            toast.error('Harap pilih lokasi dan isi kode pos asal.');
+        }
+    };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Pengaturan Aplikasi</h1>
-        <p className="text-muted-foreground">Kelola konfigurasi global untuk toko online dan panel admin Anda.</p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Asal Pengiriman (Biteship)</CardTitle>
-          <CardDescription>Pilih lokasi dan masukkan kode pos gudang untuk perhitungan ongkos kirim.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingSettings ? (
-            <div className="flex items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat...</div>
-          ) : (
-            <p className="text-sm text-muted-foreground mb-4">
-              Lokasi saat ini:{' '}
-              <span className="font-mono bg-secondary px-2 py-1 rounded-md">{currentOriginLabel || 'Belum diatur'}</span>
-            </p>
-          )}
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <div className="space-y-2 md:col-span-1">
-                    <Label>Cari Kecamatan Asal (ganti jika perlu)</Label>
-                    <AreaCombobox
-                        query={originSearchQuery}
-                        onQueryChange={setOriginSearchQuery}
-                        options={originOptions}
-                        onSelect={(area: LocationData) => {
-                            setSelectedOrigin(area);
-                            setOriginPostalCode(area.postalCode);
-                        }}
-                        selectedValue={selectedOrigin}
-                        isLoading={isLoadingOriginOptions}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label>Kode Pos Asal</Label>
-                    <Input 
-                        placeholder="Pilih area dahulu"
-                        value={originPostalCode}
-                        onChange={(e) => setOriginPostalCode(e.target.value)}
-                        readOnly
-                        className="bg-gray-100 cursor-not-allowed"
-                    />
-                </div>
-                 <Button onClick={handleSaveOrigin} disabled={originMutation.isPending}>
-                    <Save className="mr-2 h-4 w-4"/> Simpan Lokasi Asal
-                 </Button>
+    return (
+        <div className="flex-1 space-y-4 p-8 pt-6">
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold tracking-tight">Pengaturan Aplikasi</h1>
+                <p className="text-muted-foreground">Kelola konfigurasi global untuk toko online dan panel admin Anda.</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <WarehouseAddressForm allSettings={allSettings} isLoading={isLoadingSettings} />
-    </div>
-  );
+
+            <div className="space-y-6">
+                <AccurateIntegration />
+                
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Asal Pengiriman (Biteship)</CardTitle>
+                        <CardDescription>Pilih lokasi dan masukkan kode pos gudang untuk perhitungan ongkos kirim.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingSettings ? (
+                            <div className="flex items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat...</div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Lokasi saat ini:{' '}
+                                <span className="font-mono bg-secondary px-2 py-1 rounded-md">{currentOriginLabel || 'Belum diatur'}</span>
+                            </p>
+                        )}
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <div className="space-y-2 md:col-span-1">
+                                    <Label>Cari Kecamatan Asal (ganti jika perlu)</Label>
+                                    <AreaCombobox
+                                        query={originSearchQuery}
+                                        onQueryChange={setOriginSearchQuery}
+                                        options={originOptions}
+                                        onSelect={(area: LocationData) => {
+                                            setSelectedOrigin(area);
+                                            setOriginPostalCode(area.postalCode);
+                                        }}
+                                        selectedValue={selectedOrigin}
+                                        isLoading={isLoadingOriginOptions}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Kode Pos Asal</Label>
+                                    <Input
+                                        placeholder="Pilih area dahulu"
+                                        value={originPostalCode}
+                                        onChange={(e) => setOriginPostalCode(e.target.value)}
+                                        readOnly
+                                        className="bg-gray-100 cursor-not-allowed"
+                                    />
+                                </div>
+                                <Button onClick={handleSaveOrigin} disabled={originMutation.isPending}>
+                                    <Save className="mr-2 h-4 w-4" /> Simpan Lokasi Asal
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <WarehouseAddressForm allSettings={allSettings} isLoading={isLoadingSettings} />
+            </div>
+        </div>
+    );
 }

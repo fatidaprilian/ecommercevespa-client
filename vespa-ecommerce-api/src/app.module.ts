@@ -1,5 +1,3 @@
-// file: vespa-ecommerce-api/src/app.module.ts
-
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
@@ -17,18 +15,54 @@ import { CartModule } from './cart/cart.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { UploadModule } from './upload/upload.module';
-import { MidtransModule } from './midtrans/midtrans.module'; 
+import { MidtransModule } from './midtrans/midtrans.module';
 import { AddressesModule } from './addresses/addresses.module';
-import { DiscountsModule } from './discounts/discounts.module'; 
+import { DiscountsModule } from './discounts/discounts.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { SettingsModule } from './settings/settings.module';
 import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
-
+import { AccurateModule } from './accurate/accurate.module';
+import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      validate: (config) => {
+        // Daftar semua variabel .env yang PENTING agar aplikasi bisa berjalan normal
+        const requiredKeys = [
+          'DATABASE_URL',
+          'JWT_SECRET',
+          'JWT_EXPIRES_IN',
+          'FRONTEND_URL',
+          'ADMIN_URL',
+          'MIDTRANS_SERVER_KEY',
+          'MIDTRANS_CLIENT_KEY',
+          'CLOUDINARY_CLOUD_NAME',
+          'CLOUDINARY_API_KEY',
+          'CLOUDINARY_API_SECRET',
+          'BITESHIP_API_KEY',
+
+          // TODO: Aktifkan kembali validasi ini setelah mendapatkan API key asli dari Accurate
+          'ACCURATE_CLIENT_ID',
+          'ACCURATE_CLIENT_SECRET',
+          'ACCURATE_REDIRECT_URI',
+          'ACCURATE_AUTH_URL',
+          'ACCURATE_TOKEN_URL',
+          'ACCURATE_API_BASE_URL'
+        ];
+
+        for (const key of requiredKeys) {
+          if (!config[key]) {
+            // Jika ada variabel yang kosong, aplikasi akan berhenti dengan pesan ini
+            throw new Error(`FATAL ERROR: Environment variable "${key}" is missing.`);
+          }
+        }
+        return config;
+      },
+    }),
     PrismaModule,
     DiscountsModule,
     AuthModule,
@@ -41,12 +75,14 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     PaymentsModule,
     ShippingModule,
     UploadModule,
-    MidtransModule, 
+    MidtransModule,
     AddressesModule,
     ShipmentsModule,
     SettingsModule,
     WebhooksModule,
     PaymentMethodsModule,
+    AccurateModule,
+    AccurateSyncModule,
   ],
   controllers: [AppController],
   providers: [

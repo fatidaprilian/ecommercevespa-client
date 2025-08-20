@@ -1,14 +1,18 @@
-// file: vespa-ecommerce-api/src/main.ts
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe } from '@nestjs/common'; // Pastikan ini diimpor
+import { ValidationPipe } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 
 async function bootstrap() {
+  // ===================== KODE DEBUGGING DITAMBAHKAN DI SINI =====================
+  console.log('--- [DEBUG] Memeriksa nilai environment variable dari main.ts ---');
+  console.log('Nilai ACCURATE_CLIENT_ID yang terbaca:', process.env.ACCURATE_CLIENT_ID);
+  console.log('------------------------------------------------------------------');
+  // ============================================================================
+
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
@@ -23,20 +27,16 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // --- PERBAIKAN UTAMA DAN SOLUSI FINAL DI SINI ---
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
-      // OPSI INI PALING PENTING:
       transform: true,
-      // OPSI TAMBAHAN YANG KRUSIAL UNTUK MEMASTIKAN KONVERSI TIPE DATA BERJALAN
       transformOptions: {
         enableImplicitConversion: true,
       },
     }),
   );
-  // ----------------------------------------------------
 
   const frontendUrl = configService.get('FRONTEND_URL');
   const adminUrl = configService.get('ADMIN_URL');
