@@ -1,11 +1,13 @@
-// file: vespa-ecommerce-api/src/accurate-sync/accurate-sync.controller.ts
-
 import { Controller, Post, UseGuards } from '@nestjs/common';
 import { AccurateSyncService } from './accurate-sync.service';
-import { AuthGuard } from '@nestjs/passport'; // Asumsi Anda punya AuthGuard
-import { Roles } from '../auth/decorators/roles.decorator'; // Asumsi Anda punya decorator Roles
+import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard'; 
 import { Role } from '@prisma/client';
 
+/**
+ * Prefix '/api/v1' akan ditambahkan secara otomatis dari main.ts
+ */
 @Controller('accurate-sync')
 export class AccurateSyncController {
     constructor(private readonly accurateSyncService: AccurateSyncService) {}
@@ -15,7 +17,7 @@ export class AccurateSyncController {
      * Hanya bisa diakses oleh ADMIN.
      */
     @Post('products')
-    @UseGuards(AuthGuard('jwt')) // Amankan endpoint ini
+    @UseGuards(AuthGuard('jwt'), RolesGuard) // Terapkan AuthGuard dan RolesGuard
     @Roles(Role.ADMIN)
     async triggerProductSync() {
         return this.accurateSyncService.syncProductsFromAccurate();

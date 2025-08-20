@@ -33,7 +33,6 @@ export class AccurateService {
   }
 
   getAuthorizationUrl(): string {
-    // Tambahkan pengecekan agar tidak error jika config dummy digunakan
     if (!this.clientId) {
         this.logger.warn('Accurate Client ID is not set. Authorization URL cannot be generated.');
         return '/error/accurate-not-configured';

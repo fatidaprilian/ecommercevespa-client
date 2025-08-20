@@ -17,36 +17,47 @@ export class ProductsService {
   ) {}
 
   private async processProductPrice(product: any, user?: UserPayload) {
-      if (user && user.role === Role.RESELLER) {
-          const fullUser = await this.prisma.user.findUnique({ where: { id: user.id }});
-          if (!fullUser) {
-              return { 
-                  ...product, 
-                  priceInfo: { originalPrice: product.price, discountPercentage: 0, finalPrice: product.price, appliedRule: 'NONE' } 
-              };
-          }
-          const priceInfo = await this.discountsCalcService.calculatePrice(fullUser, product);
-          return { ...product, price: priceInfo.finalPrice, priceInfo };
+    if (user && user.role === Role.RESELLER) {
+      const fullUser = await this.prisma.user.findUnique({
+        where: { id: user.id },
+      });
+      if (!fullUser) {
+        return {
+          ...product,
+          priceInfo: {
+            originalPrice: product.price,
+            discountPercentage: 0,
+            finalPrice: product.price,
+            appliedRule: 'NONE',
+          },
+        };
       }
-      return { 
-          ...product, 
-          priceInfo: { 
-              originalPrice: product.price, 
-              discountPercentage: 0, 
-              finalPrice: product.price, 
-              appliedRule: 'NONE' 
-          } 
-      };
+      const priceInfo = await this.discountsCalcService.calculatePrice(
+        fullUser,
+        product,
+      );
+      return { ...product, price: priceInfo.finalPrice, priceInfo };
+    }
+    return {
+      ...product,
+      priceInfo: {
+        originalPrice: product.price,
+        discountPercentage: 0,
+        finalPrice: product.price,
+        appliedRule: 'NONE',
+      },
+    };
   }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
-    const { categoryId, brandId, images, sku, ...productData } = createProductDto;
+    const { categoryId, brandId, images, sku, ...productData } =
+      createProductDto;
 
     let finalSku = sku;
     if (!finalSku) {
-        const namePrefix = productData.name.substring(0, 3).toUpperCase();
-        const timestamp = Date.now().toString().slice(-6);
-        finalSku = `${namePrefix}-${timestamp}`;
+      const namePrefix = productData.name.substring(0, 3).toUpperCase();
+      const timestamp = Date.now().toString().slice(-6);
+      finalSku = `${namePrefix}-${timestamp}`;
     }
 
     const data: Prisma.ProductCreateInput = {
@@ -80,15 +91,19 @@ export class ProductsService {
 
     const skip = (Number(page) - 1) * Number(limit);
 
+    // Logika 'where' ini sudah benar, tidak perlu diubah.
+    // Error terjadi karena 'brandId' yang masuk masih berupa string, bukan array.
     const where: Prisma.ProductWhereInput = {};
-    if (categoryId) where.categoryId = categoryId;
-    
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
     if (brandId && brandId.length > 0) {
       where.brandId = {
         in: brandId,
       };
     }
-    
+
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -112,7 +127,7 @@ export class ProductsService {
     ]);
 
     const processedProducts = await Promise.all(
-      products.map(p => this.processProductPrice(p, user))
+      products.map((p) => this.processProductPrice(p, user)),
     );
 
     return {
@@ -141,7 +156,11 @@ export class ProductsService {
     return this.processProductPrice(product, user);
   }
 
-  async findRelated(productId: string, type: 'brand' | 'category', user?: UserPayload) {
+  async findRelated(
+    productId: string,
+    type: 'brand' | 'category',
+    user?: UserPayload,
+  ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
     });
@@ -171,11 +190,16 @@ export class ProductsService {
         brand: true,
       },
     });
-    
-    return Promise.all(relatedProducts.map(p => this.processProductPrice(p, user)));
+
+    return Promise.all(
+      relatedProducts.map((p) => this.processProductPrice(p, user)),
+    );
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
     const { categoryId, brandId, images, ...productData } = updateProductDto;
     return this.prisma.$transaction(async (tx) => {
       await tx.product.update({
@@ -206,7 +230,7 @@ export class ProductsService {
 
   async remove(id: string): Promise<Product> {
     const product = await this.prisma.product.findUnique({ where: { id } });
-     if (!product) {
+    if (!product) {
       throw new NotFoundException(`Produk dengan ID ${id} tidak ditemukan`);
     }
     return this.prisma.product.delete({

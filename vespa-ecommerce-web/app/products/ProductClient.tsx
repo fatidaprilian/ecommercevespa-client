@@ -1,4 +1,3 @@
-// file: app/products/ProductClient.tsx
 'use client';
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +18,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'; // Import RadioGroup
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
 
@@ -49,12 +47,12 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlacehold
 // KOMPONEN FILTER POPUP YANG DIROMBAK
 // ====================================================================
 function FilterPopup({ onApplyFilters, currentFilters }: {
-  onApplyFilters: (filters: { categoryId?: string, brandId?: string[] }) => void;
-  currentFilters: { categoryId?: string, brandId?: string[] };
+  onApplyFilters: (filters: { categoryId?: string[], brandId?: string[] }) => void;
+  currentFilters: { categoryId?: string[], brandId?: string[] };
 }) {
   const [isOpen, setIsOpen] = useState(false);
   
-  const [tempCategoryId, setTempCategoryId] = useState(currentFilters.categoryId);
+  const [tempCategoryIds, setTempCategoryIds] = useState(new Set(currentFilters.categoryId));
   const [tempBrandIds, setTempBrandIds] = useState(new Set(currentFilters.brandId));
   const [searchTerm, setSearchTerm] = useState({ category: '', brand: '' });
 
@@ -69,6 +67,18 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
     allBrands?.filter(b => b.name.toLowerCase().includes(searchTerm.brand.toLowerCase())) || [],
   [allBrands, searchTerm.brand]);
 
+  const handleCategorySelect = (categoryId: string) => {
+    setTempCategoryIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
+  };
+
   const handleBrandSelect = (brandId: string) => {
     setTempBrandIds(prev => {
       const newSet = new Set(prev);
@@ -82,32 +92,34 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
   };
 
   const handleApply = () => {
-    onApplyFilters({ categoryId: tempCategoryId, brandId: Array.from(tempBrandIds) });
+    onApplyFilters({ categoryId: Array.from(tempCategoryIds), brandId: Array.from(tempBrandIds) });
     setIsOpen(false);
   };
 
   const handleReset = () => {
-    setTempCategoryId(undefined);
+    setTempCategoryIds(new Set());
     setTempBrandIds(new Set());
-    onApplyFilters({ categoryId: undefined, brandId: [] });
+    onApplyFilters({ categoryId: [], brandId: [] });
     setIsOpen(false);
   };
   
   useEffect(() => {
     if (isOpen) {
-      setTempCategoryId(currentFilters.categoryId);
+      setTempCategoryIds(new Set(currentFilters.categoryId));
       setTempBrandIds(new Set(currentFilters.brandId));
     }
   }, [isOpen, currentFilters]);
+
+  const activeFilterCount = currentFilters.categoryId.length + currentFilters.brandId.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2 relative">
           <SlidersHorizontal className="h-4 w-4" /> Filter
-          {(currentFilters.brandId.length > 0 || currentFilters.categoryId) && (
+          {activeFilterCount > 0 && (
             <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-              {currentFilters.brandId.length + (currentFilters.categoryId ? 1 : 0)}
+              {activeFilterCount}
             </span>
           )}
         </Button>
@@ -117,47 +129,50 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
           <DialogTitle className="text-xl">Filter Produk</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-x-6 px-6 py-4 overflow-hidden">
-            {/* Kolom Kategori */}
-            <div className="flex flex-col gap-3 overflow-hidden">
-                <Label className="font-semibold">Kategori</Label>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
-                    <Input placeholder="Cari kategori..." className="pl-9" value={searchTerm.category} onChange={e => setSearchTerm(p => ({...p, category: e.target.value}))}/>
-                </div>
-                {/* Menggunakan RadioGroup untuk Kategori */}
-                <RadioGroup value={tempCategoryId} onValueChange={setTempCategoryId} className="flex-1 space-y-1 pr-3 -mr-4 overflow-y-auto">
-                    {filteredCategories.map((cat: Category) => (
-                      <div key={cat.id} className="flex items-center space-x-3 p-2 rounded-md has-[[data-state=checked]]:bg-accent hover:bg-accent">
-                          <RadioGroupItem value={cat.id} id={`cat-${cat.id}`} />
-                          <Label htmlFor={`cat-${cat.id}`} className="font-normal cursor-pointer w-full">
-                              {cat.name}
-                          </Label>
-                      </div>
-                    ))}
-                </RadioGroup>
+          {/* Kolom Kategori */}
+          <div className="flex flex-col gap-3 overflow-hidden">
+            <Label className="font-semibold">Kategori</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
+              <Input placeholder="Cari kategori..." className="pl-9" value={searchTerm.category} onChange={e => setSearchTerm(p => ({...p, category: e.target.value}))}/>
             </div>
-            {/* Kolom Merek */}
-            <div className="flex flex-col gap-3 overflow-hidden border-l pl-6">
-                <Label className="font-semibold">Merek</Label>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
-                    <Input placeholder="Cari merek..." className="pl-9" value={searchTerm.brand} onChange={e => setSearchTerm(p => ({...p, brand: e.target.value}))}/>
+            <div className="flex-1 space-y-1 pr-3 -mr-4 overflow-y-auto">
+              {filteredCategories.map((cat: Category) => (
+                <div key={cat.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent">
+                  <Checkbox
+                    id={`cat-${cat.id}`}
+                    checked={tempCategoryIds.has(cat.id)}
+                    onCheckedChange={() => handleCategorySelect(cat.id)}
+                  />
+                  <Label htmlFor={`cat-${cat.id}`} className="font-normal cursor-pointer w-full">
+                    {cat.name}
+                  </Label>
                 </div>
-                <div className="flex-1 space-y-1 pr-3 -mr-4 overflow-y-auto">
-                    {filteredBrands.map((brand: Brand) => (
-                      <div key={brand.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent">
-                        <Checkbox 
-                          id={`brand-${brand.id}`} 
-                          checked={tempBrandIds.has(brand.id)}
-                          onCheckedChange={() => handleBrandSelect(brand.id)}
-                        />
-                        <Label htmlFor={`brand-${brand.id}`} className="font-normal cursor-pointer">
-                          {brand.name}
-                        </Label>
-                      </div>
-                    ))}
-                </div>
+              ))}
             </div>
+          </div>
+          {/* Kolom Merek */}
+          <div className="flex flex-col gap-3 overflow-hidden border-l pl-6">
+            <Label className="font-semibold">Merek</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
+              <Input placeholder="Cari merek..." className="pl-9" value={searchTerm.brand} onChange={e => setSearchTerm(p => ({...p, brand: e.target.value}))}/>
+            </div>
+            <div className="flex-1 space-y-1 pr-3 -mr-4 overflow-y-auto">
+              {filteredBrands.map((brand: Brand) => (
+                <div key={brand.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent">
+                  <Checkbox 
+                    id={`brand-${brand.id}`} 
+                    checked={tempBrandIds.has(brand.id)}
+                    onCheckedChange={() => handleBrandSelect(brand.id)}
+                  />
+                  <Label htmlFor={`brand-${brand.id}`} className="font-normal cursor-pointer">
+                    {brand.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         <DialogFooter className="p-6 pt-4 mt-auto border-t">
           <Button variant="ghost" onClick={handleReset}>Reset Filter</Button>
@@ -167,7 +182,6 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
     </Dialog>
   );
 }
-
 
 export default function ProductClient() {
   const router = useRouter();
@@ -181,7 +195,7 @@ export default function ProductClient() {
     sortBy: (params.get('sortBy') as 'price' | 'createdAt') || 'createdAt',
     sortOrder: (params.get('sortOrder') as 'asc' | 'desc') || 'desc',
     search: params.get('search') || undefined,
-    categoryId: params.get('categoryId') || undefined,
+    categoryId: params.getAll('categoryId') || [],
     brandId: params.getAll('brandId') || [],
   });
 
@@ -203,10 +217,11 @@ export default function ProductClient() {
     const currentParams = new URLSearchParams(searchParams.toString());
     
     currentParams.delete('brandId');
+    currentParams.delete('categoryId');
 
     Object.entries(newParams).forEach(([key, value]) => {
-      if (key === 'brandId' && Array.isArray(value)) {
-          value.forEach(id => currentParams.append(key, id));
+      if ((key === 'brandId' || key === 'categoryId') && Array.isArray(value)) {
+        value.forEach(id => currentParams.append(key, id));
       } else if (value) {
         currentParams.set(key, String(value));
       } else {
@@ -216,12 +231,12 @@ export default function ProductClient() {
     router.push(`/products?${currentParams.toString()}`);
   };
 
-  const handleApplyFilters = (filters: { categoryId?: string, brandId?: string[] }) => {
+  const handleApplyFilters = (filters: { categoryId?: string[], brandId?: string[] }) => {
     updateUrlParams({ page: 1, ...filters });
   };
 
   const handleClearFilters = () => {
-    updateUrlParams({ categoryId: undefined, brandId: [], search: undefined });
+    updateUrlParams({ categoryId: [], brandId: [], search: undefined });
   };
 
   const handleSortChange = (value: string) => {
@@ -233,7 +248,7 @@ export default function ProductClient() {
     updateUrlParams({ page });
   };
 
-  const activeFiltersCount = [queryParams.categoryId, ...(queryParams.brandId || []), queryParams.search].filter(Boolean).length;
+  const activeFiltersCount = (queryParams.categoryId?.length || 0) + (queryParams.brandId?.length || 0) + (queryParams.search ? 1 : 0);
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -256,7 +271,7 @@ export default function ProductClient() {
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }} className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-md mb-10 sticky top-24 z-10 border">
           <FilterPopup
             onApplyFilters={handleApplyFilters}
-            currentFilters={{ categoryId: queryParams.categoryId, brandId: queryParams.brandId || [] }}
+            currentFilters={{ categoryId: queryParams.categoryId || [], brandId: queryParams.brandId || [] }}
           />
           <Select onValueChange={handleSortChange} value={`${queryParams.sortBy}-${queryParams.sortOrder}`}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Urutkan" /></SelectTrigger>

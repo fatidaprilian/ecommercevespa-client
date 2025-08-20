@@ -8,6 +8,12 @@ import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Wallet, Co
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
+// --- AWAL PERBAIKAN ---
+// 1. Mengimpor library date-fns untuk penanganan tanggal yang lebih andal
+import { format, isValid } from 'date-fns';
+import { id as localeID } from 'date-fns/locale';
+// --- AKHIR PERBAIKAN ---
+
 import api from '@/lib/api';
 import { Order } from '@/types';
 import { useAuthStore } from '@/store/auth';
@@ -17,7 +23,22 @@ import { Button } from '@/components/ui/button';
 import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
 
 // Helper functions
-const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+// --- AWAL PERBAIKAN ---
+// 2. Mengganti fungsi formatDate dengan versi yang lebih robust menggunakan date-fns
+const formatDate = (dateString?: string) => {
+  if (!dateString) {
+    return 'Tanggal tidak tersedia';
+  }
+  const date = new Date(dateString);
+  // Memeriksa apakah tanggal yang diparsing valid sebelum memformatnya
+  if (!isValid(date)) {
+    return 'Invalid Date'; // Jika tidak valid, kembalikan pesan error
+  }
+  // Format tanggal ke format yang mudah dibaca
+  return format(date, "d MMMM yyyy, HH:mm", { locale: localeID });
+};
+// --- AKHIR PERBAIKAN ---
+
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 const copyToClipboard = (text: string, label: string) => {
   navigator.clipboard.writeText(text);
@@ -182,14 +203,14 @@ export default function OrderDetailPage() {
                     <p className="text-gray-500">Order #{order.orderNumber}</p>
                 </div>
                  <span className={`px-3 py-1.5 text-sm font-bold rounded-full ${
-                      order.status === 'PROCESSING' ? 'bg-orange-100 text-orange-800' :
-                      order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                      order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                      order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {order.status}
-                    </span>
+                     order.status === 'PROCESSING' ? 'bg-orange-100 text-orange-800' :
+                     order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                     order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                     order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                     'bg-gray-100 text-gray-800'
+                   }`}>
+                    {order.status}
+                  </span>
             </div>
         </motion.div>
         
@@ -225,7 +246,7 @@ export default function OrderDetailPage() {
               <div className="flex justify-between"><span>Subtotal:</span> <span>{formatPrice(order.totalAmount)}</span></div>
               <div className="flex justify-between"><span>Ongkos Kirim:</span> <span>{formatPrice(order.shippingCost)}</span></div>
               <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2"><span>Total:</span> <span>{formatPrice(order.totalAmount + order.shippingCost)}</span></div>
-               
+              
                {isMemberPending && paymentUrl && (
                     <div className="border-t pt-4">
                         <a href={paymentUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2">

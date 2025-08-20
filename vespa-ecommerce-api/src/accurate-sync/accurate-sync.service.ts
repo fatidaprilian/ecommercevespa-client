@@ -1,8 +1,9 @@
-// file: vespa-ecommerce-api/src/accurate-sync/accurate-sync.service.ts
-
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { AccurateService } from '../accurate/accurate.service'; // Service OAuth kita
+import { AccurateService } from '../accurate/accurate.service';
 import { Order, OrderItem, Product } from '@prisma/client';
 
 @Injectable()
@@ -12,37 +13,55 @@ export class AccurateSyncService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly accurateService: AccurateService,
+        @InjectQueue('accurate-sync-queue') private readonly syncQueue: Queue, // Inject antrean BullMQ
     ) {}
 
     /**
-     * ALUR 1: Sinkronisasi Produk & Stok (Accurate -> E-commerce)
-     * Mengambil semua item dari Accurate dan melakukan update/insert (upsert) ke database lokal.
+     * CRON JOB (PRODUSER)
+     * Tugasnya hanya menambahkan job ke antrean setiap 30 detik untuk testing.
+     * Ini membuat API Anda tetap responsif.
+     */
+    @Cron(CronExpression.EVERY_30_SECONDS)
+    async scheduleProductSync() {
+        this.logger.log('CRON JOB: Adding "sync-products" job to the queue.');
+        await this.syncQueue.add(
+            'sync-products', // Nama pekerjaan yang akan dikenali oleh processor
+            {}, // Data tambahan (payload) jika diperlukan
+            {
+                removeOnComplete: true, // Hapus job setelah selesai agar antrean bersih
+                removeOnFail: 10,       // Hapus job setelah 10 kali gagal
+            }
+        );
+    }
+
+    /**
+     * ALUR 1: LOGIKA SINKRONISASI PRODUK (WORKER LOGIC)
+     * Fungsi ini sekarang dipanggil oleh 'AccurateSyncProcessor', bukan langsung oleh Cron.
+     * Logikanya tidak berubah sama sekali.
      */
     async syncProductsFromAccurate() {
-        this.logger.log('Starting product synchronization from Accurate...');
+        this.logger.log('WORKER: Starting product synchronization from Accurate...');
         try {
             const apiClient = await this.accurateService.getAccurateApiClient();
             
-            // Mengambil daftar item dari Accurate. Sesuaikan 'fields' jika butuh data lain.
             const response = await apiClient.get('/api/item/list.do', {
                 params: {
                     fields: 'no,name,itemType,unitPrice,quantity',
                 },
             });
 
-            const itemsFromAccurate = response.data.d; // 'd' adalah array data dari Accurate
+            const itemsFromAccurate = response.data.d;
             if (!itemsFromAccurate || itemsFromAccurate.length === 0) {
-                this.logger.warn('No items found in Accurate to sync.');
+                this.logger.warn('WORKER: No items found in Accurate to sync.');
                 return { syncedCount: 0, message: 'Tidak ada produk yang ditemukan di Accurate.' };
             }
 
             let syncedCount = 0;
             for (const item of itemsFromAccurate) {
-                // Kita hanya peduli dengan item bertipe 'INVENTORY'
                 if (item.itemType !== 'INVENTORY') continue;
 
                 await this.prisma.product.upsert({
-                    where: { sku: item.no }, // 'no' di Accurate adalah SKU kita
+                    where: { sku: item.no },
                     update: {
                         name: item.name,
                         price: item.unitPrice,
@@ -53,30 +72,28 @@ export class AccurateSyncService {
                         name: item.name,
                         price: item.unitPrice,
                         stock: item.quantity,
-                        weight: 1000, // Beri nilai default
+                        weight: 1000,
                     },
                 });
                 syncedCount++;
             }
 
-            this.logger.log(`Successfully synced ${syncedCount} products.`);
+            this.logger.log(`WORKER: Successfully synced ${syncedCount} products.`);
             return { syncedCount, message: `Berhasil menyinkronkan ${syncedCount} produk.` };
 
         } catch (error) {
-            this.logger.error('Failed to sync products from Accurate', error.response?.data || error.message);
+            this.logger.error('WORKER: Failed to sync products from Accurate', error.response?.data || error.message);
             throw new Error('Gagal menyinkronkan produk dari Accurate.');
         }
     }
 
     /**
      * ALUR 2: Membuat Faktur Penjualan (E-commerce -> Accurate)
-     * Mengirim data order yang sudah lunas ke Accurate untuk dibuatkan Sales Invoice.
-     * @param orderId ID Order dari database lokal kita
+     * Logika fungsi ini tidak berubah.
      */
     async createSalesInvoice(orderId: string) {
         this.logger.log(`Creating Sales Invoice in Accurate for Order ID: ${orderId}`);
         try {
-            // 1. Ambil data order lengkap dari database kita
             const order = await this.prisma.order.findUnique({
                 where: { id: orderId },
                 include: { items: { include: { product: true } }, user: true },
@@ -86,22 +103,18 @@ export class AccurateSyncService {
                 throw new Error(`Order with ID ${orderId} not found.`);
             }
 
-            // 2. Siapkan data detail item sesuai format Accurate
             const detailItem = order.items.map(item => ({
-                itemNo: item.product.sku, // Cocokkan dengan SKU
+                itemNo: item.product.sku,
                 quantity: item.quantity,
                 unitPrice: item.price,
             }));
 
-            // 3. Siapkan payload (data lengkap) untuk dikirim ke Accurate
             const payload = {
-                customerNo: order.user.email, // Asumsi customer di Accurate diidentifikasi via email
-                transDate: new Date().toISOString().split('T')[0], // Tanggal hari ini format YYYY-MM-DD
+                customerNo: order.user.email,
+                transDate: new Date().toISOString().split('T')[0],
                 detailItem: detailItem,
-                // Tambahkan field lain yang dibutuhkan seperti nomor PO, dll.
             };
 
-            // 4. Kirim data ke API Accurate
             const apiClient = await this.accurateService.getAccurateApiClient();
             const response = await apiClient.post('/api/sales-invoice/save.do', payload);
             
@@ -110,7 +123,6 @@ export class AccurateSyncService {
 
         } catch (error) {
             this.logger.error(`Failed to create Sales Invoice for Order ID: ${orderId}`, error.response?.data || error.message);
-            // Tambahkan logic untuk menandai order ini gagal sinkron agar bisa dicoba lagi
             throw new Error('Gagal membuat faktur penjualan di Accurate.');
         }
     }

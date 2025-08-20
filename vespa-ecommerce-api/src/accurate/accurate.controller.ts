@@ -21,7 +21,7 @@ export class AccurateController {
   @Get('authorize-url')
   getAuthorizeUrl() {
     // --- PERBAIKAN TYPO DI SINI ---
-    const url = this.accurateService.getAuthorizationUrl(); // 'getAuthorizeUrl' diubah menjadi 'getAuthorizationUrl'
+    const url = this.accurateService.getAuthorizationUrl();
     return { url };
   }
 

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -31,21 +33,20 @@ import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
       isGlobal: true,
       cache: true,
       validate: (config) => {
-        // Daftar semua variabel .env yang PENTING agar aplikasi bisa berjalan normal
         const requiredKeys = [
           'DATABASE_URL',
           'JWT_SECRET',
           'JWT_EXPIRES_IN',
           'FRONTEND_URL',
           'ADMIN_URL',
+          'REDIS_HOST',
+          'REDIS_PORT',
           'MIDTRANS_SERVER_KEY',
           'MIDTRANS_CLIENT_KEY',
           'CLOUDINARY_CLOUD_NAME',
           'CLOUDINARY_API_KEY',
           'CLOUDINARY_API_SECRET',
           'BITESHIP_API_KEY',
-
-          // TODO: Aktifkan kembali validasi ini setelah mendapatkan API key asli dari Accurate
           'ACCURATE_CLIENT_ID',
           'ACCURATE_CLIENT_SECRET',
           'ACCURATE_REDIRECT_URI',
@@ -56,13 +57,26 @@ import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
 
         for (const key of requiredKeys) {
           if (!config[key]) {
-            // Jika ada variabel yang kosong, aplikasi akan berhenti dengan pesan ini
             throw new Error(`FATAL ERROR: Environment variable "${key}" is missing.`);
           }
         }
         return config;
       },
     }),
+    
+    ScheduleModule.forRoot(),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST')!, // <-- Tambahkan '!'
+          port: parseInt(configService.get('REDIS_PORT')!, 10), // <-- Tambahkan '!' di sini
+          password: configService.get('REDIS_PASSWORD'), // Password bisa opsional
+        },
+      }),
+    }),
+
     PrismaModule,
     DiscountsModule,
     AuthModule,
@@ -85,8 +99,6 @@ import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
     AccurateSyncModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-  ],
+  providers: [AppService],
 })
 export class AppModule {}
