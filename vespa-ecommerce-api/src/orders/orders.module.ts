@@ -1,16 +1,13 @@
-// file: src/orders/orders.module.ts
-
 import { Module } from '@nestjs/common';
-import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { OrdersController } from './orders.controller';
 import { PaymentsModule } from 'src/payments/payments.module';
-import { DiscountsModule } from 'src/discounts/discounts.module'; // <-- 1. Impor DiscountsModule
+import { DiscountsModule } from 'src/discounts/discounts.module';
+import { AccurateSyncModule } from 'src/accurate-sync/accurate-sync.module'; // <-- 1. IMPORT
 
 @Module({
-  imports: [
-    PaymentsModule,
-    DiscountsModule, // <-- 2. Daftarkan di sini
-  ],
+  // <-- 2. DAFTARKAN DI SINI
+  imports: [PaymentsModule, DiscountsModule, AccurateSyncModule],
   controllers: [OrdersController],
   providers: [OrdersService],
 })

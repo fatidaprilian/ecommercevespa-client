@@ -1,10 +1,10 @@
-// file: vespa-ecommerce-api/src/orders/orders.service.ts
-
 import {
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
   ForbiddenException,
+  Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -12,13 +12,17 @@ import { Prisma, Role, OrderStatus, PaymentStatus } from '@prisma/client';
 import { PaymentsService } from 'src/payments/payments.service';
 import { DiscountsCalculationService } from 'src/discounts/discounts-calculation.service';
 import { UserPayload } from 'src/auth/interfaces/jwt.payload';
+import { AccurateSyncService } from 'src/accurate-sync/accurate-sync.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private prisma: PrismaService,
     private paymentsService: PaymentsService,
     private discountsCalcService: DiscountsCalculationService,
+    private accurateSyncService: AccurateSyncService,
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
@@ -62,10 +66,7 @@ export class OrdersService {
         },
       });
       
-      for (const item of items) {
-        await tx.product.update({ where: { id: item.productId }, data: { stock: { decrement: item.quantity } } });
-      }
-      const cart = await tx.cart.findUnique({ where: { userId } });
+      const cart = await this.prisma.cart.findUnique({ where: { userId } });
       if (cart) {
         const productIdsInOrder = items.map(i => i.productId);
         await tx.cartItem.deleteMany({ where: { cartId: cart.id, productId: { in: productIdsInOrder } } });
@@ -103,7 +104,6 @@ export class OrdersService {
         items: { 
           include: { 
             product: { 
-              // ✅ FIX: Tambahkan baris ini untuk mengambil data gambar
               include: { images: true } 
             } 
           } 
@@ -121,7 +121,6 @@ export class OrdersService {
         items: { 
           include: { 
             product: { 
-              // ✅ FIX: Tambahkan baris ini juga di sini
               include: { images: true } 
             } 
           } 
@@ -136,23 +135,52 @@ export class OrdersService {
     return order;
   }
   
-  async updateStatus(orderId: string, newStatus: OrderStatus) {
+  async updateStatus(orderId: string, newStatus: OrderStatus, manualPaymentMethodId?: string) {
     const order = await this.findOne(orderId);
     if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAID) {
-        throw new ForbiddenException(`Pesanan dengan status ${order.status} tidak dapat diubah.`);
+      throw new ForbiddenException(`Pesanan dengan status ${order.status} tidak dapat diubah.`);
     }
-    if (newStatus !== OrderStatus.PROCESSING) {
-        throw new UnprocessableEntityException('Perubahan status manual hanya diizinkan menjadi "PROCESSING".');
-    }
-    if (order.payment) {
-        await this.prisma.payment.update({
+
+    if (newStatus === OrderStatus.PROCESSING) {
+      await this.prisma.$transaction(async (tx) => {
+        if (order.payment) {
+          await tx.payment.update({
             where: { id: order.payment.id },
             data: { status: PaymentStatus.SUCCESS }
+          });
+        }
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: newStatus },
         });
+      });
+
+      if (order.payment?.method === 'MANUAL_TRANSFER') {
+        if (!manualPaymentMethodId) {
+          throw new BadRequestException('Silakan pilih rekening bank tujuan untuk melanjutkan sinkronisasi.');
+        }
+
+        const manualMethod = await this.prisma.manualPaymentMethod.findUnique({
+          where: { id: manualPaymentMethodId },
+        });
+
+        if (!manualMethod) {
+          this.logger.error(`Metode Pembayaran Manual dengan ID ${manualPaymentMethodId} tidak ditemukan untuk pesanan ${orderId}.`);
+        } else {
+          // ✅ PERBAIKAN: Kirim 2 argumen yang benar (orderId, bankName)
+          this.accurateSyncService.createSalesInvoiceAndReceipt(orderId, manualMethod.accurateBankName)
+            .catch(err => {
+              this.logger.error(`Gagal memicu sinkronisasi Accurate dari update manual untuk pesanan ${orderId}`, err.stack);
+            });
+        }
+      }
+      
+      return this.findOne(orderId);
+    } else {
+      return this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: newStatus },
+      });
     }
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: newStatus },
-    });
   }
 }

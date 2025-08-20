@@ -32,12 +32,12 @@ const SkeletonCard = () => (
     </Card>
 );
 
-const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlaceholderData }: any) => {
+const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlaceholderData, noun = "Halaman" }: any) => {
     if (totalPages <= 1) return null;
     return (
         <div className="flex items-center justify-center gap-4 mt-12">
             <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1 || isPlaceholderData}><ChevronLeft className="h-4 w-4" /></Button>
-            <span className="text-sm font-medium text-gray-700">Halaman {currentPage} dari {totalPages}</span>
+            <span className="text-sm font-medium text-gray-700">{noun} {currentPage} dari {totalPages}</span>
             <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages || isPlaceholderData}><ChevronRight className="h-4 w-4" /></Button>
         </div>
     );
@@ -126,7 +126,6 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
           <DialogTitle className="text-xl">Filter Produk</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-x-6 px-6 py-4 overflow-hidden">
-          {/* Kolom Kategori */}
           <div className="flex flex-col gap-3 overflow-hidden">
             <Label className="font-semibold">Kategori</Label>
             <div className="relative">
@@ -148,7 +147,6 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
               ))}
             </div>
           </div>
-          {/* Kolom Merek */}
           <div className="flex flex-col gap-3 overflow-hidden border-l pl-6">
             <Label className="font-semibold">Merek</Label>
             <div className="relative">
@@ -188,6 +186,9 @@ export default function ProductClient() {
   const { data: allCategories } = useCategories();
   const { data: allBrands } = useBrands();
 
+  const [categoryPage, setCategoryPage] = useState(1);
+  const CATEGORIES_PER_PAGE = 4;
+
   const buildQueryParams = (params: URLSearchParams): ProductQueryParams => ({
     page: Number(params.get('page')) || 1,
     limit: 12,
@@ -200,15 +201,28 @@ export default function ProductClient() {
 
   const [queryParams, setQueryParams] = useState<ProductQueryParams>(() => buildQueryParams(searchParams));
 
+  const activeFiltersCount = (queryParams.categoryId?.length || 0) + (queryParams.brandId?.length || 0) + (queryParams.search ? 1 : 0);
+  const isFilterActive = activeFiltersCount > 0;
+
+  const apiQuery = useMemo(() => {
+    if (isFilterActive) {
+      return queryParams;
+    }
+    return { ...queryParams, limit: 100, page: 1 };
+  }, [queryParams, isFilterActive]);
+
   useEffect(() => {
     setQueryParams(buildQueryParams(searchParams));
-  }, [searchParams]);
+    if (!isFilterActive) {
+      setCategoryPage(1);
+    }
+  }, [searchParams, isFilterActive]);
 
   useEffect(() => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
   }, [isAuthenticated, queryClient]);
 
-  const { data: productsResponse, isLoading, isError, isPlaceholderData } = useProducts(queryParams);
+  const { data: productsResponse, isLoading, isError, isPlaceholderData } = useProducts(apiQuery);
   const products = productsResponse?.data;
   const meta = productsResponse?.meta;
 
@@ -227,11 +241,12 @@ export default function ProductClient() {
         currentParams.delete(key);
       }
     });
+    currentParams.set('page', '1');
     router.push(`/products?${currentParams.toString()}`);
   };
 
   const handleApplyFilters = (filters: { categoryId?: string[], brandId?: string[] }) => {
-    updateUrlParams({ page: 1, ...filters });
+    updateUrlParams({ ...filters });
   };
 
   const handleClearFilters = () => {
@@ -240,7 +255,7 @@ export default function ProductClient() {
 
   const handleSortChange = (value: string) => {
     const [sortBy, sortOrder] = value.split('-');
-    updateUrlParams({ page: 1, sortBy, sortOrder });
+    updateUrlParams({ sortBy, sortOrder });
   };
 
   const handlePageChange = (page: number) => {
@@ -256,8 +271,36 @@ export default function ProductClient() {
     () => allBrands?.filter(b => queryParams.brandId?.includes(b.id)) || [],
     [allBrands, queryParams.brandId]
   );
+  
+  // --- PERUBAHAN LOGIKA PENGURUTAN KATEGORI ---
+  const productsByCategory = useMemo(() => {
+    if (!products) return [];
 
-  const activeFiltersCount = (queryParams.categoryId?.length || 0) + (queryParams.brandId?.length || 0) + (queryParams.search ? 1 : 0);
+    const grouped = products.reduce((acc, product) => {
+      const categoryName = product.category?.name || 'Lainnya';
+      if (!acc[categoryName]) {
+        acc[categoryName] = [];
+      }
+      acc[categoryName].push(product);
+      return acc;
+    }, {} as Record<string, Product[]>);
+
+    // Ubah ke array dan urutkan: "Lainnya" selalu di atas
+    return Object.entries(grouped).sort((a, b) => {
+      if (a[0] === 'Lainnya') return -1;
+      if (b[0] === 'Lainnya') return 1;
+      return a[0].localeCompare(b[0]); // Urutkan sisanya berdasarkan abjad
+    });
+  }, [products]);
+  // --- AKHIR PERUBAHAN ---
+
+  const totalCategoryPages = Math.ceil(productsByCategory.length / CATEGORIES_PER_PAGE);
+  const paginatedCategories = useMemo(() => {
+      const startIndex = (categoryPage - 1) * CATEGORIES_PER_PAGE;
+      const endIndex = startIndex + CATEGORIES_PER_PAGE;
+      return productsByCategory.slice(startIndex, endIndex);
+  }, [productsByCategory, categoryPage]);
+
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -268,34 +311,17 @@ export default function ProductClient() {
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">Temukan semua suku cadang original dan performa tinggi untuk menyempurnakan Vespa Anda.</p>
         </motion.div>
         
-        {activeFiltersCount > 0 && (
-            <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-md border"
-            >
+        {isFilterActive && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-md border">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p className="text-sm text-gray-600 mb-1">Menampilkan hasil untuk:</p>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                            {selectedCategories.length > 0 && (
-                                <p className="text-sm font-medium text-gray-800">
-                                    <strong>Kategori:</strong> {selectedCategories.map(c => c.name).join(', ')}
-                                </p>
-                            )}
-                            {selectedBrands.length > 0 && (
-                                <p className="text-sm font-medium text-gray-800">
-                                    <strong>Merek:</strong> {selectedBrands.map(b => b.name).join(', ')}
-                                </p>
-                            )}
+                            {selectedCategories.length > 0 && ( <p className="text-sm font-medium text-gray-800"> <strong>Kategori:</strong> {selectedCategories.map(c => c.name).join(', ')} </p> )}
+                            {selectedBrands.length > 0 && ( <p className="text-sm font-medium text-gray-800"> <strong>Merek:</strong> {selectedBrands.map(b => b.name).join(', ')} </p> )}
                         </div>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleClearFilters}
-                        className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 mt-2 sm:mt-0"
-                    >
+                    <Button variant="ghost" size="sm" onClick={handleClearFilters} className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 mt-2 sm:mt-0">
                         <X className="h-4 w-4" /> Hapus Semua
                     </Button>
                 </div>
@@ -303,10 +329,7 @@ export default function ProductClient() {
         )}
 
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }} className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-md mb-10 sticky top-24 z-10 border">
-          <FilterPopup
-            onApplyFilters={handleApplyFilters}
-            currentFilters={{ categoryId: queryParams.categoryId || [], brandId: queryParams.brandId || [] }}
-          />
+          <FilterPopup onApplyFilters={handleApplyFilters} currentFilters={{ categoryId: queryParams.categoryId || [], brandId: queryParams.brandId || [] }} />
           <Select onValueChange={handleSortChange} value={`${queryParams.sortBy}-${queryParams.sortOrder}`}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Urutkan" /></SelectTrigger>
             <SelectContent>
@@ -319,13 +342,7 @@ export default function ProductClient() {
 
         <div>
           <AnimatePresence mode="wait">
-            <motion.div
-              key={JSON.stringify(queryParams)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
+            <motion.div key={JSON.stringify(queryParams) + categoryPage} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               {isLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -337,11 +354,26 @@ export default function ProductClient() {
                   <p className="text-gray-500 mt-2">Gagal memuat data produk. Silakan coba lagi nanti.</p>
                 </div>
               ) : products && products.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {products.map((product: Product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
+                isFilterActive ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {products.map((product: Product) => ( <ProductCard key={product.id} product={product} /> ))}
+                  </div>
+                ) : (
+                  <div className="space-y-16">
+                    {paginatedCategories.map(([categoryName, categoryProducts]) => (
+                      <div key={categoryName}>
+                        <h2 className="text-3xl font-bold text-[#1E2022] mb-6 font-playfair border-b pb-3">{categoryName}</h2>
+                        <div className="flex overflow-x-auto gap-6 pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                          {categoryProducts.map((product: Product) => (
+                            <div key={product.id} className="flex-none w-[280px]">
+                              <ProductCard product={product} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
               ) : (
                 <div className="text-center py-20 bg-white rounded-lg shadow-md">
                   <p className="text-gray-500 text-lg font-semibold">Produk Tidak Ditemukan</p>
@@ -352,12 +384,23 @@ export default function ProductClient() {
           </AnimatePresence>
         </div>
 
-        <PaginationControls
-          currentPage={meta?.page || 1}
-          totalPages={meta?.lastPage || 1}
-          onPageChange={handlePageChange}
-          isPlaceholderData={isPlaceholderData}
-        />
+        {isFilterActive && meta && meta.lastPage > 1 ? (
+            <PaginationControls
+              currentPage={meta?.page || 1}
+              totalPages={meta?.lastPage || 1}
+              onPageChange={handlePageChange}
+              isPlaceholderData={isPlaceholderData}
+            />
+        ) : !isFilterActive && totalCategoryPages > 1 ? (
+            <PaginationControls
+                currentPage={categoryPage}
+                totalPages={totalCategoryPages}
+                onPageChange={setCategoryPage}
+                isPlaceholderData={isLoading}
+                noun="Kategori"
+            />
+        ) : null}
+        
       </div>
     </div>
   );

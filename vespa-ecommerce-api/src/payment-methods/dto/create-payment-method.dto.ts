@@ -1,6 +1,4 @@
-// file: vespa-ecommerce-api/src/payment-methods/dto/create-payment-method.dto.ts
-
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsUrl, IsInt } from 'class-validator';
 
 export class CreatePaymentMethodDto {
   @IsString()
@@ -19,7 +17,12 @@ export class CreatePaymentMethodDto {
   @IsOptional()
   logoUrl?: string;
 
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
+  @IsString()
+  @IsNotEmpty()
+  accurateBankName: string;
+
+  // ✅ TAMBAHKAN
+  @IsInt()
+  @IsNotEmpty()
+  accurateBankId: number;
 }

@@ -1,20 +1,19 @@
-// file: vespa-ecommerce-api/src/payments/payments.service.ts
-
-import { Injectable, Logger } from '@nestjs/common'; // Import Logger for better logging
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MidtransService } from 'src/midtrans/midtrans.service';
 import { PaymentStatus, OrderStatus, Order, User, Prisma } from '@prisma/client';
 import { ShipmentsService } from 'src/shipments/shipments.service';
+import { AccurateSyncService } from 'src/accurate-sync/accurate-sync.service';
 
 @Injectable()
 export class PaymentsService {
-  // --- Create a logger instance for better debugging ---
   private readonly logger = new Logger(PaymentsService.name);
 
   constructor(
     private prisma: PrismaService,
     private midtransService: MidtransService,
     private shipmentsService: ShipmentsService,
+    private accurateSyncService: AccurateSyncService,
   ) {}
 
   async createPaymentForOrder(
@@ -24,22 +23,19 @@ export class PaymentsService {
     prismaClient: Prisma.TransactionClient = this.prisma,
   ) {
     const totalAmount = order.totalAmount + shippingCost;
-    // Panggil Midtrans untuk membuat transaksi
     const midtransTransaction = await this.midtransService.createSnapTransaction(order, user, shippingCost);
 
-    // Simpan semua informasi penting ke database
     await prismaClient.payment.create({
       data: {
         order: { connect: { id: order.id } },
         amount: totalAmount,
         method: 'MIDTRANS_SNAP',
         status: PaymentStatus.PENDING,
-        transactionId: midtransTransaction.token, // Simpan token-nya
-        redirectUrl: midtransTransaction.redirect_url, // <-- SIMPAN URL PEMBAYARAN DI SINI
+        transactionId: midtransTransaction.token,
+        redirectUrl: midtransTransaction.redirect_url,
       },
     });
     
-    // Kembalikan redirect_url agar frontend bisa langsung mengarahkan pengguna
     return { redirect_url: midtransTransaction.redirect_url };
   }
 
@@ -47,7 +43,6 @@ export class PaymentsService {
     const orderId = payload.order_id;
     const transactionStatus = payload.transaction_status;
     
-    // --- 1. Fetch the current order from the database ---
     const currentOrder = await this.prisma.order.findUnique({
         where: { id: orderId },
     });
@@ -62,7 +57,33 @@ export class PaymentsService {
     
     if (transactionStatus == 'capture' || transactionStatus == 'settlement') {
         paymentStatus = PaymentStatus.SUCCESS;
-        orderStatus = OrderStatus.PROCESSING; // Otomatis ke "Processing"
+        orderStatus = OrderStatus.PROCESSING;
+
+        let paymentKey = payload.payment_type;
+        
+        if (payload.payment_type === 'bank_transfer' && payload.va_numbers?.length > 0) {
+            const bank = payload.va_numbers[0].bank;
+            paymentKey = `${bank}_va`;
+        } else if (payload.payment_type === 'cstore') {
+            paymentKey = `cstore_${payload.store}`;
+        } else if (payload.payment_type === 'qris') {
+            paymentKey = 'qris'; 
+        }
+
+        const mapping = await this.prisma.paymentMethodMapping.findUnique({
+            where: { paymentMethodKey: paymentKey },
+        });
+
+        if (!mapping) {
+            this.logger.error(`Payment mapping for Midtrans key "${paymentKey}" not found. Cannot sync order ${orderId} to Accurate.`);
+        } else {
+            // ✅ PERBAIKAN: Kirim 2 argumen yang benar (orderId, bankName)
+            this.accurateSyncService.createSalesInvoiceAndReceipt(orderId, mapping.accurateBankName)
+                .catch(err => {
+                    this.logger.error(`Failed to create Accurate documents for order ${orderId}`, err.stack);
+                });
+        }
+
     } else if (transactionStatus == 'pending') {
         paymentStatus = PaymentStatus.PENDING;
         orderStatus = OrderStatus.PENDING;
@@ -70,20 +91,17 @@ export class PaymentsService {
         paymentStatus = PaymentStatus.FAILED;
         orderStatus = OrderStatus.CANCELLED;
     } else {
-        this.logger.log(`Callback for order ${orderId} with status ${transactionStatus} ignored.`);
+        this.logger.log(`Callback untuk pesanan ${orderId} dengan status ${transactionStatus} diabaikan.`);
         return { message: `Callback for order ${orderId} with status ${transactionStatus} ignored.` };
     }
-
-    // --- 2. Implement state transition logic to prevent downgrades ---
-    // An order that is already PROCESSING or further along should not be reverted to PENDING.
+    
     if (currentOrder.status !== OrderStatus.PENDING && orderStatus === OrderStatus.PENDING) {
-        this.logger.log(`Ignoring pending notification for order ${orderId} because its current status is '${currentOrder.status}'.`);
+        this.logger.log(`Mengabaikan notifikasi 'pending' untuk pesanan ${orderId} karena status saat ini adalah '${currentOrder.status}'.`);
         return { message: 'Status update ignored to prevent downgrade.' };
     }
     
-    // An order that's already settled should not be changed by any other status update.
     if (currentOrder.status === OrderStatus.PROCESSING || currentOrder.status === OrderStatus.SHIPPED || currentOrder.status === OrderStatus.DELIVERED) {
-       this.logger.log(`Ignoring notification for order ${orderId} as it's already processed.`);
+       this.logger.log(`Mengabaikan notifikasi untuk pesanan ${orderId} karena sudah diproses.`);
        return { message: 'Order already processed, update ignored.' };
     }
 
@@ -99,11 +117,11 @@ export class PaymentsService {
         });
       });
 
-      this.logger.log(`Order ${orderId} status updated automatically to ${orderStatus}`);
+      this.logger.log(`Status pesanan ${orderId} berhasil diperbarui menjadi ${orderStatus}`);
       return { message: 'Callback received and processed.' };
 
     } catch (error) {
-        this.logger.error(`Failed to update order ${orderId}:`, error);
+        this.logger.error(`Gagal memperbarui pesanan ${orderId}:`, error);
         throw new Error('Failed to process callback.');
     }
   }

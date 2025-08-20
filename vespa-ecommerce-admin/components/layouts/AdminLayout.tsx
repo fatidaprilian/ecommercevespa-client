@@ -1,10 +1,8 @@
-// file: pages/components/layouts/AdminLayout.tsx
-
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-// --- 1. TAMBAHKAN IKON BARU ---
-import { Home, Package, ShoppingCart, Users, CircleUser, Settings, Landmark } from 'lucide-react';
+// --- 1. TAMBAHKAN IKON BARU (Link2) ---
+import { Home, Package, ShoppingCart, Users, CircleUser, Settings, Landmark, Link2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -36,8 +34,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { href: '/brands', label: 'Merek', icon: Package },
     { href: '/orders', label: 'Pesanan', icon: ShoppingCart },
     { href: '/users', label: 'Pengguna', icon: Users },
-    // --- 2. TAMBAHKAN ITEM MENU BARU DI SINI ---
     { href: '/payment-methods', label: 'Metode Pembayaran', icon: Landmark },
+    // --- 2. TAMBAHKAN ITEM MENU BARU DI SINI ---
+    { href: '/payment-mappings', label: 'Pemetaan Pembayaran', icon: Link2 },
     { href: '/settings', label: 'Pengaturan', icon: Settings },
   ];
 

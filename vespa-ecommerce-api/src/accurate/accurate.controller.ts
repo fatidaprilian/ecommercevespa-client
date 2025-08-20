@@ -1,3 +1,5 @@
+// src/accurate/accurate.controller.ts
+
 import { Controller, Get, Post, Body, Query, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AccurateService } from './accurate.service';
@@ -8,8 +10,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Role } from '@prisma/client';
 
 /**
- * Karena ada global prefix 'api/v1' di main.ts,
- * controller ini akan menangani route '/api/v1/accurate'.
+ * Because of the global prefix 'api/v1' in main.ts,
+ * this controller will handle the '/api/v1/accurate' route.
  */
 @Controller('accurate')
 export class AccurateController {
@@ -23,12 +25,16 @@ export class AccurateController {
   }
 
   @Get('authorize-url')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
   getAuthorizationUrl() {
     const url = this.accurateService.getAuthorizationUrl();
     return { url };
   }
 
   @Get('status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
   async getStatus() {
     return this.accurateService.isConnected();
   }
@@ -62,5 +68,15 @@ export class AccurateController {
   @Roles(Role.ADMIN)
   async openDatabase(@Body('id') id: string) {
       return this.accurateService.openDatabase(id);
+  }
+
+  /**
+   * ✅ NEW ENDPOINT: Endpoint for the frontend to fetch the list of bank accounts.
+   */
+  @Get('bank-accounts')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  async getBankAccounts() {
+      return this.accurateService.getBankAccounts();
   }
 }

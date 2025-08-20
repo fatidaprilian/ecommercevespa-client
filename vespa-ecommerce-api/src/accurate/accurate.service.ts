@@ -1,3 +1,5 @@
+// src/accurate/accurate.service.ts
+
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -31,7 +33,7 @@ export class AccurateService {
             client_id: this.clientId,
             response_type: 'code',
             redirect_uri: this.redirectUri,
-            scope: 'item_view sales_invoice_view item_save sales_invoice_save', // Added _save scopes
+            scope: 'item_view item_save sales_invoice_view sales_invoice_save customer_view customer_save branch_view sales_receipt_save glaccount_view', // Added glaccount_view scope
         });
         return `${this.authUrl}?${params.toString()}`;
     }
@@ -137,22 +139,46 @@ export class AccurateService {
         const token = await this.getValidToken();
         if (!token) throw new Error('Not authenticated with Accurate.');
 
-        const response = await axios.get('https://account.accurate.id/api/open-db.do', {
+        const openDbResponse = await axios.get('https://account.accurate.id/api/open-db.do', {
             params: { id: dbId },
             headers: { Authorization: `Bearer ${token.accessToken}` },
         });
 
-        const { host, session } = response.data;
+        const { host, session } = openDbResponse.data;
         if (!host || !session) {
             throw new InternalServerErrorException('Gagal mendapatkan host atau session dari Accurate.');
         }
+        this.logger.log(`Successfully opened database. Host: ${host}`);
 
-        await this.prisma.accurateOAuth.updateMany({
-            data: { dbId, dbHost: host, dbSession: session },
+        const branchApiClient = axios.create({
+            baseURL: host,
+            headers: {
+                'Authorization': `Bearer ${token.accessToken}`,
+                'X-Session-ID': session,
+            },
+        });
+        
+        const branchResponse = await branchApiClient.get('/accurate/api/branch/list.do', {
+            params: { fields: 'name' }
         });
 
-        this.logger.log(`Successfully opened database. Host: ${host}`);
-        return { message: 'Database selected successfully' };
+        if (!branchResponse.data.d || branchResponse.data.d.length === 0) {
+            throw new InternalServerErrorException('Tidak ada cabang yang ditemukan di database Accurate ini.');
+        }
+
+        const firstBranchName = branchResponse.data.d[0].name;
+        this.logger.log(`Default branch found: ${firstBranchName}`);
+
+        await this.prisma.accurateOAuth.updateMany({
+            data: { 
+                dbId, 
+                dbHost: host, 
+                dbSession: session,
+                branchName: firstBranchName
+            },
+        });
+
+        return { message: 'Database selected and default branch stored successfully' };
     }
 
     public async getAccurateApiClient() {
@@ -173,5 +199,35 @@ export class AccurateService {
                 'X-Session-ID': dbInfo.dbSession,
             },
         });
+    }
+
+    /**
+     * ✅ NEW: Fetches the list of Cash & Bank accounts from Accurate.
+     */
+    async getBankAccounts() {
+        this.logger.log('Fetching Cash & Bank GL Accounts from Accurate...');
+        try {
+            const apiClient = await this.getAccurateApiClient();
+            const response = await apiClient.get('/accurate/api/glaccount/list.do', {
+                params: {
+                    // Filter by account type 'Cash & Bank'
+                    'sp.type': 'CASH_BANK',
+                    // Fetch only the required fields
+                    fields: 'id,name,accountType',
+                },
+            });
+
+            if (!response.data.s || !response.data.d) {
+                this.logger.warn('No bank accounts found in Accurate or API error.');
+                return [];
+            }
+
+            // Sort by name for a better dropdown experience
+            return response.data.d.sort((a, b) => a.name.localeCompare(b.name));
+
+        } catch (error) {
+            this.logger.error('Failed to fetch bank accounts from Accurate', error.response?.data || error.message);
+            throw new InternalServerErrorException('Gagal mengambil daftar akun bank dari Accurate.');
+        }
     }
 }

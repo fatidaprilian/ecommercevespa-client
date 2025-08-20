@@ -1,10 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
+// src/accurate-sync/accurate-sync.service.ts
+
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccurateService } from '../accurate/accurate.service';
-import { User } from '@prisma/client';
+
+// Fungsi helper kecil untuk memformat tanggal ke DD/MM/YYYY
+const formatDateToAccurate = (date: Date): string => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+};
+
+// ✅ FUNGSI KUNCI: Membersihkan string untuk dicocokkan dengan Accurate
+const cleanAccurateString = (str: string): string => {
+    // Menghilangkan spasi ganda dan karakter whitespace lainnya (seperti tab, newline)
+    // lalu melakukan trim spasi di awal/akhir.
+    return str.replace(/\s+/g, ' ').trim();
+};
+
 
 @Injectable()
 export class AccurateSyncService {
@@ -20,7 +37,7 @@ export class AccurateSyncService {
      * CRON JOB (PRODUSER)
      * Menambahkan job sinkronisasi produk ke antrean secara terjadwal.
      */
-    @Cron(CronExpression.EVERY_30_SECONDS) // Tetap 30 detik untuk testing, bisa diubah nanti
+    @Cron(CronExpression.EVERY_30_SECONDS)
     async scheduleProductSync() {
         this.logger.log('CRON JOB: Adding "sync-products" job to the queue.');
         await this.syncQueue.add(
@@ -42,7 +59,6 @@ export class AccurateSyncService {
         try {
             const apiClient = await this.accurateService.getAccurateApiClient();
             
-            // Menggunakan path API yang benar sesuai dokumentasi
             const response = await apiClient.get('/accurate/api/item/list.do', {
                 params: {
                     fields: 'no,name,itemType,unitPrice,quantity',
@@ -57,7 +73,6 @@ export class AccurateSyncService {
 
             let syncedCount = 0;
             for (const item of itemsFromAccurate) {
-                // --- FILTER DIKTIFKAN KEMBALI ---
                 if (item.itemType !== 'INVENTORY') continue;
 
                 await this.prisma.product.upsert({
@@ -72,7 +87,7 @@ export class AccurateSyncService {
                         name: item.name,
                         price: item.unitPrice,
                         stock: item.quantity,
-                        weight: 1000, // Default weight
+                        weight: 1000,
                     },
                 });
                 syncedCount++;
@@ -88,44 +103,96 @@ export class AccurateSyncService {
     }
 
     /**
-     * ALUR 2: Membuat Faktur Penjualan (E-commerce -> Accurate)
+     * ALUR 2: Membuat Faktur Penjualan dan Penerimaan Pembayaran secara dinamis.
      */
-    async createSalesInvoice(orderId: string) {
-        this.logger.log(`Creating Sales Invoice in Accurate for Order ID: ${orderId}`);
+    async createSalesInvoiceAndReceipt(orderId: string, accurateBankName: string) {
+        this.logger.log(`Starting sales process for Order ID: ${orderId} -> Bank: ${accurateBankName}`);
+        
+        const order = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          include: { items: { include: { product: true } }, user: true },
+        });
+    
+        if (!order) {
+          throw new Error(`Order with ID ${orderId} not found.`);
+        }
+    
         try {
-            const order = await this.prisma.order.findUnique({
-                where: { id: orderId },
-                include: { items: { include: { product: true } }, user: true },
-            });
+          const dbInfo = await this.prisma.accurateOAuth.findFirst();
+          if (!dbInfo || !dbInfo.branchName) {
+              throw new InternalServerErrorException('Nama cabang tidak ditemukan di konfigurasi Accurate.');
+          }
 
-            if (!order) {
-                throw new Error(`Order with ID ${orderId} not found.`);
-            }
+          const customerName = order.user.name || order.user.email;
+          await this.findOrCreateCustomer(order.user.email, customerName);
+    
+          const detailItem = order.items.map(item => ({
+            itemNo: item.product.sku,
+            quantity: item.quantity,
+            unitPrice: item.price,
+          }));
+    
+          const invoicePayload = {
+            customerNo: order.user.email,
+            transDate: formatDateToAccurate(new Date(order.createdAt)), 
+            detailItem: detailItem,
+            branchName: dbInfo.branchName,
+          };
+    
+          const apiClient = await this.accurateService.getAccurateApiClient();
+          const invoiceResponse = await apiClient.post('/accurate/api/sales-invoice/save.do', invoicePayload);
+          
+          if (invoiceResponse.data && invoiceResponse.data.s === true) {
+            const invoiceNumber = invoiceResponse.data.r?.number;
+            const totalAmount = invoiceResponse.data.r?.totalAmount;
+            this.logger.log(`Successfully created Sales Invoice: ${invoiceNumber}`);
 
-            const customerName = order.user.name || order.user.email;
-            await this.findOrCreateCustomer(order.user.email, customerName);
+            // Teruskan nama bank yang diterima ke fungsi createSalesReceipt
+            await this.createSalesReceipt(invoiceNumber, order.user.email, new Date(order.createdAt), totalAmount, dbInfo.branchName, accurateBankName);
 
-            const detailItem = order.items.map(item => ({
-                itemNo: item.product.sku,
-                quantity: item.quantity,
-                unitPrice: item.price,
-            }));
+            return invoiceResponse.data.r;
+          } else {
+            const errorMessage = invoiceResponse.data.d?.[0] || 'Unknown error from Accurate while creating invoice.';
+            throw new Error(errorMessage);
+          }
+    
+        } catch (error) {
+          const errorMessage = error.response?.data?.d?.[0] || error.message;
+          this.logger.error(`Failed to process sales for Order ID: ${orderId}. Reason: ${errorMessage}`, error.stack);
+          throw new Error('Gagal memproses penjualan di Accurate.');
+        }
+    }
+    
+    /**
+     * Fungsi untuk membuat Penerimaan Penjualan (Sales Receipt).
+     */
+    private async createSalesReceipt(invoiceNumber: string, customerNo: string, paymentDate: Date, amount: number, branchName: string, accurateBankName: string) {
+        // ✅ PERBAIKAN UTAMA DAN FINAL DI SINI
+        const cleanedBankName = cleanAccurateString(accurateBankName);
+        this.logger.log(`Creating Sales Receipt for Invoice: ${invoiceNumber} into Bank: "${cleanedBankName}"`); // Log dengan kutip untuk melihat spasi
 
+        try {
             const payload = {
-                customerNo: order.user.email,
-                transDate: new Date().toISOString().split('T')[0],
-                detailItem: detailItem,
+                bankNo: cleanedBankName, // Menggunakan nama bank yang sudah dibersihkan
+                transDate: formatDateToAccurate(paymentDate),
+                customerNo: customerNo,
+                branchName: branchName,
+                'detailInvoice[0].invoiceNumber': invoiceNumber,
+                'detailInvoice[0].paymentAmount': amount,
             };
 
             const apiClient = await this.accurateService.getAccurateApiClient();
-            const response = await apiClient.post('/accurate/api/sales-invoice/save.do', payload);
+            const response = await apiClient.post('/accurate/api/sales-receipt/save.do', payload);
             
-            this.logger.log(`Successfully created Sales Invoice for Order ID: ${orderId}. Accurate Invoice No: ${response.data.d.number}`);
-            return response.data.d;
-
+            if (response.data && response.data.s === true) {
+                this.logger.log(`Successfully created Sales Receipt: ${response.data.r?.number} for Invoice: ${invoiceNumber}. Invoice is now PAID.`);
+            } else {
+                const errorMessage = response.data.d?.[0] || 'Unknown error while creating sales receipt.';
+                this.logger.error(`Could not create Sales Receipt for Invoice ${invoiceNumber}. Reason: ${errorMessage}`);
+            }
         } catch (error) {
-            this.logger.error(`Failed to create Sales Invoice for Order ID: ${orderId}`, error.response?.data || error.message);
-            throw new Error('Gagal membuat faktur penjualan di Accurate.');
+            const errorMessage = error.response?.data?.d?.[0] || error.message;
+            this.logger.error(`Failed to create Sales Receipt for Invoice ${invoiceNumber}. Reason: ${errorMessage}`);
         }
     }
     
@@ -137,7 +204,7 @@ export class AccurateSyncService {
             const apiClient = await this.accurateService.getAccurateApiClient();
             
             const searchResponse = await apiClient.get('/accurate/api/customer/list.do', {
-                params: { fields: 'id, name', 'filter.no': email }
+                params: { fields: 'id, name', 'sp.fn.no': email }
             });
 
             if (searchResponse.data.d && searchResponse.data.d.length > 0) {
@@ -148,15 +215,21 @@ export class AccurateSyncService {
             this.logger.log(`Customer with email ${email} not found. Creating new customer...`);
             const createResponse = await apiClient.post('/accurate/api/customer/save.do', {
                 name: name,
-                customerNo: email, // Menggunakan email sebagai nomor pelanggan unik
+                customerNo: email,
                 email: email
             });
 
-            this.logger.log(`Successfully created new customer with ID: ${createResponse.data.r.id}`);
-            return createResponse.data.r;
+            if (createResponse.data && createResponse.data.s === true) {
+                this.logger.log(`Successfully created new customer with ID: ${createResponse.data.r.id}`);
+                return createResponse.data.r;
+            } else {
+                const errorMessage = createResponse.data.d?.[0] || 'Failed to create customer.';
+                throw new Error(errorMessage);
+            }
 
         } catch (error) {
-            this.logger.error(`Error finding or creating customer ${email}`, error.response?.data || error.message);
+            const errorMessage = error.response?.data?.d?.[0] || error.message;
+            this.logger.error(`Error finding or creating customer ${email}. Reason: ${errorMessage}`);
             throw new Error(`Gagal mencari atau membuat pelanggan di Accurate.`);
         }
     }

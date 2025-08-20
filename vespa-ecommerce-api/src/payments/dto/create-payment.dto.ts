@@ -1,13 +1,24 @@
-// src/payments/dto/create-payment.dto.ts
+import { IsString, IsNotEmpty, IsOptional, IsUrl } from 'class-validator';
 
-import { IsNotEmpty, IsString } from 'class-validator';
-
-export class CreatePaymentDto {
+export class CreatePaymentMethodDto {
   @IsString()
   @IsNotEmpty()
-  orderId: string;
+  bankName: string;
 
   @IsString()
   @IsNotEmpty()
-  paymentMethod: string; // e.g., 'XENDIT_VA', 'MANUAL_TRANSFER'
+  accountHolder: string;
+
+  @IsString()
+  @IsNotEmpty()
+  accountNumber: string;
+
+  @IsUrl()
+  @IsOptional()
+  logoUrl?: string;
+
+  // 👇 TAMBAHKAN FIELD INI
+  @IsString()
+  @IsNotEmpty()
+  accurateBankName: string;
 }

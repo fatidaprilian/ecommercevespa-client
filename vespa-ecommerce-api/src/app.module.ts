@@ -26,6 +26,7 @@ import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { AccurateModule } from './accurate/accurate.module';
 import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
+import { PaymentMappingsModule } from './payment-mappings/payment-mappings.module';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
     AddressesModule,
     ShipmentsModule,
     SettingsModule,
+    PaymentMappingsModule,
     WebhooksModule,
     PaymentMethodsModule,
     AccurateModule,

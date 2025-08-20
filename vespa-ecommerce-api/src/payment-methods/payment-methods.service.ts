@@ -1,5 +1,3 @@
-// file: vespa-ecommerce-api/src/payment-methods/payment-methods.service.ts
-
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePaymentMethodDto } from './dto/create-payment-method.dto';
@@ -9,21 +7,36 @@ import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 export class PaymentMethodsService {
   constructor(private prisma: PrismaService) {}
 
-  // Membuat metode pembayaran baru
-  create(createPaymentMethodDto: CreatePaymentMethodDto) {
+  /**
+   * Membuat metode pembayaran manual baru dan kunci pemetaannya.
+   */
+  async create(createPaymentMethodDto: CreatePaymentMethodDto) {
+    const { bankName, accountNumber, accountHolder, logoUrl, accurateBankName } = createPaymentMethodDto;
+
+    // Membuat kunci unik yang konsisten untuk pemetaan.
+    // Contoh: "manual_bca_1234567890"
+    const key = `manual_${bankName.toLowerCase().replace(/ /g, '_')}_${accountNumber}`;
+
     return this.prisma.manualPaymentMethod.create({
-      data: createPaymentMethodDto,
+      data: {
+        bankName,
+        accountHolder,
+        accountNumber,
+        logoUrl,
+        accurateBankName, // Menyimpan nama akun bank di Accurate
+        paymentMethodKey: key, // Menyimpan kunci unik yang baru dibuat
+      },
     });
   }
 
-  // Menampilkan semua metode pembayaran
+  // Menampilkan semua metode pembayaran untuk admin
   findAll() {
     return this.prisma.manualPaymentMethod.findMany({
       orderBy: { bankName: 'asc' },
     });
   }
 
-  // Menampilkan hanya yang aktif (untuk customer)
+  // Menampilkan hanya yang aktif (untuk customer di frontend)
   findAllActive() {
     return this.prisma.manualPaymentMethod.findMany({
       where: { isActive: true },
@@ -42,12 +55,30 @@ export class PaymentMethodsService {
     return method;
   }
 
-  // Memperbarui metode pembayaran
+  /**
+   * Memperbarui metode pembayaran.
+   * Jika bankName atau accountNumber berubah, kita juga perbarui paymentMethodKey.
+   */
   async update(id: string, updatePaymentMethodDto: UpdatePaymentMethodDto) {
     await this.findOne(id); // Pastikan data ada sebelum update
+
+    const { bankName, accountNumber, ...rest } = updatePaymentMethodDto;
+    const dataToUpdate: any = { ...rest };
+
+    // Jika nama bank atau nomor rekening diubah, buat ulang kuncinya
+    if (bankName || accountNumber) {
+      const currentMethod = await this.findOne(id);
+      const newBankName = bankName || currentMethod.bankName;
+      const newAccountNumber = accountNumber || currentMethod.accountNumber;
+      
+      dataToUpdate.bankName = newBankName;
+      dataToUpdate.accountNumber = newAccountNumber;
+      dataToUpdate.paymentMethodKey = `manual_${newBankName.toLowerCase().replace(/ /g, '_')}_${newAccountNumber}`;
+    }
+    
     return this.prisma.manualPaymentMethod.update({
       where: { id },
-      data: updatePaymentMethodDto,
+      data: dataToUpdate,
     });
   }
 
