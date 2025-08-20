@@ -1,4 +1,3 @@
-// file: app/components/layout/Navbar.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -134,7 +133,7 @@ export default function Navbar() {
             <div className="hidden md:flex items-center space-x-6">
               {navigationLinks.map((link) => (
                 <div key={link.name} className="relative group" onMouseEnter={() => link.hasDropdown && setActiveDropdown(link.name)} onMouseLeave={() => link.hasDropdown && setActiveDropdown(null)}>
-                  <Link href={link.href} className={`text-sm font-medium transition-colors duration-300 flex items-center gap-1.5 pb-1 ${pathname === link.href ? textColorClass : navIsSolid ? 'text-gray-500 hover:text-[#1E2022]' : 'text-gray-400 hover:text-white'}`}>
+                  <Link href={link.href} className={`text-lg font-medium transition-colors duration-300 flex items-center gap-1.5 pb-1 ${pathname === link.href ? textColorClass : navIsSolid ? 'text-gray-500 hover:text-[#1E2022]' : 'text-gray-400 hover:text-white'}`}>
                     {link.name}
                     {link.hasDropdown && <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${activeDropdown === link.name ? 'rotate-180' : ''}`} />}
                   </Link>

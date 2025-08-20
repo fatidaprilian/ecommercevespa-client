@@ -1,7 +1,11 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AccurateService } from './accurate.service';
 import { Response } from 'express';
+import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Role } from '@prisma/client';
 
 /**
  * Karena ada global prefix 'api/v1' di main.ts,
@@ -19,16 +23,14 @@ export class AccurateController {
   }
 
   @Get('authorize-url')
-  getAuthorizeUrl() {
-    // --- PERBAIKAN TYPO DI SINI ---
+  getAuthorizationUrl() {
     const url = this.accurateService.getAuthorizationUrl();
     return { url };
   }
 
   @Get('status')
   async getStatus() {
-    const isConnected = await this.accurateService.isConnected();
-    return { isConnected };
+    return this.accurateService.isConnected();
   }
 
   @Get('callback')
@@ -46,5 +48,19 @@ export class AccurateController {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return res.redirect(`${adminSettingsUrl}?error=${encodeURIComponent(errorMessage)}`);
     }
+  }
+
+  @Get('databases')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  async getDatabases() {
+      return this.accurateService.getDatabaseList();
+  }
+
+  @Post('open-database')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  async openDatabase(@Body('id') id: string) {
+      return this.accurateService.openDatabase(id);
   }
 }

@@ -302,4 +302,7 @@ model AccurateOAuth {
   tokenType    String?   // Biasanya "Bearer"
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  dbId         String?   // ID database yang dipilih
+  dbHost       String?   // Host spesifik untuk database ini
+  dbSession    String?   // Session ID untuk mengakses database
 }

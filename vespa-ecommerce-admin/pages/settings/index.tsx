@@ -1,9 +1,7 @@
-// file: pages/settings/index.tsx
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Edit, Save, Check, ChevronsUpDown, XCircle } from 'lucide-react'; // <-- Tambah icon XCircle
+import { Loader2, Edit, Save, Check, ChevronsUpDown, XCircle } from 'lucide-react';
 import axios from 'axios';
 
 import { Button } from '@/components/ui/button';
@@ -20,127 +18,151 @@ import { getAllSettings, updateMultipleSettings, SettingPayload, AppSetting } fr
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-// AdminLayout tidak perlu di-import
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ====================================================================
-// KOMPONEN BARU: Tampilan Status Integrasi
-// ====================================================================
-const IntegrationStatusView = ({ isLoading, isConnected, error, onConnectClick }: {
-    isLoading: boolean;
-    isConnected: boolean;
-    error: string | null;
-    onConnectClick: () => void;
-}) => {
-    if (isLoading) {
-        return (
-            <div className="flex items-center text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memeriksa status koneksi...
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="flex flex-col items-start space-y-3">
-                <div className="flex items-center text-destructive">
-                    <XCircle className="mr-2 h-4 w-4" />
-                    <p>Gagal terhubung: {error}</p>
-                </div>
-                <Button onClick={onConnectClick} variant="outline">Coba Lagi</Button>
-            </div>
-        );
-    }
-
-    if (isConnected) {
-        return (
-            <div className="flex items-center space-x-2">
-                <span className="text-green-600 font-semibold">✅ Terhubung</span>
-                <Button variant="outline" disabled>Sudah Terhubung</Button>
-            </div>
-        );
-    }
-
-    return (
-        <Button onClick={onConnectClick}>Hubungkan ke Accurate</Button>
-    );
-};
-
-// ====================================================================
-// KOMPONEN: Logika Integrasi Accurate
+// KOMPONEN: ACCURATE INTEGRATION (DENGAN LOGIKA PEMILIHAN DATABASE)
 // ====================================================================
 const AccurateIntegration = () => {
-    const [isConnected, setIsConnected] = useState(false);
+    const [status, setStatus] = useState<{ connected: boolean; dbSelected: boolean }>({ connected: false, dbSelected: false });
     const [isLoading, setIsLoading] = useState(true);
-    const [authError, setAuthError] = useState<string | null>(null);
+    const [databases, setDatabases] = useState<{ id: string; alias: string }[]>([]);
+    const [selectedDb, setSelectedDb] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const api = axios.create({
         baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+        withCredentials: true,
     });
 
     useEffect(() => {
-        const checkStatus = async () => {
+        const handleUrlParams = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const successParam = urlParams.get('success');
+            const errorParam = urlParams.get('error');
+
+            if (successParam) {
+                toast.success('Berhasil terhubung dengan Akun Accurate!');
+            }
+            if (errorParam) {
+                toast.error(`Gagal terhubung: ${decodeURIComponent(errorParam)}`);
+            }
+            if (successParam || errorParam) {
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+            return successParam;
+        };
+
+        const checkStatus = async (isAfterRedirect = false) => {
             try {
                 setIsLoading(true);
                 const response = await api.get('/accurate/status');
-                setIsConnected(response.data.isConnected);
+                const newStatus = response.data;
+                setStatus(newStatus);
+
+                if ((newStatus.connected && !newStatus.dbSelected) || (isAfterRedirect && newStatus.connected)) {
+                    const dbResponse = await api.get('/accurate/databases');
+                    setDatabases(dbResponse.data);
+                }
             } catch (error) {
                 console.error('Error fetching Accurate status:', error);
-                setAuthError('Gagal memeriksa status integrasi.');
+                toast.error('Gagal memeriksa status integrasi Accurate.');
             } finally {
                 setIsLoading(false);
             }
         };
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const errorParam = urlParams.get('error');
+        const successRedirect = handleUrlParams();
+        checkStatus(!!successRedirect);
 
-        if (errorParam) {
-            setAuthError(decodeURIComponent(errorParam));
-            toast.error(`Gagal terhubung: ${decodeURIComponent(errorParam)}`);
-            window.history.replaceState(null, '', window.location.pathname);
-        } else {
-            checkStatus(); // Hanya cek status jika tidak ada error dari redirect
-        }
-        
-        const successParam = urlParams.get('success');
-        if (successParam) {
-            toast.success('Berhasil terhubung dengan Accurate!');
-            window.history.replaceState(null, '', window.location.pathname);
-            setIsConnected(true); // Langsung update status di UI
-        }
     }, []);
 
     const handleConnectClick = async () => {
         try {
             const response = await api.get('/accurate/authorize-url');
-            const { url } = response.data;
-            window.location.href = url;
+            window.location.href = response.data.url;
         } catch (error) {
             console.error('Failed to get authorization URL:', error);
             toast.error('Gagal memulai koneksi. Cek konsol untuk detail.');
         }
     };
 
+    const handleSelectDatabase = async () => {
+        if (!selectedDb) {
+            toast.error('Silakan pilih database terlebih dahulu.');
+            return;
+        }
+        try {
+            setIsSubmitting(true);
+            await api.post('/accurate/open-database', { id: selectedDb });
+            toast.success('Database berhasil dipilih dan disimpan!');
+            setStatus({ connected: true, dbSelected: true });
+        } catch (error) {
+            console.error('Error selecting database:', error);
+            toast.error('Gagal memilih database.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const renderContent = () => {
+        if (isLoading) {
+            return <div className="flex items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memeriksa status...</div>;
+        }
+
+        if (status.connected && status.dbSelected) {
+            return (
+                <div className="flex items-center space-x-2">
+                    <span className="text-green-600 font-semibold">✅ Terhubung & Database Terpilih</span>
+                    <Button variant="outline" disabled>Sudah Terkonfigurasi</Button>
+                </div>
+            );
+        }
+        
+        if (status.connected && !status.dbSelected) {
+            return (
+                <div className="space-y-4">
+                    <p className="text-sm text-green-600 font-semibold">✅ Terhubung dengan Akun Accurate.</p>
+                    <p className="text-sm text-muted-foreground">Langkah selanjutnya: Pilih database yang akan disinkronkan.</p>
+                    <div className="flex items-center space-x-2">
+                        <Select onValueChange={setSelectedDb} value={selectedDb}>
+                            <SelectTrigger className="w-[280px]">
+                                <SelectValue placeholder="Pilih database..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {databases.length > 0 ? (
+                                    databases.map(db => <SelectItem key={db.id} value={db.id.toString()}>{db.alias}</SelectItem>)
+                                ) : (
+                                    <div className="p-4 text-sm text-muted-foreground">Memuat database...</div>
+                                )}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={handleSelectDatabase} disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Pilih & Simpan
+                        </Button>
+                    </div>
+                </div>
+            );
+        }
+
+        return <Button onClick={handleConnectClick}>Hubungkan ke Accurate</Button>;
+    };
+    
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Integrasi Accurate ERP</CardTitle>
                 <CardDescription>
-                    Hubungkan toko Anda dengan Accurate untuk sinkronisasi data secara otomatis.
+                    Hubungkan akun Accurate dan pilih database untuk memulai sinkronisasi.
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <IntegrationStatusView
-                    isLoading={isLoading}
-                    isConnected={isConnected}
-                    error={authError}
-                    onConnectClick={handleConnectClick}
-                />
+                {renderContent()}
             </CardContent>
         </Card>
     );
 };
-
 
 // ====================================================================
 // KOMPONEN YANG SUDAH ADA (TIDAK DIUBAH)

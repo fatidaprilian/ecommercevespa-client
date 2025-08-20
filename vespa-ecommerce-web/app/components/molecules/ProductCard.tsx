@@ -1,4 +1,3 @@
-// file: app/components/molecules/ProductCard.tsx
 'use client';
 
 import { Product } from '../../types';
@@ -25,7 +24,24 @@ export function ProductCard({ product }: ProductCardProps) {
           />
         </div>
         <div className="p-4 flex flex-col flex-grow">
-          <span className="text-xs text-gray-500 mb-1">{product.category?.name || 'Uncategorized'}</span>
+          {/* --- POSISI DITUKAR --- */}
+          <div className="flex justify-between items-center mb-2">
+            {/* Kategori (sekarang di kiri) */}
+            <span className="text-xs text-gray-500">{product.category?.name || 'Uncategorized'}</span>
+            
+            {/* Logo Merek (sekarang di kanan) */}
+            {product.brand?.logoUrl ? (
+              <img 
+                src={product.brand.logoUrl} 
+                alt={product.brand.name || 'Brand Logo'} 
+                className="h-5 max-w-[100px] object-contain"
+              />
+            ) : (
+              <span className="text-xs font-semibold text-gray-800">{product.brand?.name || ''}</span>
+            )}
+          </div>
+          {/* --- AKHIR PERUBAHAN --- */}
+          
           <h3 className="font-bold text-md text-gray-800 flex-grow group-hover:text-primary transition-colors h-12" title={product.name}>
             {product.name}
           </h3>

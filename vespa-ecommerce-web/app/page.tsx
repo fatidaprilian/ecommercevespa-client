@@ -1,4 +1,3 @@
-// file: vespa-ecommerce-web/app/page.tsx
 'use client';
 
 import { useRef, useEffect } from "react";
@@ -10,7 +9,9 @@ import {
     Package,
     Zap,
     Sparkles,
-    Tag
+    Tag,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ import { useBrands } from "@/hooks/use-brands";
 import { Product, Category, Brand } from "@/types";
 import { useAuthStore } from "@/store/auth";
 import PriceDisplay from "@/components/molecules/PriceDisplay";
+import { ProductCard } from "@/components/molecules/ProductCard";
 
 // ====================================================================
 // Komponen Pembantu & Bagian Halaman
@@ -83,60 +85,95 @@ const HeroSection = () => {
     );
 };
 
-// 👇 **START OF CHANGES** 👇
 const CategoriesSection = () => {
-  const { data: categories, isLoading, error } = useCategories();
-  const categoryIcons: { [key: string]: React.ElementType } = {
-    'Engine Parts': Wrench,
-    'Body & Frame': Package,
-    'Electrical': Zap,
-    'Accessories': Sparkles,
-    'default': Tag // Mengganti default icon
-  };
+    const { data: categories, isLoading, error } = useCategories();
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const categoryIcons: { [key: string]: React.ElementType } = {
+        'Engine Parts': Wrench,
+        'Body & Frame': Package,
+        'Electrical': Zap,
+        'Accessories': Sparkles,
+        'default': Tag
+    };
 
-  if (isLoading) return <Section className="bg-white"><p className="text-center text-gray-500">Memuat kategori...</p></Section>;
-  if (error || !categories) return null;
+    const scroll = (direction: 'left' | 'right') => {
+        if (scrollContainerRef.current) {
+            const { current } = scrollContainerRef;
+            const scrollAmount = current.clientWidth * 0.8;
+            current.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    };
 
-  return (
-    <Section className="bg-white">
-      <div className="container mx-auto">
-        <div className="text-center mb-16 max-w-3xl mx-auto">
-            <h2 className="text-4xl sm:text-5xl font-bold text-[#1E2022] mb-4 font-playfair">Jelajahi Setiap Detail</h2>
-            <p className="text-lg text-gray-600">Temukan komponen yang Anda butuhkan berdasarkan kategori spesifik untuk setiap bagian vital Vespa Anda.</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {categories.map((cat: Category, index: number) => {
-            const Icon = categoryIcons[cat.name] || categoryIcons.default;
-            // Gunakan imageUrl dari data, jika tidak ada, gunakan placeholder
-            const imageSrc = cat.imageUrl || `https://source.unsplash.com/400x500/?${cat.name.split(' ')[0].toLowerCase()}`;
-            
-            return (
-              <motion.div
-                key={cat.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
-              >
-                <Link href={`/products?categoryId=${cat.id}`} className="group block cursor-pointer">
-                  <div className="relative h-96 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
-                    <img src={imageSrc} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 p-6">
-                      <div className="bg-[#C9D6DF] text-[#1E2022] p-3 rounded-full w-fit mb-3 transition-transform group-hover:scale-105"><Icon className="w-6 h-6" /></div>
-                      <h3 className="text-2xl font-bold text-white group-hover:text-[#F0F5F9] transition-colors font-playfair">{cat.name}</h3>
+    if (isLoading) return <Section className="bg-white"><p className="text-center text-gray-500">Memuat kategori...</p></Section>;
+    if (error || !categories || categories.length === 0) return null;
+
+    return (
+        <Section className="bg-white">
+            <div className="container mx-auto">
+                <div className="text-center mb-16 max-w-3xl mx-auto">
+                    <h2 className="text-4xl sm:text-5xl font-bold text-[#1E2022] mb-4 font-playfair">Jelajahi Setiap Detail</h2>
+                    <p className="text-lg text-gray-600">Temukan komponen yang Anda butuhkan berdasarkan kategori spesifik untuk setiap bagian vital Vespa Anda.</p>
+                </div>
+                
+                <div className="relative">
+                    {/* Tombol Panah Kiri */}
+                    <button
+                        onClick={() => scroll('left')}
+                        // REVISI: Menghapus class `opacity-0` dan `group-hover:opacity-100`
+                        className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/80 rounded-full shadow-md border border-gray-200 text-gray-700 hover:bg-white transition-opacity duration-300 hidden md:block"
+                    >
+                        <ChevronLeft className="w-6 h-6" />
+                    </button>
+
+                    <div
+                        ref={scrollContainerRef}
+                        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth p-2 -mx-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                    >
+                        {categories.map((cat: Category, index: number) => {
+                            const Icon = categoryIcons[cat.name] || categoryIcons.default;
+                            const imageSrc = cat.imageUrl || `https://source.unsplash.com/400x500/?${cat.name.split(' ')[0].toLowerCase()}`;
+                            
+                            return (
+                                <div key={cat.id} className="flex-none w-full sm:w-1/2 md:w-1/3 lg:w-1/4 snap-start p-2">
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 30 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true, amount: 0.3 }}
+                                        transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
+                                        className="h-full"
+                                    >
+                                        <Link href={`/products?categoryId=${cat.id}`} className="group block cursor-pointer h-full">
+                                            <div className="relative h-96 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
+                                                <img src={imageSrc} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                                                <div className="absolute bottom-0 left-0 p-6">
+                                                    <div className="bg-[#C9D6DF] text-[#1E2022] p-3 rounded-full w-fit mb-3 transition-transform group-hover:scale-105"><Icon className="w-6 h-6" /></div>
+                                                    <h3 className="text-2xl font-bold text-white group-hover:text-[#F0F5F9] transition-colors font-playfair">{cat.name}</h3>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    </motion.div>
+                                </div>
+                            )
+                        })}
                     </div>
-                  </div>
-                </Link>
-              </motion.div>
-            )
-          })}
-        </div>
-      </div>
-    </Section>
-  );
+
+                    {/* Tombol Panah Kanan */}
+                    <button
+                        onClick={() => scroll('right')}
+                        // REVISI: Menghapus class `opacity-0` dan `group-hover:opacity-100`
+                        className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/80 rounded-full shadow-md border border-gray-200 text-gray-700 hover:bg-white transition-opacity duration-300 hidden md:block"
+                    >
+                        <ChevronRight className="w-6 h-6" />
+                    </button>
+                </div>
+            </div>
+        </Section>
+    );
 };
-// 👆 **END OF CHANGES** 👆
 
 const BrandsSection = () => {
     const { data: brands, isLoading, error } = useBrands();
@@ -148,17 +185,17 @@ const BrandsSection = () => {
         <Section className="bg-[#F0F5F9]">
             <div className="container mx-auto">
                 <div className="text-center mb-16 max-w-3xl mx-auto">
-                  <h2 className="text-4xl sm:text-5xl font-bold text-[#1E2022] mb-4 font-playfair">Merek Terpercaya Kami</h2>
-                  <p className="text-lg text-gray-600">Pilih dari koleksi suku cadang dari merek-merek terbaik yang menjamin kualitas dan daya tahan.</p>
+                    <h2 className="text-4xl sm:text-5xl font-bold text-[#1E2022] mb-4 font-playfair">Merek Terpercaya Kami</h2>
+                    <p className="text-lg text-gray-600">Pilih dari koleksi suku cadang dari merek-merek terbaik yang menjamin kualitas dan daya tahan.</p>
                 </div>
                 <div className="flex flex-wrap justify-center items-center gap-x-16 md:gap-x-24 gap-y-10">
                     {brands.map((brand: Brand, index: number) => (
                         <motion.div
-                          key={brand.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true, amount: 0.5 }}
-                          transition={{ duration: 0.5, delay: index * 0.05 }}
+                            key={brand.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.5 }}
+                            transition={{ duration: 0.5, delay: index * 0.05 }}
                         >
                             <Link href={`/products?brandId=${brand.id}`} title={`Lihat produk dari ${brand.name}`} className="grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300 transform hover:scale-110">
                                 {brand.logoUrl ? (
@@ -207,32 +244,13 @@ const FeaturedProducts = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {featuredProducts.map((product: Product, index: number) => (
                         <motion.div
-                          key={product.id}
-                          initial={{ opacity: 0, y: 30 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true, amount: 0.3 }}
-                          transition={{ duration: 0.6, delay: index * 0.1 }}
+                            key={product.id}
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.3 }}
+                            transition={{ duration: 0.6, delay: index * 0.1 }}
                         >
-                            <Link href={`/products/${product.id}`} className="block group">
-                                <div className="bg-white border border-gray-200/80 rounded-lg overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
-                                    <div className="relative w-full h-52 bg-[#F0F5F9]">
-                                      <img
-                                          src={product.images?.[0]?.url || 'https://placehold.co/400x400?text=VespaPart'}
-                                          alt={product.name}
-                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                      />
-                                    </div>
-                                    <div className="p-5 flex flex-col flex-grow">
-                                      <span className="text-xs text-gray-500 mb-1">{product.category?.name || 'Uncategorized'}</span>
-                                      <h3 className="font-bold text-md text-[#1E2022] flex-grow group-hover:text-[#52616B] transition-colors h-12" title={product.name}>
-                                          {product.name}
-                                      </h3>
-                                      <div className="mt-2">
-                                        <PriceDisplay priceInfo={product.priceInfo} className="text-xl" originalPriceClassName="text-base" />
-                                      </div>
-                                    </div>
-                                </div>
-                            </Link>
+                            <ProductCard product={product} />
                         </motion.div>
                     ))}
                 </div>

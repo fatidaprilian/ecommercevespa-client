@@ -43,9 +43,6 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlacehold
     );
 };
 
-// ====================================================================
-// KOMPONEN FILTER POPUP YANG DIROMBAK
-// ====================================================================
 function FilterPopup({ onApplyFilters, currentFilters }: {
   onApplyFilters: (filters: { categoryId?: string[], brandId?: string[] }) => void;
   currentFilters: { categoryId?: string[], brandId?: string[] };
@@ -188,6 +185,8 @@ export default function ProductClient() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+  const { data: allCategories } = useCategories();
+  const { data: allBrands } = useBrands();
 
   const buildQueryParams = (params: URLSearchParams): ProductQueryParams => ({
     page: Number(params.get('page')) || 1,
@@ -247,6 +246,16 @@ export default function ProductClient() {
   const handlePageChange = (page: number) => {
     updateUrlParams({ page });
   };
+  
+  const selectedCategories = useMemo(
+    () => allCategories?.filter(c => queryParams.categoryId?.includes(c.id)) || [],
+    [allCategories, queryParams.categoryId]
+  );
+
+  const selectedBrands = useMemo(
+    () => allBrands?.filter(b => queryParams.brandId?.includes(b.id)) || [],
+    [allBrands, queryParams.brandId]
+  );
 
   const activeFiltersCount = (queryParams.categoryId?.length || 0) + (queryParams.brandId?.length || 0) + (queryParams.search ? 1 : 0);
 
@@ -258,14 +267,39 @@ export default function ProductClient() {
           <h1 className="text-5xl md:text-6xl font-bold text-[#1E2022] mb-4 font-playfair">Katalog Produk</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">Temukan semua suku cadang original dan performa tinggi untuk menyempurnakan Vespa Anda.</p>
         </motion.div>
-
+        
         {activeFiltersCount > 0 && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center items-center gap-4 bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl shadow-sm mb-8">
-            <span className="font-medium">Menampilkan hasil untuk filter yang aktif.</span>
-            <Button variant="ghost" size="sm" onClick={handleClearFilters} className="gap-1.5 text-blue-700 hover:bg-blue-100">
-              <X className="h-4 w-4"/> Hapus Semua Filter
-            </Button>
-          </motion.div>
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-md border"
+            >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-sm text-gray-600 mb-1">Menampilkan hasil untuk:</p>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                            {selectedCategories.length > 0 && (
+                                <p className="text-sm font-medium text-gray-800">
+                                    <strong>Kategori:</strong> {selectedCategories.map(c => c.name).join(', ')}
+                                </p>
+                            )}
+                            {selectedBrands.length > 0 && (
+                                <p className="text-sm font-medium text-gray-800">
+                                    <strong>Merek:</strong> {selectedBrands.map(b => b.name).join(', ')}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearFilters}
+                        className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 mt-2 sm:mt-0"
+                    >
+                        <X className="h-4 w-4" /> Hapus Semua
+                    </Button>
+                </div>
+            </motion.div>
         )}
 
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }} className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-md mb-10 sticky top-24 z-10 border">
@@ -293,7 +327,7 @@ export default function ProductClient() {
               transition={{ duration: 0.3 }}
             >
               {isLoading ? (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
                 </div>
               ) : isError ? (
@@ -303,7 +337,7 @@ export default function ProductClient() {
                   <p className="text-gray-500 mt-2">Gagal memuat data produk. Silakan coba lagi nanti.</p>
                 </div>
               ) : products && products.length > 0 ? (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {products.map((product: Product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
