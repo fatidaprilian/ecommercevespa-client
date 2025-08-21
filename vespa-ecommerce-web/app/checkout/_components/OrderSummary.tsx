@@ -81,9 +81,23 @@ export function OrderSummary({
       <h2 className="text-xl font-bold border-b pb-4 mb-4">Ringkasan Pesanan</h2>
       
       {/* Bagian daftar item tidak berubah, jadi kita biarkan */}
-      {/* ... */}
+      <div className="space-y-3 max-h-60 overflow-y-auto pr-2 mb-4">
+        {cart?.items
+          ?.filter(item => selectedItems.has(item.id))
+          .map(item => (
+            <div key={item.id} className="flex justify-between text-sm items-center">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <img src={item.product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={item.product.name} className="w-12 h-12 object-cover rounded-md" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{item.product.name}</p>
+                  <p className="text-gray-500">{formatPrice(Number(item.product.price))} x {item.quantity}</p>
+                </div>
+              </div>
+              <span className="font-medium pl-2">{formatPrice(Number(item.product.price) * item.quantity)}</span>
+            </div>
+        ))}
+      </div>
       
-      {/* ✨ --- PERUBAHAN 2: TAMPILKAN RINCIAN BIAYA BARU --- ✨ */}
       <div className="border-t mt-4 pt-4 space-y-2">
         <div className="flex justify-between text-gray-600">
           <span>Subtotal ({totalItems} item)</span>

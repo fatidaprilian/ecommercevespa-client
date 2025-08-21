@@ -1,4 +1,4 @@
-// Lokasi: src/accurate-sync/accurate-sync.service.ts
+// file: src/accurate-sync/accurate-sync.service.ts
 
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -26,7 +26,6 @@ export class AccurateSyncService {
         @InjectQueue('accurate-sync-queue') private readonly syncQueue: Queue,
     ) {}
 
-    // ... (Fungsi syncProductsFromAccurate tidak berubah)
     @Cron(CronExpression.EVERY_30_SECONDS)
     async scheduleProductSync() {
         this.logger.log('CRON JOB: Adding "sync-products" job to the queue.');
@@ -61,9 +60,6 @@ export class AccurateSyncService {
         }
     }
     
-    // =======================================================
-    // ALUR UTAMA: REVISI DENGAN LOGIKA ONGKIR & PPN
-    // =======================================================
     async createSalesInvoiceAndReceipt(orderId: string, accurateBankNo: string, accurateBankName: string) {
         this.logger.log(`Memulai proses penjualan untuk Order ID: ${orderId} -> Bank: ${accurateBankName} (No. Akun: ${accurateBankNo})`);
         
@@ -87,17 +83,15 @@ export class AccurateSyncService {
     
             const apiClient = await this.accurateService.getAccurateApiClient();
             
-            // 1. Siapkan detail item produk. Harganya adalah harga bersih sebelum PPN.
             const detailItem = order.items.map(item => ({
                 itemNo: item.product.sku,
                 quantity: item.quantity,
-                unitPrice: item.price, // Ini adalah harga subtotal per item
+                unitPrice: item.price,
             }));
 
-            // 2. Tambahkan ongkos kirim sebagai item jasa terpisah
             if (order.shippingCost > 0) {
                 detailItem.push({
-                    itemNo: 'SHIPPING', // Pastikan item 'SHIPPING' ada di Accurate
+                    itemNo: 'SHIPPING',
                     quantity: 1,
                     unitPrice: order.shippingCost,
                 });
@@ -113,13 +107,11 @@ export class AccurateSyncService {
             const invoiceResponse = await apiClient.post('/accurate/api/sales-invoice/save.do', invoicePayload);
             
             if (!invoiceResponse.data?.s || !invoiceResponse.data?.r?.id) {
-                const errorMessage = invoiceResponse.data?.d?.[0] || 'Gagal membuat Sales Invoice di Accurate.';
-                throw new Error(errorMessage);
+                throw new Error(invoiceResponse.data?.d?.[0] || 'Gagal membuat Sales Invoice di Accurate.');
             }
 
             const invoiceId = invoiceResponse.data.r.id as number;
             const invoiceNumber = invoiceResponse.data.r.number as string;
-            // 3. Ambil total final dari Accurate (yang sudah termasuk PPN)
             const accurateTotalAmount = invoiceResponse.data.r.totalAmount as number;
 
             this.logger.log(`Berhasil membuat Sales Invoice: ${invoiceNumber} (ID: ${invoiceId}) dengan Total Accurate: Rp ${accurateTotalAmount}`);
@@ -129,17 +121,19 @@ export class AccurateSyncService {
                 data: { accurateSalesInvoiceId: invoiceId, accurateSalesInvoiceNumber: invoiceNumber },
             });
             
-            this.logger.log('Memberi jeda 2 detik sebelum membuat pelunasan...');
             await delay(2000);
 
+            // ====================================================================
+            // REVISI FINAL: Menambahkan 'chequeAmount' dan menggunakan 'invoiceNo'
+            // ====================================================================
             const receiptPayload = {
                 bankNo: accurateBankNo,
                 transDate: formatDateToAccurate(new Date(order.payment.createdAt)),
                 customerNo: order.user.email,
                 branchName: dbInfo.branchName,
+                chequeAmount: accurateTotalAmount, // <-- WAJIB: Total nilai pembayaran
                 detailInvoice: [{
-                    invoiceNo: invoiceNumber,
-                    // 4. Gunakan total dari Accurate sebagai nilai pembayaran
+                    invoiceNo: invoiceNumber, // <-- WAJIB: Sesuai dokumentasi
                     paymentAmount: accurateTotalAmount,
                 }],
             };
@@ -151,7 +145,7 @@ export class AccurateSyncService {
                 throw new Error(receiptResponse.data?.d?.[0] || 'Gagal saat menyimpan Sales Receipt.');
             }
             
-            this.logger.log(`✅ BERHASIL: Sales Receipt ${receiptResponse.data.r.number} dibuat untuk Invoice ${invoiceNumber}.`);
+            this.logger.log(`✅✅✅ BERHASIL TOTAL: Sales Receipt ${receiptResponse.data.r.number} dibuat.`);
             return receiptResponse.data.r;
 
         } catch (error) {
@@ -161,7 +155,6 @@ export class AccurateSyncService {
         }
     }
     
-    // ... (Fungsi findOrCreateCustomer tidak perlu diubah)
     private async findOrCreateCustomer(email: string, name: string) {
         try {
             const apiClient = await this.accurateService.getAccurateApiClient();

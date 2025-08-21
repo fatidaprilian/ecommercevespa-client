@@ -6,7 +6,6 @@ import { Order, User } from '@prisma/client';
 import * as midtransClient from 'midtrans-client';
 import * as crypto from 'crypto';
 
-// Definisikan tipe Order yang menyertakan relasi 'items'
 type OrderWithItems = Order & {
   items: { product: { name: string }; price: number; quantity: number; productId: string }[];
 };
@@ -23,14 +22,13 @@ export class MidtransService {
     });
   }
 
-  async createSnapTransaction(order: OrderWithItems, user: User, shippingCost: number) {
-    // --- PERBAIKAN DI SINI: Bulatkan semua nilai harga ---
-    const totalAmount = Math.round(order.totalAmount + shippingCost);
+  async createSnapTransaction(order: OrderWithItems, user: User, shippingCost: number, taxAmount: number) {
+    const totalAmount = Math.round(order.totalAmount + taxAmount + shippingCost);
 
     const parameter = {
       transaction_details: {
         order_id: order.id,
-        gross_amount: totalAmount, // Gunakan total yang sudah dibulatkan
+        gross_amount: totalAmount,
       },
       customer_details: {
         first_name: user.name || 'Pelanggan',
@@ -39,15 +37,21 @@ export class MidtransService {
       item_details: [
         ...order.items.map((item) => ({
             id: item.productId,
-            price: Math.round(item.price), // Bulatkan harga per item
+            price: Math.round(item.price),
             quantity: item.quantity,
             name: item.product.name.substring(0, 50),
         })),
         {
             id: 'SHIPPING_COST',
-            price: Math.round(shippingCost), // Bulatkan ongkos kirim
+            price: Math.round(shippingCost),
             quantity: 1,
             name: 'Biaya Pengiriman',
+        },
+        {
+            id: 'TAX',
+            price: taxAmount,
+            quantity: 1,
+            name: 'Pajak (11%)',
         }
       ],
       callbacks: {

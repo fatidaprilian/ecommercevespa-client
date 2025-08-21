@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Check, Minus, Plus, Package, Ruler, Tag, Edit, Info, ShieldCheck, Heart, Star, CreditCard } from 'lucide-react';
+import { ShoppingCart, Check, Minus, Plus, Package, Ruler, Tag, Edit, Info, ShieldCheck, Heart, Star, CreditCard, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -59,7 +59,7 @@ const ProductDetailSkeleton = () => (
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  const router = useRouter(); // router sudah ada di sini
   const productId = params.id as string;
 
   const { addItem, isLoading: isCartLoading } = useCartStore();
@@ -122,6 +122,19 @@ export default function ProductDetailPage() {
   return (
     <div className="bg-white min-h-screen pt-28">
       <div className="container mx-auto px-4 py-12">
+        {/* === KODE TOMBOL KEMBALI DIMULAI DI SINI (SUDAH DIUBAH) === */}
+        <div className="mb-6">
+            <Button
+              onClick={() => router.back()}
+              variant="ghost"
+              className="pl-0 text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Kembali
+            </Button>
+        </div>
+        {/* === KODE TOMBOL KEMBALI SELESAI === */}
+      
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -197,9 +210,9 @@ export default function ProductDetailPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                     <Button size="lg" className="w-full h-14 text-base" disabled={isAdded || product.stock === 0 || isCartLoading}>
-                       {isAdded ? <><Check size={20} className="mr-2"/> Ditambahkan</> : <><ShoppingCart size={20} className="mr-2"/><span>{product.stock > 0 ? 'Tambah Keranjang' : 'Stok Habis'}</span></>}
-                     </Button>
+                       <Button size="lg" className="w-full h-14 text-base" disabled={isAdded || product.stock === 0 || isCartLoading}>
+                           {isAdded ? <><Check size={20} className="mr-2"/> Ditambahkan</> : <><ShoppingCart size={20} className="mr-2"/><span>{product.stock > 0 ? 'Tambah Keranjang' : 'Stok Habis'}</span></>}
+                       </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>

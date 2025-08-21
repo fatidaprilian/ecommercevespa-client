@@ -22,8 +22,10 @@ export class PaymentsService {
     shippingCost: number,
     prismaClient: Prisma.TransactionClient = this.prisma,
   ) {
-    const totalAmount = order.totalAmount + shippingCost;
-    const midtransTransaction = await this.midtransService.createSnapTransaction(order, user, shippingCost);
+    const taxRate = 0.11; // 11% PPN
+    const taxAmount = Math.round(order.totalAmount * taxRate);
+    const totalAmount = order.totalAmount + taxAmount + shippingCost;
+    const midtransTransaction = await this.midtransService.createSnapTransaction(order, user, shippingCost, taxAmount);
 
     await prismaClient.payment.create({
       data: {
