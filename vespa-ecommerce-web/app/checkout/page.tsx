@@ -1,4 +1,4 @@
-// file: vespa-ecommerce-web/app/checkout/page.tsx
+// file: app/checkout/page.tsx
 'use client';
 
 import { useCartStore } from '@/store/cart';
@@ -14,7 +14,7 @@ import { Address } from '@/services/addressService';
 import { ShippingRate } from '@/services/shippingService';
 
 export default function CheckoutPage() {
-  const { cart, selectedItems } = useCartStore();
+  const { cart, selectedItems, getSummary } = useCartStore(); // Ambil fungsi getSummary
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
@@ -42,6 +42,14 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
+  // ====================================================================
+  // REVISI UTAMA: Gunakan selector dari store untuk kalkulasi
+  // ====================================================================
+  const { subtotal, taxAmount } = getSummary();
+  const shippingCost = selectedShippingOption?.price || 0;
+  const totalAmount = subtotal + taxAmount + shippingCost;
+  // ====================================================================
 
   return (
     <div className="bg-gray-100 min-h-screen pt-28">
@@ -75,7 +83,11 @@ export default function CheckoutPage() {
             className="lg:col-span-1"
           >
              <OrderSummary 
-               shippingCost={selectedShippingOption?.price || null} 
+               // Kirim semua rincian biaya yang sudah dihitung ke komponen OrderSummary
+               subtotal={subtotal}
+               taxAmount={taxAmount}
+               shippingCost={shippingCost}
+               totalAmount={totalAmount}
                selectedAddress={selectedAddress}
                selectedShippingOption={selectedShippingOption}
              />

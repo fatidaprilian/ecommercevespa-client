@@ -32,6 +32,7 @@ type CartState = {
   selectedItems: Set<string>;
   error: string | null;
   
+  // Actions
   fetchCart: () => Promise<void>;
   addItem: (productId: string, quantity?: number) => Promise<void>;
   updateItemQuantity: (cartItemId: string, quantity: number) => void;
@@ -39,15 +40,22 @@ type CartState = {
   toggleItemSelected: (cartItemId: string) => void;
   toggleSelectAll: (forceSelect?: boolean) => void;
   clearClientCart: () => void;
-  // 👇 **PERUBAHAN UTAMA DI SINI** 👇
   createOrder: (
     shippingAddress: string, 
     shippingCost: number, 
     courier: string, 
     destinationPostalCode: string, 
-    destinationAreaId: string // Tambah parameter baru
+    destinationAreaId: string
   ) => Promise<any>;
+  
+  // Selectors / Computed Values
   getTotalWeight: () => number;
+  // ✨ --- PERUBAHAN UTAMA DI SINI --- ✨
+  getSummary: () => {
+    subtotal: number;
+    taxAmount: number;
+    totalItems: number;
+  };
 };
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -70,7 +78,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  addItem: async (productId: string, quantity = 1) => {
+  addItem: async (productId, quantity = 1) => {
     try {
       const { data } = await api.post('/cart/items', { productId, quantity });
       set({ cart: data });
@@ -86,7 +94,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
   
-  updateItemQuantity: (cartItemId: string, newQuantity: number) => {
+  updateItemQuantity: (cartItemId, newQuantity) => {
     if (newQuantity < 1) return;
     set(state => {
       if (!state.cart) return {};
@@ -98,7 +106,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     debouncedUpdateApi(cartItemId, newQuantity);
   },
   
-  removeItem: async (cartItemId: string) => {
+  removeItem: async (cartItemId) => {
     const originalCart = get().cart;
     set(state => {
       if (!state.cart) return {};
@@ -114,7 +122,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  toggleItemSelected: (cartItemId: string) => {
+  toggleItemSelected: (cartItemId) => {
     set(state => {
       const newSelectedItems = new Set(state.selectedItems);
       if (newSelectedItems.has(cartItemId)) {
@@ -126,7 +134,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     });
   },
 
-  toggleSelectAll: (forceSelect?: boolean) => {
+  toggleSelectAll: (forceSelect) => {
     set(state => {
       if (!state.cart) return {};
       const allItemIds = state.cart.items.map(item => item.id);
@@ -152,7 +160,23 @@ export const useCartStore = create<CartState>((set, get) => ({
       }, 0);
   },
   
-  // 👇 **PERUBAHAN UTAMA DI SINI** 👇
+  // ✨ --- SELECTOR BARU UNTUK KALKULASI HARGA --- ✨
+  getSummary: () => {
+    const { cart, selectedItems } = get();
+    if (!cart) return { subtotal: 0, taxAmount: 0, totalItems: 0 };
+
+    const selectedCartItems = cart.items.filter(item => selectedItems.has(item.id));
+
+    const subtotal = selectedCartItems.reduce((acc, item) => {
+      return acc + (item.product.price * item.quantity);
+    }, 0);
+
+    const taxAmount = subtotal * 0.11;
+    const totalItems = selectedCartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+    return { subtotal, taxAmount, totalItems };
+  },
+
   createOrder: async (shippingAddress, shippingCost, courier, destinationPostalCode, destinationAreaId) => {
     const { cart, selectedItems } = get();
     if (!cart || selectedItems.size === 0) {
@@ -170,7 +194,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         shippingCost,
         courier,
         destinationPostalCode,
-        destinationAreaId, // Kirimkan areaId ke backend
+        destinationAreaId,
       });
       
       set({ isLoading: false });

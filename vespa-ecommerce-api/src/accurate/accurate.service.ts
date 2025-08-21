@@ -1,9 +1,11 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { URLSearchParams } from 'url';
 import { AccurateOAuth } from '@prisma/client';
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 @Injectable()
 export class AccurateService {
@@ -26,6 +28,7 @@ export class AccurateService {
         this.tokenUrl = this.configService.get<string>('ACCURATE_TOKEN_URL') || '';
     }
 
+    // ... (Semua fungsi dari getAuthorizationUrl hingga getAccurateApiClient TIDAK BERUBAH)
     getAuthorizationUrl(): string {
         const params = new URLSearchParams({
             client_id: this.clientId,
@@ -42,19 +45,15 @@ export class AccurateService {
             params.append('code', code);
             params.append('grant_type', 'authorization_code');
             params.append('redirect_uri', this.redirectUri);
-
             const authHeader = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
-
             const response = await axios.post(this.tokenUrl, params, {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     Authorization: `Basic ${authHeader}`,
                 },
             });
-
             const { access_token, refresh_token, expires_in, scope, token_type } = response.data;
             const expiresAt = new Date(Date.now() + expires_in * 1000);
-
             await this.prisma.accurateOAuth.deleteMany({});
             await this.prisma.accurateOAuth.create({
                 data: {
@@ -82,7 +81,6 @@ export class AccurateService {
     private async getValidToken(): Promise<AccurateOAuth | null> {
         const token = await this.prisma.accurateOAuth.findFirst();
         if (!token) return null;
-
         if (new Date(token.expiresAt.getTime() - 5 * 60 * 1000) < new Date()) {
             return this.refreshAccessToken(token);
         }
@@ -95,24 +93,19 @@ export class AccurateService {
             const params = new URLSearchParams();
             params.append('grant_type', 'refresh_token');
             params.append('refresh_token', token.refreshToken);
-            
             const authHeader = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
-    
             const response = await axios.post(this.tokenUrl, params, {
                 headers: {
                     Authorization: `Basic ${authHeader}`,
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
             });
-
             const { access_token, expires_in } = response.data;
             const expiresAt = new Date(Date.now() + expires_in * 1000);
-
             const updatedToken = await this.prisma.accurateOAuth.update({
                 where: { id: token.id },
                 data: { accessToken: access_token, expiresAt },
             });
-
             this.logger.log('✅ Access token refreshed successfully.');
             return updatedToken;
         } catch (error) {
@@ -125,7 +118,6 @@ export class AccurateService {
         this.logger.log('Fetching database list from Accurate...');
         const token = await this.getValidToken();
         if (!token) throw new Error('Not authenticated with Accurate.');
-
         const response = await axios.get('https://account.accurate.id/api/db-list.do', {
             headers: { Authorization: `Bearer ${token.accessToken}` },
         });
@@ -136,18 +128,15 @@ export class AccurateService {
         this.logger.log(`Opening Accurate database with ID: ${dbId}`);
         const token = await this.getValidToken();
         if (!token) throw new Error('Not authenticated with Accurate.');
-
         const openDbResponse = await axios.get('https://account.accurate.id/api/open-db.do', {
             params: { id: dbId },
             headers: { Authorization: `Bearer ${token.accessToken}` },
         });
-
         const { host, session } = openDbResponse.data;
         if (!host || !session) {
             throw new InternalServerErrorException('Gagal mendapatkan host atau session dari Accurate.');
         }
         this.logger.log(`Successfully opened database. Host: ${host}`);
-
         const branchApiClient = axios.create({
             baseURL: host,
             headers: {
@@ -155,18 +144,14 @@ export class AccurateService {
                 'X-Session-ID': session,
             },
         });
-        
         const branchResponse = await branchApiClient.get('/accurate/api/branch/list.do', {
             params: { fields: 'name' }
         });
-
         if (!branchResponse.data.d || branchResponse.data.d.length === 0) {
             throw new InternalServerErrorException('Tidak ada cabang yang ditemukan di database Accurate ini.');
         }
-
         const firstBranchName = branchResponse.data.d[0].name;
         this.logger.log(`Default branch found: ${firstBranchName}`);
-
         await this.prisma.accurateOAuth.updateMany({
             data: { 
                 dbId, 
@@ -175,7 +160,6 @@ export class AccurateService {
                 branchName: firstBranchName
             },
         });
-
         return { message: 'Database selected and default branch stored successfully' };
     }
 
@@ -184,12 +168,10 @@ export class AccurateService {
         if (!token) {
             throw new InternalServerErrorException('Integrasi Accurate tidak dikonfigurasi.');
         }
-
         const dbInfo = await this.prisma.accurateOAuth.findFirst();
         if (!dbInfo || !dbInfo.dbHost || !dbInfo.dbSession) {
             throw new InternalServerErrorException('Database Accurate belum dipilih atau dibuka.');
         }
-
         return axios.create({
             baseURL: dbInfo.dbHost,
             headers: {
@@ -199,6 +181,49 @@ export class AccurateService {
         });
     }
 
+    // =======================================================
+    // FUNGSI POLLING FINAL: MENCARI BERDASARKAN NOMOR
+    // =======================================================
+    /**
+     * Mencari Sales Invoice berdasarkan NOMOR STRING-nya.
+     * Ini cara yang paling andal untuk polling sebelum membuat Sales Receipt.
+     * @param invoiceNumber Nomor string dari Sales Invoice (cth: "SI.2025.08.00020").
+     * @returns Data invoice jika ditemukan, null jika tidak.
+     */
+    public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
+        const MAX_RETRIES = 3;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                this.logger.log(`[Attempt ${attempt}/${MAX_RETRIES}] Mencari Sales Invoice dengan NOMOR: ${invoiceNumber}`);
+                const apiClient = await this.getAccurateApiClient();
+                const response = await apiClient.get('/accurate/api/sales-invoice/list.do', { 
+                    params: { 
+                        'sp.pageSize': 1, // Kita hanya butuh 1 hasil
+                        'filter.number.op': 'EQUAL', 
+                        'filter.number.val[0]': invoiceNumber 
+                    }
+                });
+
+                if (response.data?.s && response.data?.d && response.data.d.length > 0) {
+                    return response.data.d[0];
+                }
+                
+                return null;
+            } catch (error) {
+                const axiosError = error as AxiosError;
+                if (axiosError.code === 'EAI_AGAIN' && attempt < MAX_RETRIES) {
+                    this.logger.warn(`Network error (EAI_AGAIN) saat mencari invoice. Mencoba lagi dalam 2 detik...`);
+                    await delay(2000);
+                    continue;
+                }
+                
+                this.logger.error(`Error saat getSalesInvoiceByNumber: ${error.message}`, axiosError.response?.data);
+                throw new Error(`Gagal menghubungi API Accurate untuk mencari faktur nomor: ${invoiceNumber}.`);
+            }
+        }
+        return null;
+    }
+
     async getBankAccounts() {
         this.logger.log('Fetching Cash & Bank GL Accounts from Accurate...');
         try {
@@ -206,19 +231,14 @@ export class AccurateService {
             const response = await apiClient.get('/accurate/api/glaccount/list.do', {
                 params: {
                     'sp.type': 'CASH_BANK',
-                    // ✅ PERBAIKAN FINAL: Ambil 'no' (Nomor Akun) yang merupakan field kunci
                     fields: 'id,no,name,accountType',
                 },
             });
-
             if (!response.data.s || !response.data.d) {
                 this.logger.warn('No bank accounts found in Accurate or API error.');
                 return [];
             }
-
-            // Urutkan berdasarkan nama untuk tampilan yang lebih baik di dropdown
             return response.data.d.sort((a, b) => a.name.localeCompare(b.name));
-
         } catch (error) {
             this.logger.error('Failed to fetch bank accounts from Accurate', error.response?.data || error.message);
             throw new InternalServerErrorException('Gagal mengambil daftar akun bank dari Accurate.');
