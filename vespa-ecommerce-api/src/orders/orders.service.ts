@@ -164,11 +164,11 @@ export class OrdersService {
           where: { id: manualPaymentMethodId },
         });
 
-        if (!manualMethod) {
-          this.logger.error(`Metode Pembayaran Manual dengan ID ${manualPaymentMethodId} tidak ditemukan untuk pesanan ${orderId}.`);
+        if (!manualMethod || !manualMethod.accurateBankNo) {
+          this.logger.error(`Metode Pembayaran Manual dengan ID ${manualPaymentMethodId} tidak ditemukan atau accurateBankNo kosong.`);
         } else {
-          // ✅ PERBAIKAN: Kirim 2 argumen yang benar (orderId, bankName)
-          this.accurateSyncService.createSalesInvoiceAndReceipt(orderId, manualMethod.accurateBankName)
+          // ✅ PERBAIKAN: Kirim argumen yang benar (orderId, bankNo, bankName)
+          this.accurateSyncService.createSalesInvoiceAndReceipt(orderId, manualMethod.accurateBankNo, manualMethod.accurateBankName)
             .catch(err => {
               this.logger.error(`Gagal memicu sinkronisasi Accurate dari update manual untuk pesanan ${orderId}`, err.stack);
             });

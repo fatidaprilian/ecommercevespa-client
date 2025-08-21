@@ -74,11 +74,11 @@ export class PaymentsService {
             where: { paymentMethodKey: paymentKey },
         });
 
-        if (!mapping) {
-            this.logger.error(`Payment mapping for Midtrans key "${paymentKey}" not found. Cannot sync order ${orderId} to Accurate.`);
+        if (!mapping || !mapping.accurateBankNo) {
+            this.logger.error(`Payment mapping for Midtrans key "${paymentKey}" not found or accurateBankNo is missing. Cannot sync order ${orderId} to Accurate.`);
         } else {
-            // ✅ PERBAIKAN: Kirim 2 argumen yang benar (orderId, bankName)
-            this.accurateSyncService.createSalesInvoiceAndReceipt(orderId, mapping.accurateBankName)
+            // ✅ PERBAIKAN: Kirim argumen yang benar (orderId, bankNo, bankName)
+            this.accurateSyncService.createSalesInvoiceAndReceipt(orderId, mapping.accurateBankNo, mapping.accurateBankName)
                 .catch(err => {
                     this.logger.error(`Failed to create Accurate documents for order ${orderId}`, err.stack);
                 });

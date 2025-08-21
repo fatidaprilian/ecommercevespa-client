@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -20,14 +20,14 @@ interface PaymentMapping {
   id: string;
   paymentMethodKey: string;
   accurateBankName: string;
-  accurateBankId?: number; // Tambahkan untuk konsistensi
+  accurateBankId?: number;
+  accurateBankNo?: string;
   description?: string;
 }
 
 const formSchema = z.object({
   paymentMethodKey: z.string().min(2, { message: 'Kunci metode harus diisi.' }),
-  // ✅ PERUBAHAN 1: Field ini sekarang akan menyimpan "id|nama"
-  accurateBankData: z.string().min(3, { message: 'Nama akun Accurate harus dipilih.' }),
+  accurateBankData: z.string().min(3, { message: 'Akun Accurate harus dipilih.' }),
   description: z.string().optional(),
 });
 
@@ -37,8 +37,8 @@ const getMappings = async (): Promise<PaymentMapping[]> => {
   const { data } = await api.get('/payment-mappings');
   return data;
 };
-const createMapping = async (data: FormValues) => (await api.post('/payment-mappings', data)).data;
-const updateMapping = async ({ id, data }: { id: string; data: FormValues }) => (await api.patch(`/payment-mappings/${id}`, data)).data;
+const createMapping = async (data: any) => (await api.post('/payment-mappings', data)).data;
+const updateMapping = async ({ id, data }: { id: string; data: any }) => (await api.patch(`/payment-mappings/${id}`, data)).data;
 const deleteMapping = async (id: string) => await api.delete(`/payment-mappings/${id}`);
 
 function PaymentMappingForm({ mapping, onClose }: { mapping?: PaymentMapping; onClose: () => void; }) {
@@ -51,13 +51,28 @@ function PaymentMappingForm({ mapping, onClose }: { mapping?: PaymentMapping; on
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    // ✅ PERUBAHAN 2: Inisialisasi nilai default
     defaultValues: {
       paymentMethodKey: mapping?.paymentMethodKey || '',
-      accurateBankData: mapping ? `${mapping.accurateBankId}|${mapping.accurateBankName}` : '',
+      accurateBankData: mapping && mapping.accurateBankNo ? `${mapping.accurateBankNo}|${mapping.accurateBankName}` : '',
       description: mapping?.description || '',
     },
   });
+  
+  useEffect(() => {
+      if (mapping) {
+          form.reset({
+              paymentMethodKey: mapping.paymentMethodKey,
+              accurateBankData: mapping.accurateBankNo ? `${mapping.accurateBankNo}|${mapping.accurateBankName}` : '',
+              description: mapping.description || '',
+          });
+      } else {
+          form.reset({
+              paymentMethodKey: '',
+              accurateBankData: '',
+              description: '',
+          });
+      }
+  }, [mapping, form]);
 
   const mutation = useMutation({
     mutationFn: (data: any) => mapping ? updateMapping({ id: mapping.id, data }) : createMapping(data),
@@ -70,13 +85,12 @@ function PaymentMappingForm({ mapping, onClose }: { mapping?: PaymentMapping; on
   });
 
   const onSubmit = (data: FormValues) => {
-    // ✅ PERUBAHAN 3: Proses data sebelum dikirim ke API
-    const [id, name] = data.accurateBankData.split('|');
-
+    const [no, name] = data.accurateBankData.split('|');
     const payload = {
         ...data,
-        accurateBankId: parseInt(id, 10),
+        accurateBankNo: no,
         accurateBankName: name,
+        accurateBankId: bankAccounts?.find(acc => acc.no === no)?.id,
     };
     delete payload.accurateBankData;
 
@@ -90,7 +104,6 @@ function PaymentMappingForm({ mapping, onClose }: { mapping?: PaymentMapping; on
         <div className="grid gap-4 py-4">
           <FormField control={form.control} name="paymentMethodKey" render={({ field }) => ( <FormItem><FormLabel>Kunci Metode (dari Midtrans)</FormLabel><FormControl><Input placeholder="Contoh: bca_va, gopay" {...field} /></FormControl><FormMessage /></FormItem> )} />
           
-          {/* ✅ PERUBAHAN 4: Update FormField untuk dropdown */}
           <FormField control={form.control} name="accurateBankData" render={({ field }) => (
             <FormItem>
               <FormLabel>Nama Akun Kas/Bank di Accurate</FormLabel>
@@ -102,8 +115,8 @@ function PaymentMappingForm({ mapping, onClose }: { mapping?: PaymentMapping; on
                     </FormControl>
                     <SelectContent>
                         {bankAccounts?.map((account) => (
-                            <SelectItem key={account.id} value={`${account.id}|${account.name}`}>
-                                {account.name}
+                            <SelectItem key={account.id} value={`${account.no}|${account.name}`}>
+                                {account.name} <span className="text-muted-foreground ml-2">({account.no})</span>
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -125,7 +138,6 @@ function PaymentMappingForm({ mapping, onClose }: { mapping?: PaymentMapping; on
   );
 }
 
-// ... Sisa komponen PaymentMappingsPage tidak ada perubahan ...
 export default function PaymentMappingsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMapping, setEditingMapping] = useState<PaymentMapping | undefined>(undefined);

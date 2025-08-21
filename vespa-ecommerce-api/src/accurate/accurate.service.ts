@@ -1,5 +1,3 @@
-// src/accurate/accurate.service.ts
-
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,7 +31,7 @@ export class AccurateService {
             client_id: this.clientId,
             response_type: 'code',
             redirect_uri: this.redirectUri,
-            scope: 'item_view item_save sales_invoice_view sales_invoice_save customer_view customer_save branch_view sales_receipt_save glaccount_view', // Added glaccount_view scope
+            scope: 'item_view item_save sales_invoice_view sales_invoice_save customer_view customer_save branch_view sales_receipt_save glaccount_view',
         });
         return `${this.authUrl}?${params.toString()}`;
     }
@@ -201,19 +199,15 @@ export class AccurateService {
         });
     }
 
-    /**
-     * ✅ NEW: Fetches the list of Cash & Bank accounts from Accurate.
-     */
     async getBankAccounts() {
         this.logger.log('Fetching Cash & Bank GL Accounts from Accurate...');
         try {
             const apiClient = await this.getAccurateApiClient();
             const response = await apiClient.get('/accurate/api/glaccount/list.do', {
                 params: {
-                    // Filter by account type 'Cash & Bank'
                     'sp.type': 'CASH_BANK',
-                    // Fetch only the required fields
-                    fields: 'id,name,accountType',
+                    // ✅ PERBAIKAN FINAL: Ambil 'no' (Nomor Akun) yang merupakan field kunci
+                    fields: 'id,no,name,accountType',
                 },
             });
 
@@ -222,7 +216,7 @@ export class AccurateService {
                 return [];
             }
 
-            // Sort by name for a better dropdown experience
+            // Urutkan berdasarkan nama untuk tampilan yang lebih baik di dropdown
             return response.data.d.sort((a, b) => a.name.localeCompare(b.name));
 
         } catch (error) {

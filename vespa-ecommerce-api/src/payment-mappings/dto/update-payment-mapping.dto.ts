@@ -9,10 +9,14 @@ export class UpdatePaymentMappingDto {
   @IsNotEmpty()
   accurateBankName: string;
 
-  // ✅ TAMBAHKAN
   @IsInt()
+  @IsOptional() // Dibuat opsional untuk kompatibilitas
+  accurateBankId?: number;
+
+  // ✅ TAMBAHKAN INI
+  @IsString()
   @IsNotEmpty()
-  accurateBankId: number;
+  accurateBankNo: string;
 
   @IsString()
   @IsOptional()

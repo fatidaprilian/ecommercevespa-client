@@ -3,6 +3,7 @@ import api from '@/lib/api';
 
 export interface AccurateBankAccount {
   id: number;
+  no: string; // ✅ Tambahkan ini
   name: string;
   accountType: string;
 }

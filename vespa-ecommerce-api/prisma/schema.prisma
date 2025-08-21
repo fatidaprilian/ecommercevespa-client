@@ -295,6 +295,7 @@ model ManualPaymentMethod {
   paymentMethodKey String   @unique
   accurateBankName String
   accurateBankId   Int?     // ✅ ID Akun dari Accurate
+  accurateBankNo   String?
 }
 
 model PaymentMethodMapping {
@@ -305,6 +306,7 @@ model PaymentMethodMapping {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   accurateBankId   Int?     // ✅ ID Akun dari Accurate
+  accurateBankNo   String?
 }
 
 model AccurateOAuth {
