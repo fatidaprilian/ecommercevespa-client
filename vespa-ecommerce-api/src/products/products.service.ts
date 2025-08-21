@@ -1,4 +1,4 @@
-// src/products/products.service.ts
+// file: vespa-ecommerce-api/src/products/products.service.ts
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -91,12 +91,16 @@ export class ProductsService {
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    // Logika 'where' ini sudah benar, tidak perlu diubah.
-    // Error terjadi karena 'brandId' yang masuk masih berupa string, bukan array.
     const where: Prisma.ProductWhereInput = {};
-    if (categoryId) {
-      where.categoryId = categoryId;
+    
+    // --- AWAL PERBAIKAN ---
+    // Logika disesuaikan untuk menangani categoryId sebagai array
+    if (categoryId && categoryId.length > 0) {
+      where.categoryId = {
+        in: categoryId,
+      };
     }
+    // --- AKHIR PERBAIKAN ---
 
     if (brandId && brandId.length > 0) {
       where.brandId = {

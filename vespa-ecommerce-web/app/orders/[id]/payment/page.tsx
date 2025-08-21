@@ -55,7 +55,10 @@ export default function PaymentInstructionPage() {
   if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin h-8 w-8" /></div>;
   if (isOrderError || !order) return <div className="text-center py-20">Pesanan tidak ditemukan.</div>;
 
-  const totalAmount = order.totalAmount + order.shippingCost;
+  // --- ✅ PERBAIKAN UTAMA DI SINI ---
+  // Gunakan `order.totalAmount` langsung dari backend.
+  // Nilai ini sudah final dan mencakup semua komponen (subtotal, diskon, PPN, dan ongkir).
+  const totalAmount = order.totalAmount;
 
   return (
     <div className="bg-gray-100 min-h-screen pt-28">

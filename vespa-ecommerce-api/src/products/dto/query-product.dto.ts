@@ -1,32 +1,33 @@
-// file: src/products/dto/query-product.dto.ts
-
 import { Transform } from 'class-transformer';
 import { IsString, IsOptional, IsIn, IsEnum, IsArray } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
-export class QueryProductDto extends PaginationDto {
-  @IsOptional()
-  @IsString()
-  categoryId?: string;
+// Helper function to reliably convert incoming query params to an array
+const transformToArray = ({ value }: { value: string | string[] }): string[] | undefined => {
+  // If the value is a single string, put it into an array
+  if (value && typeof value === 'string') {
+    return [value];
+  }
+  // If it's already an array, just return it
+  if (Array.isArray(value)) {
+    return value;
+  }
+  // Return undefined if no value is provided
+  return undefined;
+};
 
-  // --- AWAL PERBAIKAN ---
-  // Logika diubah untuk menerima string tunggal dari query URL
-  // dan mengubahnya menjadi array secara otomatis.
+export class QueryProductDto extends PaginationDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      return value.split(',').filter(item => item.trim() !== ''); // Mendukung ?brandId=id1,id2
-    }
-    if (Array.isArray(value)) {
-      return value;
-    }
-    // Jika hanya satu string (bukan array) yang dikirim
-    return [value];
-  })
+  @Transform(transformToArray)
+  categoryId?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(transformToArray) // <-- PERBAIKAN UTAMA DI SINI
   brandId?: string[];
-  // --- AKHIR PERBAIKAN ---
 
   @IsOptional()
   @IsString()

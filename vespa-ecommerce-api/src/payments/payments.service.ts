@@ -17,20 +17,29 @@ export class PaymentsService {
   ) {}
 
   async createPaymentForOrder(
-    order: Order & { items: any[] },
+    order: Order & { items: any[], subtotal: number, taxAmount: number }, // Ensure subtotal and taxAmount are typed
     user: User,
     shippingCost: number,
     prismaClient: Prisma.TransactionClient = this.prisma,
   ) {
-    const taxRate = 0.11; // 11% PPN
-    const taxAmount = Math.round(order.totalAmount * taxRate);
-    const totalAmount = order.totalAmount + taxAmount + shippingCost;
-    const midtransTransaction = await this.midtransService.createSnapTransaction(order, user, shippingCost, taxAmount);
+    // --- START OF FIX ---
+    // DO NOT recalculate anything here.
+    // The `order.totalAmount` from OrdersService is the final, correct amount.
+    const finalAmount = order.totalAmount;
+
+    // Pass the correct, pre-calculated tax amount to Midtrans.
+    const midtransTransaction = await this.midtransService.createSnapTransaction(
+        order, 
+        user, 
+        shippingCost, 
+        order.taxAmount 
+    );
+    // --- END OF FIX ---
 
     await prismaClient.payment.create({
       data: {
         order: { connect: { id: order.id } },
-        amount: totalAmount,
+        amount: finalAmount, // Use the final amount
         method: 'MIDTRANS_SNAP',
         status: PaymentStatus.PENDING,
         transactionId: midtransTransaction.token,
@@ -79,7 +88,6 @@ export class PaymentsService {
         if (!mapping || !mapping.accurateBankNo) {
             this.logger.error(`Payment mapping for Midtrans key "${paymentKey}" not found or accurateBankNo is missing. Cannot sync order ${orderId} to Accurate.`);
         } else {
-            // ✅ PERBAIKAN: Kirim argumen yang benar (orderId, bankNo, bankName)
             this.accurateSyncService.createSalesInvoiceAndReceipt(orderId, mapping.accurateBankNo, mapping.accurateBankName)
                 .catch(err => {
                     this.logger.error(`Failed to create Accurate documents for order ${orderId}`, err.stack);

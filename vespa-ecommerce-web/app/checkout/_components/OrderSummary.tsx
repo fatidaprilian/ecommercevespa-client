@@ -17,7 +17,6 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
-// ✨ --- PERUBAHAN 1: DEFINISIKAN PROPS BARU --- ✨
 interface OrderSummaryProps {
   subtotal: number;
   taxAmount: number;
@@ -25,6 +24,7 @@ interface OrderSummaryProps {
   totalAmount: number;
   selectedAddress: Address | null;
   selectedShippingOption: ShippingRate | null;
+  vatPercentage: number;
 }
 
 export function OrderSummary({ 
@@ -33,7 +33,8 @@ export function OrderSummary({
   shippingCost, 
   totalAmount, 
   selectedAddress, 
-  selectedShippingOption 
+  selectedShippingOption,
+  vatPercentage,
 }: OrderSummaryProps) {
   const router = useRouter();
   const { createOrder, selectedItems, cart } = useCartStore();
@@ -63,9 +64,11 @@ export function OrderSummary({
         );
         
         if (newOrder && newOrder.redirect_url) {
+          // Untuk MEMBER, arahkan ke payment gateway
           window.location.href = newOrder.redirect_url;
         } else if (newOrder) {
-          router.push(`/orders/${newOrder.id}/payment`);
+          // ✅ REVISI UTAMA: Untuk RESELLER, arahkan langsung ke halaman detail pesanan
+          router.push(`/orders/${newOrder.id}`);
         } else {
           throw new Error('Respons pesanan tidak valid.');
         }
@@ -80,7 +83,6 @@ export function OrderSummary({
     <div className="bg-white rounded-lg shadow-md p-6 sticky top-28">
       <h2 className="text-xl font-bold border-b pb-4 mb-4">Ringkasan Pesanan</h2>
       
-      {/* Bagian daftar item tidak berubah, jadi kita biarkan */}
       <div className="space-y-3 max-h-60 overflow-y-auto pr-2 mb-4">
         {cart?.items
           ?.filter(item => selectedItems.has(item.id))
@@ -105,7 +107,7 @@ export function OrderSummary({
         </div>
         
         <div className="flex justify-between text-gray-600">
-          <span>PPN (11%)</span>
+          <span>PPN ({vatPercentage > 0 ? vatPercentage : '...'}%)</span>
           <span className="font-semibold">{formatPrice(taxAmount)}</span>
         </div>
 

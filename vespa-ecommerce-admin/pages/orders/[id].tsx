@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Loader2, User, Package, MapPin, Truck, CheckCircle, ChevronsRight } from 'lucide-react';
+import { ArrowLeft, Loader2, User, Package, MapPin, Truck, CheckCircle, ChevronsRight, Landmark } from 'lucide-react';
 
 import { getOrderById, Order, OrderItem, OrderStatus } from '@/services/orderService';
 import { Button } from '@/components/ui/button';
@@ -12,11 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import api from '@/lib/api';
 
-// --- Helper Functions ---
+// --- Helper Functions (tidak ada perubahan) ---
 const formatDate = (dateString: string) => new Date(dateString).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 
 // --- Service Functions ---
+// ✅ Disederhanakan: Tidak perlu lagi mengirim manualPaymentMethodId
 const updateOrderStatus = async ({ orderId, status }: { orderId: string; status: OrderStatus }) => {
     const { data } = await api.patch(`/orders/${orderId}/status`, { status });
     return data;
@@ -33,6 +34,8 @@ export default function OrderDetailPage() {
   const { id } = router.query;
   const orderId = typeof id === 'string' ? id : '';
 
+  // state 'selectedBankId' dan query 'paymentMethods' dihapus.
+  
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', orderId],
     queryFn: () => getOrderById(orderId),
@@ -59,9 +62,13 @@ export default function OrderDetailPage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal memproses pengiriman.')
   });
 
+  // ✅ Disederhanakan: Fungsi validasi sekarang hanya butuh konfirmasi.
   const handleValidatePayment = () => {
       if(window.confirm('Konfirmasi bahwa Anda telah menerima pembayaran untuk pesanan ini? Status akan diubah menjadi PROCESSING.')) {
-          statusMutation.mutate({ orderId, status: OrderStatus.PROCESSING });
+          statusMutation.mutate({
+              orderId,
+              status: OrderStatus.PROCESSING,
+          });
       }
   };
 
@@ -70,16 +77,13 @@ export default function OrderDetailPage() {
         toast.error('Informasi kurir tidak ditemukan pada pesanan ini.');
         return;
     }
-    
     const parts = order.courier.split(' - ');
     if (parts.length < 2) {
         toast.error(`Format kurir tidak valid: ${order.courier}`);
         return;
     }
-
     const courier_company = parts[0].trim().toLowerCase();
     const courier_type = parts[1].trim().toLowerCase();
-
     shipmentMutation.mutate({ orderId, courier_company, courier_type });
   };
 
@@ -87,7 +91,7 @@ export default function OrderDetailPage() {
   if (isError) return <p className="text-center text-red-500 p-8">Gagal memuat detail pesanan.</p>;
   if (!order) return null;
 
-  const total = order.totalAmount + order.shippingCost;
+  const total = order.totalAmount;
 
   return (
     <div className="space-y-6">
@@ -117,7 +121,9 @@ export default function OrderDetailPage() {
                           <TableCell className="text-right">{formatPrice(item.price * item.quantity)}</TableCell>
                         </TableRow>
                       ))}
-                      <TableRow className="font-bold"><TableCell colSpan={4} className="text-right">Subtotal Produk</TableCell><TableCell className="text-right">{formatPrice(order.totalAmount)}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-right">Subtotal</TableCell><TableCell className="text-right">{formatPrice(order.subtotal)}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-right">Diskon</TableCell><TableCell className="text-right">- {formatPrice(order.discountAmount)}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-right">PPN</TableCell><TableCell className="text-right">{formatPrice(order.taxAmount)}</TableCell></TableRow>
                       <TableRow><TableCell colSpan={4} className="text-right">Ongkos Kirim ({order.courier})</TableCell><TableCell className="text-right">{formatPrice(order.shippingCost)}</TableCell></TableRow>
                       <TableRow className="font-extrabold text-lg bg-secondary"><TableCell colSpan={4} className="text-right">Total Pembayaran</TableCell><TableCell className="text-right">{formatPrice(total)}</TableCell></TableRow>
                     </TableBody>
@@ -155,6 +161,22 @@ export default function OrderDetailPage() {
                     <a href={order.payment.proofOfPayment} target="_blank" rel="noopener noreferrer">
                         <img src={order.payment.proofOfPayment} alt="Bukti Pembayaran" className="rounded-lg border hover:opacity-80 transition-opacity"/>
                     </a>
+                    
+                    {/* ✅ Menampilkan informasi bank yang dipilih reseller untuk verifikasi */}
+                    {order.payment.manualPaymentMethod ? (
+                        <div className="bg-blue-50 border-l-4 border-blue-400 p-3 text-sm">
+                            <p className="font-semibold text-blue-800">Reseller melakukan transfer ke:</p>
+                            <div className="flex items-center gap-2 mt-1 text-blue-700">
+                                <Landmark className="h-4 w-4" />
+                                <span>{order.payment.manualPaymentMethod.bankName} - {order.payment.manualPaymentMethod.accountNumber}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-yellow-50 p-3 rounded-md text-sm text-yellow-800">
+                          <p>Informasi bank tujuan tidak tercatat.</p>
+                        </div>
+                    )}
+
                     <Button onClick={handleValidatePayment} className="w-full bg-green-600 hover:bg-green-700" disabled={statusMutation.isPending}>
                         {statusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                         <CheckCircle className="mr-2 h-4 w-4" /> Validasi & Proses Pesanan
@@ -189,9 +211,7 @@ export default function OrderDetailPage() {
                  <div className="space-y-2 text-sm border-t pt-4">
                     <p className="font-semibold">Informasi Pengiriman:</p>
                     <p><span className="text-muted-foreground">Kurir:</span> {order.shipment.courier}</p>
-                    {/* 👇 **PERBAIKAN UTAMA DI SINI** 👇 */}
                     <p><span className="text-muted-foreground">No. Resi:</span> <span className="font-mono">{order.shipment.trackingNumber}</span></p>
-                    {/* 👆 **END OF CHANGES** 👆 */}
                     <p><span className="text-muted-foreground">Dikirim pada:</span> {formatDate(order.shipment.createdAt)}</p>
                  </div>
                )}

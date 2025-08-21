@@ -56,4 +56,45 @@ export class SettingsService {
     // Menjalankan semua operasi update dalam satu transaksi database
     return this.prisma.$transaction(transactions);
   }
+
+  // ======================================================
+  // METODE BARU UNTUK PENGATURAN PPN (VAT)
+  // ======================================================
+
+  /**
+   * Mengambil nilai PPN (Pajak Pertambahan Nilai) saat ini dari database.
+   * Jika pengaturan PPN tidak ditemukan, akan mengembalikan nilai default (11%).
+   * @returns {Promise<number>} Persentase PPN dalam bentuk angka.
+   */
+  async getVatPercentage(): Promise<number> {
+    const vatSetting = await this.prisma.appSettings.findUnique({
+      where: { key: 'PPN' },
+    });
+
+    // Jika PPN belum di-set di database, kembalikan nilai default yang aman.
+    if (!vatSetting || !vatSetting.value) {
+      return 11;
+    }
+    
+    // Konversi nilai dari string ke angka sebelum dikembalikan.
+    return parseFloat(vatSetting.value);
+  }
+
+  /**
+   * Membuat atau memperbarui pengaturan PPN.
+   * Metode ini adalah shortcut khusus untuk mengelola nilai PPN.
+   * @param {number} value - Persentase PPN baru yang akan disimpan.
+   */
+  async updateVatPercentage(value: number) {
+    const key = 'PPN';
+    return this.prisma.appSettings.upsert({
+      where: { key },
+      update: { value: value.toString() },
+      create: {
+        key,
+        value: value.toString(),
+        description: 'Persentase Pajak Pertambahan Nilai (PPN) dalam persen.',
+      },
+    });
+  }
 }

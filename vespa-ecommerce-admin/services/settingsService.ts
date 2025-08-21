@@ -1,4 +1,4 @@
-// file: pages/services/settingsService.ts
+// file: vespa-ecommerce-admin/services/settingsService.ts
 
 import api from '@/lib/api';
 
@@ -39,7 +39,6 @@ export const updateSetting = async ({ key, value, description }: { key: string; 
   return data;
 };
 
-// --- TAMBAHKAN FUNGSI BARU DI SINI ---
 /**
  * Memperbarui beberapa pengaturan sekaligus.
  * @param settings - Array berisi objek pengaturan { key, value }.
@@ -47,4 +46,27 @@ export const updateSetting = async ({ key, value, description }: { key: string; 
 export const updateMultipleSettings = async (settings: SettingPayload[]): Promise<AppSetting[]> => {
     const { data } = await api.post('/settings/batch-update', { settings });
     return data;
+};
+
+
+// ======================================================
+// FUNGSI BARU KHUSUS UNTUK PENGATURAN PPN (VAT)
+// ======================================================
+
+/**
+ * Mengambil pengaturan PPN secara spesifik.
+ * @returns {Promise<{ key: string; value: number }>} Objek berisi kunci dan nilai PPN.
+ */
+export const getVatSetting = async (): Promise<{ key: string; value: number }> => {
+  const { data } = await api.get('/settings/ppn');
+  return data;
+};
+
+/**
+ * Memperbarui pengaturan PPN.
+ * @param {number} value - Nilai persentase PPN yang baru.
+ */
+export const updateVatSetting = async (value: number): Promise<AppSetting> => {
+  const { data } = await api.patch('/settings/ppn', { value });
+  return data;
 };

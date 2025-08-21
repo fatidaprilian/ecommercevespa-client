@@ -50,9 +50,6 @@ export default function PriceDisplay({
         <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-md">
           {priceInfo.discountPercentage}% OFF
         </span>
-        <p className={`font-medium text-gray-500 line-through ${originalPriceClassName}`}>
-          {formatPrice(priceInfo.originalPrice)}
-        </p>
       </div>
     </div>
   );

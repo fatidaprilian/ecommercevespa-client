@@ -2,50 +2,42 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Wallet, Copy } from 'lucide-react';
-import { useState } from 'react';
+import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Wallet, Copy, Info } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-
-// --- AWAL PERBAIKAN ---
-// 1. Mengimpor library date-fns untuk penanganan tanggal yang lebih andal
+import Link from 'next/link';
 import { format, isValid } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
-// --- AKHIR PERBAIKAN ---
 
 import api from '@/lib/api';
 import { Order } from '@/types';
 import { useAuthStore } from '@/store/auth';
 import { getOrderById } from '@/services/orderService';
-import { getActivePaymentMethods } from '@/services/paymentService';
+import { getActivePaymentMethods, ManualPaymentMethod } from '@/services/paymentService';
 import { Button } from '@/components/ui/button';
 import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
+// Impor komponen UI yang diperlukan untuk pilihan bank
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
-// Helper functions
-// --- AWAL PERBAIKAN ---
-// 2. Mengganti fungsi formatDate dengan versi yang lebih robust menggunakan date-fns
+// Helper functions (tidak ada perubahan)
 const formatDate = (dateString?: string) => {
-  if (!dateString) {
-    return 'Tanggal tidak tersedia';
-  }
+  if (!dateString) return 'Tanggal tidak tersedia';
   const date = new Date(dateString);
-  // Memeriksa apakah tanggal yang diparsing valid sebelum memformatnya
-  if (!isValid(date)) {
-    return 'Invalid Date'; // Jika tidak valid, kembalikan pesan error
-  }
-  // Format tanggal ke format yang mudah dibaca
+  if (!isValid(date)) return 'Invalid Date';
   return format(date, "d MMMM yyyy, HH:mm", { locale: localeID });
 };
-// --- AKHIR PERBAIKAN ---
 
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
+
 const copyToClipboard = (text: string, label: string) => {
   navigator.clipboard.writeText(text);
   toast.success(`${label} disalin!`);
 };
 
-// Komponen untuk menampilkan detail pelacakan
+// Komponen untuk menampilkan detail pelacakan (ShipmentTracking)
 function ShipmentTracking({ order }: { order: Order }) {
     if (!order.shipment?.trackingNumber || !order.courier) {
         return null;
@@ -103,56 +95,36 @@ function ShipmentTracking({ order }: { order: Order }) {
     );
 }
 
-// Komponen Pembayaran Manual (Reseller)
-function ManualPaymentDetails() {
-    const { data: paymentMethods, isLoading } = useQuery({
+
+// >> REVISI UTAMA: Komponen untuk alur pembayaran reseller
+function ResellerPaymentSection({ order, onUploadSuccess }: { order: Order, onUploadSuccess: () => void }) {
+    const [isUploading, setIsUploading] = useState(false);
+    const [selectedBankId, setSelectedBankId] = useState<string>('');
+    const { data: paymentMethods, isLoading: isLoadingBanks } = useQuery<ManualPaymentMethod[]>({
         queryKey: ['activePaymentMethods'],
         queryFn: getActivePaymentMethods,
     });
-
-    if (isLoading) return <div className="text-center p-4"><Loader2 className="animate-spin mx-auto"/></div>;
-
-    return (
-        <div className="mt-4 border-t pt-4 text-left space-y-4">
-            <h3 className="font-bold text-lg text-gray-800">1. Lakukan Pembayaran</h3>
-            <p className="text-sm text-gray-500">Silakan transfer total pembayaran ke salah satu rekening di bawah ini.</p>
-            {paymentMethods?.map(method => (
-                <div key={method.id} className="border p-3 rounded-lg flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-3">
-                        {method.logoUrl ? <img src={method.logoUrl} alt={method.bankName} className="h-6 w-auto"/> : <Landmark className="h-6 w-6 text-gray-400"/>}
-                        <div>
-                            <p className="font-semibold">{method.bankName}</p>
-                            <p className="text-xs text-gray-600">{method.accountHolder}</p>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <p className="font-mono font-semibold">{method.accountNumber}</p>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => copyToClipboard(method.accountNumber, method.bankName)}>Salin</Button>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-// Komponen Upload Bukti Bayar (Reseller)
-function UploadProofForm({ orderId }: { orderId: string }) {
-    const queryClient = useQueryClient();
-    const [isUploading, setIsUploading] = useState(false);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
+        if (!selectedBankId) {
+            toast.error("Silakan pilih bank tujuan transfer Anda terlebih dahulu.");
+            return;
+        }
+
         setIsUploading(true);
-        const toastId = toast.loading('Mengunggah bukti pembayaran...');
+        const toastId = toast.loading('Mengunggah bukti...');
         const formData = new FormData();
         formData.append('file', file);
+        // Kirim ID bank yang dipilih bersama dengan file
+        formData.append('manualPaymentMethodId', selectedBankId);
 
         try {
-            await api.post(`/upload/payment-proof/${orderId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            await api.post(`/upload/payment-proof/${order.id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             toast.success('Bukti pembayaran berhasil diunggah!', { id: toastId });
-            queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+            onUploadSuccess();
         } catch (error) {
             toast.error('Gagal mengunggah file.', { id: toastId });
         } finally {
@@ -161,13 +133,46 @@ function UploadProofForm({ orderId }: { orderId: string }) {
     };
 
     return (
-        <div className="mt-4 border-t pt-4 text-left">
-            <h3 className="font-bold text-lg text-gray-800">2. Unggah Bukti Pembayaran</h3>
-            <p className="text-sm text-gray-500 mb-4">Setelah transfer berhasil, unggah bukti Anda di sini.</p>
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
-                {isUploading ? <Loader2 className="w-8 h-8 text-gray-400 animate-spin"/> : <><UploadCloud className="w-10 h-10 text-gray-400 mb-2"/><span className="text-sm text-gray-500">Klik untuk memilih file</span></>}
-                <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} accept="image/*"/>
-            </label>
+        <div className="border-t pt-6 mt-6">
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg text-left mb-6 flex items-start gap-3">
+              <Info className="h-5 w-5 mt-0.5 flex-shrink-0"/>
+              <div>
+                  <p className="font-bold">Selesaikan Pembayaran</p>
+                  <p className="text-sm">Lakukan transfer sesuai total tagihan, lalu unggah bukti pembayaran Anda di bawah ini.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+                <h3 className="font-bold text-lg text-gray-800">1. Pilih Bank Tujuan Transfer</h3>
+                {isLoadingBanks ? <Loader2 className="animate-spin" /> : (
+                    <RadioGroup onValueChange={setSelectedBankId} value={selectedBankId}>
+                        {paymentMethods?.map(method => (
+                            <Label key={method.id} htmlFor={method.id} className="border p-3 rounded-lg flex items-center justify-between text-sm cursor-pointer has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
+                                <div className="flex items-center gap-3">
+                                    <RadioGroupItem value={method.id} id={method.id} />
+                                    <div>
+                                        <p className="font-semibold">{method.bankName}</p>
+                                        <p className="text-xs text-gray-600">a/n {method.accountHolder}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-mono font-semibold">{method.accountNumber}</p>
+                                    <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={(e) => { e.preventDefault(); copyToClipboard(method.accountNumber, method.bankName); }}>Salin</Button>
+                                </div>
+                            </Label>
+                        ))}
+                    </RadioGroup>
+                )}
+            </div>
+
+            <div className="mt-6 space-y-2">
+                <h3 className="font-bold text-lg text-gray-800">2. Unggah Bukti Pembayaran</h3>
+                <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg transition-colors ${selectedBankId ? 'cursor-pointer hover:bg-gray-100' : 'cursor-not-allowed bg-gray-50'}`}>
+                    {isUploading ? <Loader2 className="w-8 h-8 text-gray-400 animate-spin"/> : <><UploadCloud className="w-10 h-10 text-gray-400 mb-2"/><span className="text-sm text-gray-500">Klik untuk memilih file</span></>}
+                    <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading || !selectedBankId} accept="image/*"/>
+                </label>
+                {!selectedBankId && <p className="text-xs text-center text-red-600 mt-1">Pilih bank tujuan di atas untuk mengaktifkan tombol upload.</p>}
+            </div>
         </div>
     );
 }
@@ -177,6 +182,7 @@ export default function OrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', orderId],
@@ -187,11 +193,10 @@ export default function OrderDetailPage() {
   if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin h-8 w-8" /></div>;
   if (isError || !order) return <div className="text-center py-20">Pesanan tidak ditemukan atau terjadi kesalahan.</div>;
   
-  const isResellerPending = user?.role === 'RESELLER' && order.status === 'PENDING';
-  const isMemberPending = user?.role === 'MEMBER' && order.status === 'PENDING';
-  const proofHasBeenUploaded = isResellerPending && order.payment?.proofOfPayment;
-  const showUploadForm = isResellerPending && !proofHasBeenUploaded;
-  const paymentUrl = order.payment?.redirectUrl;
+  const isReseller = user?.role === 'RESELLER';
+  const isPending = order.status === 'PENDING';
+  const showResellerPaymentFlow = isReseller && isPending;
+  const proofHasBeenUploaded = !!order.payment?.proofOfPayment;
 
   return (
     <div className="bg-gray-100 min-h-screen pt-28">
@@ -203,13 +208,13 @@ export default function OrderDetailPage() {
                     <p className="text-gray-500">Order #{order.orderNumber}</p>
                 </div>
                  <span className={`px-3 py-1.5 text-sm font-bold rounded-full ${
-                     order.status === 'PROCESSING' ? 'bg-orange-100 text-orange-800' :
-                     order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                     order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                     order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
-                     'bg-gray-100 text-gray-800'
-                   }`}>
-                    {order.status}
+                       order.status === 'PROCESSING' ? 'bg-orange-100 text-orange-800' :
+                       order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                       order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                       order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                       'bg-gray-100 text-gray-800'
+                     }`}>
+                     {order.status}
                   </span>
             </div>
         </motion.div>
@@ -222,11 +227,11 @@ export default function OrderDetailPage() {
                 {order.items.map(item => (
                   <div key={item.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                       <img src={item.product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={item.product.name} className="w-16 h-16 object-cover rounded-md" />
-                      <div>
-                        <p className="font-semibold">{item.product.name}</p>
-                        <p className="text-sm text-gray-500">{item.quantity} x {formatPrice(item.price)}</p>
-                      </div>
+                     <img src={item.product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={item.product.name} className="w-16 h-16 object-cover rounded-md" />
+                    <div>
+                      <p className="font-semibold">{item.product.name}</p>
+                      <p className="text-sm text-gray-500">{item.quantity} x {formatPrice(item.price)}</p>
+                    </div>
                     </div>
                     <p className="font-semibold">{formatPrice(item.quantity * item.price)}</p>
                   </div>
@@ -243,28 +248,30 @@ export default function OrderDetailPage() {
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-6 space-y-4">
               <h2 className="font-bold text-xl">Ringkasan</h2>
-              <div className="flex justify-between"><span>Subtotal:</span> <span>{formatPrice(order.totalAmount)}</span></div>
+              <div className="flex justify-between"><span>Subtotal:</span> <span>{formatPrice(order.subtotal)}</span></div>
+              <div className="flex justify-between"><span>Diskon:</span> <span>- {formatPrice(order.discountAmount)}</span></div>
+              <div className="flex justify-between"><span>PPN:</span> <span>{formatPrice(order.taxAmount)}</span></div>
               <div className="flex justify-between"><span>Ongkos Kirim:</span> <span>{formatPrice(order.shippingCost)}</span></div>
-              <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2"><span>Total:</span> <span>{formatPrice(order.totalAmount + order.shippingCost)}</span></div>
+              <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
+                <span>Total:</span> 
+                <span>{formatPrice(order.totalAmount)}</span>
+              </div>
               
-               {isMemberPending && paymentUrl && (
-                    <div className="border-t pt-4">
-                        <a href={paymentUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
-                            <Wallet size={18}/> Lanjutkan Pembayaran
-                        </a>
-                    </div>
-               )}
-               
-               {isResellerPending && <ManualPaymentDetails />}
-
-               {showUploadForm && <UploadProofForm orderId={order.id} />}
-               
-               {proofHasBeenUploaded && (
-                   <div className="mt-4 border-t pt-4 text-center bg-green-50 p-4 rounded-lg">
-                       <CheckCircle className="mx-auto h-10 w-10 text-green-500 mb-2"/>
-                       <p className="font-semibold text-green-700">Bukti pembayaran telah diunggah.</p>
-                       <p className="text-sm text-green-600">Admin akan segera memverifikasi pesanan Anda.</p>
-                   </div>
+               {showResellerPaymentFlow && (
+                 <>
+                   {!proofHasBeenUploaded ? (
+                     <ResellerPaymentSection 
+                        order={order} 
+                        onUploadSuccess={() => queryClient.invalidateQueries({ queryKey: ['order', orderId] })}
+                     />
+                   ) : (
+                     <div className="mt-4 border-t pt-4 text-center bg-green-50 p-4 rounded-lg">
+                        <CheckCircle className="mx-auto h-10 w-10 text-green-500 mb-2"/>
+                        <p className="font-semibold text-green-700">Bukti pembayaran telah diunggah.</p>
+                        <p className="text-sm text-green-600">Admin akan segera memverifikasi pesanan Anda.</p>
+                     </div>
+                   )}
+                 </>
                )}
             </div>
           </motion.div>

@@ -14,7 +14,7 @@ export function ProductCard({ product }: ProductCardProps) {
     : 'https://placehold.co/400x400?text=VespaPart';
 
   return (
-    <Link href={`/products/${product.id}`} className="block group">
+    <Link href={`/products/${product.id}`} className="block group h-full">
       <div className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col h-full">
         <div className="relative w-full h-48 bg-gray-200">
           <img
@@ -24,28 +24,33 @@ export function ProductCard({ product }: ProductCardProps) {
           />
         </div>
         <div className="p-4 flex flex-col flex-grow">
-          <div className="flex justify-between items-center mb-2">
-            {/* Kategori */}
-            <span className="text-xs text-gray-500">{product.category?.name || 'Uncategorized'}</span>
-            
-            {/* Logo Merek */}
-            {product.brand?.logoUrl ? (
-              <img 
-                src={product.brand.logoUrl} 
-                alt={product.brand.name || 'Brand Logo'} 
-               
-                className="h-8 max-w-[80px] object-contain" 
-              />
-            ) : (
-              <span className="text-xs font-semibold text-gray-800">{product.brand?.name || ''}</span>
-            )}
+          {/* === PERUBAHAN TATA LETAK DIMULAI DI SINI === */}
+          <div className="flex items-start gap-3">
+            {/* Kolom kiri untuk Teks (Kategori & Nama Produk) */}
+            <div className="flex-grow">
+              <span className="text-xs text-gray-500 line-clamp-1">{product.category?.name || 'Uncategorized'}</span>
+              <h3 className="font-bold text-md text-gray-800 group-hover:text-primary transition-colors h-12 line-clamp-2" title={product.name}>
+                {product.name}
+              </h3>
+            </div>
+
+            {/* Kolom kanan untuk Logo Merek */}
+            <div className="flex-shrink-0">
+              {product.brand?.logoUrl ? (
+                <img 
+                  src={product.brand.logoUrl} 
+                  alt={product.brand.name || 'Brand Logo'} 
+                  // Ukuran logo diperbesar
+                  className="h-12 w-12 object-contain" 
+                />
+              ) : (
+                <span className="text-xs font-semibold text-gray-800">{product.brand?.name || ''}</span>
+              )}
+            </div>
           </div>
+          {/* === PERUBAHAN TATA LETAK BERAKHIR DI SINI === */}
           
-          <h3 className="font-bold text-md text-gray-800 flex-grow group-hover:text-primary transition-colors h-12" title={product.name}>
-            {product.name}
-          </h3>
-          
-          <div className="mt-2">
+          <div className="mt-auto pt-2"> {/* Menggunakan mt-auto untuk mendorong harga ke bawah */}
             <PriceDisplay priceInfo={product.priceInfo} />
           </div>
         </div>

@@ -4,27 +4,37 @@
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Loader2, ArrowLeft } from 'lucide-react'; // Ditambahkan ArrowLeft
+import { useEffect, useState, useMemo } from 'react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { AddressForm } from './_components/AddressForm';
 import { OrderSummary } from './_components/OrderSummary';
 import { Address } from '@/services/addressService';
 import { ShippingRate } from '@/services/shippingService';
-import { Button } from '@/components/ui/button'; // Ditambahkan import Button
+import { Button } from '@/components/ui/button';
+import { getVatPercentage } from '@/services/settingsService'; // <-- 1. IMPORT FUNGSI PPN
 
 export default function CheckoutPage() {
-  const { cart, selectedItems, getSummary } = useCartStore(); // Ambil fungsi getSummary
+  const { cart, selectedItems } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [selectedShippingOption, setSelectedShippingOption] = useState<ShippingRate | null>(null);
+  const [vatPercentage, setVatPercentage] = useState(0); // <-- 2. BUAT STATE UNTUK PPN
 
   const selectedCartItems = cart?.items?.filter(item => selectedItems.has(item.id)) || [];
 
   useEffect(() => {
+    // Ambil data PPN dari API saat komponen dimuat
+    const fetchVat = async () => {
+      const vat = await getVatPercentage();
+      setVatPercentage(vat);
+    };
+    
+    fetchVat();
+
     const checkAuth = setTimeout(() => {
         if (!isAuthenticated) {
           router.replace('/login?redirect=/checkout');
@@ -36,6 +46,25 @@ export default function CheckoutPage() {
     return () => clearTimeout(checkAuth);
   }, [isAuthenticated, selectedCartItems.length, router]);
 
+  // Gunakan useMemo untuk menghitung ulang nilai hanya jika ada perubahan
+  const { subtotal, taxAmount, shippingCost, totalAmount } = useMemo(() => {
+    const currentSubtotal = selectedCartItems.reduce(
+        (total, item) => total + Number(item.product.price) * item.quantity, 0
+    );
+    // <-- 3. HITUNG PPN SECARA DINAMIS
+    const currentTaxAmount = (currentSubtotal * vatPercentage) / 100;
+    const currentShippingCost = selectedShippingOption?.price || 0;
+    const currentTotalAmount = currentSubtotal + currentTaxAmount + currentShippingCost;
+    
+    return {
+      subtotal: currentSubtotal,
+      taxAmount: currentTaxAmount,
+      shippingCost: currentShippingCost,
+      totalAmount: currentTotalAmount,
+    };
+  }, [selectedCartItems, vatPercentage, selectedShippingOption]);
+
+
   if (!isAuthenticated || selectedCartItems.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -44,15 +73,10 @@ export default function CheckoutPage() {
     );
   }
 
-  const { subtotal, taxAmount } = getSummary();
-  const shippingCost = selectedShippingOption?.price || 0;
-  const totalAmount = subtotal + taxAmount + shippingCost;
-
   return (
     <div className="bg-gray-100 min-h-screen pt-28">
       <div className="container mx-auto px-4">
         
-        {/* === KODE TOMBOL KEMBALI DAN JUDUL DIMULAI DI SINI === */}
         <div className="relative mb-8 flex items-center justify-center">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                 <Button
@@ -72,7 +96,6 @@ export default function CheckoutPage() {
                 Checkout
             </motion.h1>
         </div>
-        {/* === KODE TOMBOL KEMBALI DAN JUDUL SELESAI === */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
@@ -95,13 +118,15 @@ export default function CheckoutPage() {
             transition={{ delay: 0.2 }}
             className="lg:col-span-1"
           >
+             {/* 4. KIRIM PROPS BARU KE ORDERSUMMARY */}
              <OrderSummary 
-                subtotal={subtotal}
-                taxAmount={taxAmount}
-                shippingCost={shippingCost}
-                totalAmount={totalAmount}
-                selectedAddress={selectedAddress}
-                selectedShippingOption={selectedShippingOption}
+               subtotal={subtotal}
+               taxAmount={taxAmount}
+               shippingCost={shippingCost}
+               totalAmount={totalAmount}
+               selectedAddress={selectedAddress}
+               selectedShippingOption={selectedShippingOption}
+               vatPercentage={vatPercentage} 
              />
           </motion.div>
 

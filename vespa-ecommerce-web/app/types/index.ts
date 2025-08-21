@@ -69,6 +69,12 @@ export type Shipment = {
 export type Order = {
     id: string;
     orderNumber: string;
+    // --- AWAL PERBAIKAN ---
+    // Menambahkan field rincian biaya yang sebelumnya hilang
+    subtotal: number;
+    discountAmount: number;
+    taxAmount: number;
+    // --- AKHIR PERBAIKAN ---
     totalAmount: number;
     shippingCost: number;
     courier: string;
@@ -77,5 +83,5 @@ export type Order = {
     createdAt: string;
     items: OrderItem[];
     payment?: Payment;
-    shipment?: Shipment; // Tambahkan shipment
+    shipment?: Shipment;
 };

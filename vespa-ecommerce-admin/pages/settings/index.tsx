@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Edit, Save, Check, ChevronsUpDown, XCircle } from 'lucide-react';
+import { Loader2, Edit, Save, Check, ChevronsUpDown } from 'lucide-react';
 import axios from 'axios';
 
 import { Button } from '@/components/ui/button';
@@ -13,15 +13,102 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 
 import { searchAreas, LocationData } from '@/services/shippingService';
-import { getAllSettings, updateMultipleSettings, SettingPayload, AppSetting } from '@/services/settingsService';
+// Import fungsi baru untuk PPN
+import {
+  getAllSettings,
+  updateMultipleSettings,
+  SettingPayload,
+  AppSetting,
+  getVatSetting,
+  updateVatSetting
+} from '@/services/settingsService';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+
 // ====================================================================
-// KOMPONEN: ACCURATE INTEGRATION (DENGAN LOGIKA PEMILIHAN DATABASE)
+// KOMPONEN BARU: PENGATURAN PPN (VAT)
+// ====================================================================
+const VatSettings = () => {
+  const [vatValue, setVatValue] = useState('');
+  const queryClient = useQueryClient();
+
+  // Query untuk mengambil data PPN
+  const { data: vatData, isLoading: isLoadingVat } = useQuery({
+    queryKey: ['vatSetting'],
+    queryFn: getVatSetting,
+    onSuccess: (data) => {
+      if (data && data.value) {
+        setVatValue(data.value.toString());
+      }
+    },
+  });
+
+  // Mutasi untuk memperbarui data PPN
+  const mutation = useMutation({
+    mutationFn: (newValue: number) => updateVatSetting(newValue),
+    onSuccess: () => {
+      toast.success('Pengaturan PPN berhasil disimpan!');
+      // Invalidate query agar data terbaru diambil kembali
+      queryClient.invalidateQueries({ queryKey: ['vatSetting'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Gagal menyimpan pengaturan PPN.');
+    },
+  });
+
+  const handleSave = () => {
+    const numericValue = parseFloat(vatValue);
+    if (isNaN(numericValue)) {
+      toast.error('Nilai PPN harus berupa angka.');
+      return;
+    }
+    mutation.mutate(numericValue);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Pengaturan Pajak</CardTitle>
+        <CardDescription>
+          Atur persentase Pajak Pertambahan Nilai (PPN) yang berlaku untuk semua transaksi.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-end gap-4">
+          <div className="flex-1 space-y-2">
+            <Label htmlFor="ppn">Persentase PPN (%)</Label>
+            {isLoadingVat ? (
+               <div className="flex items-center text-muted-foreground text-sm">
+                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat...
+               </div>
+            ) : (
+              <Input
+                id="ppn"
+                type="number"
+                value={vatValue}
+                onChange={(e) => setVatValue(e.target.value)}
+                placeholder="Contoh: 11"
+                step="0.1"
+              />
+            )}
+          </div>
+          <Button onClick={handleSave} disabled={mutation.isPending || isLoadingVat}>
+            {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Simpan PPN
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+
+// ====================================================================
+// KOMPONEN: ACCURATE INTEGRATION (TIDAK DIUBAH)
 // ====================================================================
 const AccurateIntegration = () => {
     const [status, setStatus] = useState<{ connected: boolean; dbSelected: boolean }>({ connected: false, dbSelected: false });
@@ -385,6 +472,9 @@ export default function SettingsPage() {
             <div className="space-y-6">
                 <AccurateIntegration />
                 
+                {/* KOMPONEN PPN DITAMBAHKAN DI SINI */}
+                <VatSettings />
+
                 <Card>
                     <CardHeader>
                         <CardTitle>Asal Pengiriman (Biteship)</CardTitle>

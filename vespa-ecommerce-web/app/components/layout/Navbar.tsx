@@ -211,8 +211,6 @@ export default function Navbar() {
                   {isSearchOpen ? <X className="w-5 h-5"/> : <Search className="w-5 h-5" />}
                 </button>
               </div>
-
-              <button className={`hidden sm:block p-2 rounded-full transition-all duration-300 hover:scale-110 ${navIsSolid ? 'hover:bg-[#C9D6DF]/50 hover:text-[#52616B]' : 'hover:bg-white/10'}`}><Heart className="w-5 h-5" /></button>
               
               <Link href="/cart" className={`relative p-2 rounded-full transition-all duration-300 hover:scale-110 ${navIsSolid ? 'hover:bg-[#C9D6DF]/50 hover:text-[#52616B]' : 'hover:bg-white/10'}`}>
                 <ShoppingCart className="w-5 h-5" />

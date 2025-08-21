@@ -3,7 +3,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import { Express } from 'express';
-import { PrismaService } from 'src/prisma/prisma.service'; // <-- 1. Import PrismaService
+import { PrismaService } from 'src/prisma/prisma.service';
 
 function bufferToDataURI(buffer: Buffer, mimeType: string) {
   return `data:${mimeType};base64,${buffer.toString('base64')}`;
@@ -11,7 +11,6 @@ function bufferToDataURI(buffer: Buffer, mimeType: string) {
 
 @Injectable()
 export class UploadService {
-  // 2. Suntikkan PrismaService
   constructor(private prisma: PrismaService) {}
 
   async uploadImageToCloudinary(file: Express.Multer.File) {
@@ -36,8 +35,12 @@ export class UploadService {
     }
   }
 
-  // --- 3. TAMBAHKAN METHOD BARU DI SINI ---
-  async uploadProofOfPayment(orderId: string, file: Express.Multer.File) {
+  // --- REVISI UTAMA DI SINI ---
+  async uploadProofOfPayment(
+    orderId: string,
+    file: Express.Multer.File,
+    manualPaymentMethodId: string, // 1. Terima parameter ID bank
+  ) {
     if (!file) {
       throw new BadRequestException('File bukti pembayaran tidak ditemukan.');
     }
@@ -57,10 +60,13 @@ export class UploadService {
         folder: 'proof_of_payments', // Folder khusus untuk bukti bayar
       });
 
-      // Update record payment dengan URL gambar bukti bayar
+      // 2. Update record payment dengan URL gambar DAN ID bank yang dipilih reseller
       return this.prisma.payment.update({
           where: { id: payment.id },
-          data: { proofOfPayment: result.secure_url }
+          data: {
+            proofOfPayment: result.secure_url,
+            manualPaymentMethodId: manualPaymentMethodId, // 3. Simpan ID bank ke database
+          }
       });
 
     } catch (error) {

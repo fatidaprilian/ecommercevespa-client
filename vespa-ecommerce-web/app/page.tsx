@@ -59,27 +59,27 @@ const HeroSection = () => {
             </motion.div>
             <motion.div style={{ opacity }} className="relative z-10 px-6 max-w-4xl">
                  <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="mb-6">
-                    <span className="inline-flex items-center gap-2 bg-[#C9D6DF]/10 backdrop-blur-sm border border-white/20 text-[#F0F5F9] px-5 py-2 rounded-full text-sm font-medium">
-                        <Award className="w-4 h-4 text-[#C9D6DF]" /> Spesialis Suku Cadang Vespa
-                    </span>
-                </motion.div>
-                <motion.h1
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
-                    className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 font-playfair"
-                >
-                    Anatomi Sang Legenda
-                </motion.h1>
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
-                    className="text-lg md:text-xl text-[#C9D6DF] max-w-2xl mx-auto mb-10 leading-relaxed"
-                >
-                    Setiap komponen adalah sebuah warisan. Suku cadang original yang menjaga keaslian dan menyempurnakan performa ikonik Vespa Anda.
-                </motion.p>
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.8 }} className="flex gap-4 justify-center">
-                    <Link href="/products" className="group relative inline-flex items-center gap-3 bg-[#C9D6DF] text-[#1E2022] font-bold py-3 px-8 rounded-lg text-base hover:bg-white transition-all transform hover:scale-105 shadow-lg">
-                        Mulai Jelajahi <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                </motion.div>
+                     <span className="inline-flex items-center gap-2 bg-[#C9D6DF]/10 backdrop-blur-sm border border-white/20 text-[#F0F5F9] px-5 py-2 rounded-full text-sm font-medium">
+                         <Award className="w-4 h-4 text-[#C9D6DF]" /> Spesialis Suku Cadang Vespa
+                     </span>
+                 </motion.div>
+                 <motion.h1
+                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
+                     className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 font-playfair"
+                 >
+                     Anatomi Sang Legenda
+                 </motion.h1>
+                 <motion.p
+                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
+                     className="text-lg md:text-xl text-[#C9D6DF] max-w-2xl mx-auto mb-10 leading-relaxed"
+                 >
+                     Setiap komponen adalah sebuah warisan. Suku cadang original yang menjaga keaslian dan menyempurnakan performa ikonik Vespa Anda.
+                 </motion.p>
+                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.8 }} className="flex gap-4 justify-center">
+                     <Link href="/products" className="group relative inline-flex items-center gap-3 bg-[#C9D6DF] text-[#1E2022] font-bold py-3 px-8 rounded-lg text-base hover:bg-white transition-all transform hover:scale-105 shadow-lg">
+                         Mulai Jelajahi <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                     </Link>
+                 </motion.div>
             </motion.div>
         </div>
     );
@@ -95,17 +95,31 @@ const CategoriesSection = () => {
         'Accessories': Sparkles,
         'default': Tag
     };
+    
+    const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft += e.deltaY;
+        }
+    };
 
+    // === PERUBAHAN LOGIKA SCROLL PER ITEM ADA DI FUNGSI INI ===
     const scroll = (direction: 'left' | 'right') => {
         if (scrollContainerRef.current) {
             const { current } = scrollContainerRef;
-            const scrollAmount = current.clientWidth * 0.8;
-            current.scrollBy({
-                left: direction === 'left' ? -scrollAmount : scrollAmount,
-                behavior: 'smooth'
-            });
+            // Ambil elemen item pertama di dalam container
+            const firstItem = current.children[0] as HTMLElement;
+
+            if (firstItem) {
+                // Jarak scroll sekarang adalah lebar dari satu item tersebut
+                const scrollAmount = firstItem.offsetWidth; 
+                current.scrollBy({
+                    left: direction === 'left' ? -scrollAmount : scrollAmount,
+                    behavior: 'smooth'
+                });
+            }
         }
     };
+    // =======================================================
 
     if (isLoading) return <Section className="bg-white"><p className="text-center text-gray-500">Memuat kategori...</p></Section>;
     if (error || !categories || categories.length === 0) return null;
@@ -119,10 +133,8 @@ const CategoriesSection = () => {
                 </div>
                 
                 <div className="relative">
-                    {/* Tombol Panah Kiri */}
                     <button
                         onClick={() => scroll('left')}
-                        // REVISI: Menghapus class `opacity-0` dan `group-hover:opacity-100`
                         className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/80 rounded-full shadow-md border border-gray-200 text-gray-700 hover:bg-white transition-opacity duration-300 hidden md:block"
                     >
                         <ChevronLeft className="w-6 h-6" />
@@ -130,6 +142,7 @@ const CategoriesSection = () => {
 
                     <div
                         ref={scrollContainerRef}
+                        onWheel={handleWheel}
                         className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth p-2 -mx-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                     >
                         {categories.map((cat: Category, index: number) => {
@@ -161,10 +174,8 @@ const CategoriesSection = () => {
                         })}
                     </div>
 
-                    {/* Tombol Panah Kanan */}
                     <button
                         onClick={() => scroll('right')}
-                        // REVISI: Menghapus class `opacity-0` dan `group-hover:opacity-100`
                         className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/80 rounded-full shadow-md border border-gray-200 text-gray-700 hover:bg-white transition-opacity duration-300 hidden md:block"
                     >
                         <ChevronRight className="w-6 h-6" />
