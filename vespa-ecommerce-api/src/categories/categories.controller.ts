@@ -1,3 +1,5 @@
+// file: src/categories/categories.controller.ts
+
 import {
   Controller,
   Get,
@@ -7,6 +9,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query, // 1. Import decorator @Query
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -14,7 +17,8 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { Role } from '@prisma/client'; // <-- Menggunakan enum 'Role'
+import { Role } from '@prisma/client';
+import { QueryCategoryDto } from './dto/query-category.dto'; // 2. Import DTO untuk query
 
 @Controller('categories')
 export class CategoriesController {
@@ -22,14 +26,15 @@ export class CategoriesController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.ADMIN) // <-- Menggunakan Role.ADMIN
+  @Roles(Role.ADMIN)
   create(@Body() createCategoryDto: CreateCategoryDto) {
     return this.categoriesService.create(createCategoryDto);
   }
 
   @Get()
-  findAll() {
-    return this.categoriesService.findAll();
+  // 3. Gunakan @Query() untuk menangkap parameter dari URL
+  findAll(@Query() queryDto: QueryCategoryDto) {
+    return this.categoriesService.findAll(queryDto);
   }
 
   @Get(':id')
@@ -39,7 +44,7 @@ export class CategoriesController {
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.ADMIN) // <-- Menggunakan Role.ADMIN
+  @Roles(Role.ADMIN)
   update(
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
@@ -49,7 +54,7 @@ export class CategoriesController {
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.ADMIN) // <-- Menggunakan Role.ADMIN
+  @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.categoriesService.remove(id);
   }

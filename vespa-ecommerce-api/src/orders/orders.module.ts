@@ -6,6 +6,7 @@ import { DiscountsModule } from 'src/discounts/discounts.module';
 import { AccurateSyncModule } from 'src/accurate-sync/accurate-sync.module';
 // --- 1. IMPORT MODUL YANG DIBUTUHKAN ---
 import { SettingsModule } from 'src/settings/settings.module';
+import { OrderCompletionService } from './order-completion.service';
 
 @Module({
   // --- 2. TAMBAHKAN MODULNYA DI SINI ---
@@ -16,6 +17,6 @@ import { SettingsModule } from 'src/settings/settings.module';
     SettingsModule, // <-- Tambahkan baris ini
   ],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, OrderCompletionService],
 })
 export class OrdersModule {}

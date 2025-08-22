@@ -3,22 +3,52 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
+import { Prisma } from '@prisma/client'; // 1. Impor Prisma
+import { PaginationDto } from 'src/common/dto/pagination.dto'; // 2. Impor DTO Paginasi
 
 @Injectable()
 export class BrandsService {
   constructor(private prisma: PrismaService) {}
 
-  // Membuat merek baru
   create(createBrandDto: CreateBrandDto) {
     return this.prisma.brand.create({ data: createBrandDto });
   }
 
-  // Mendapatkan semua merek
-  findAll() {
-    return this.prisma.brand.findMany({ orderBy: { name: 'asc' } });
-  }
+  // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
+  async findAll(queryDto: PaginationDto & { search?: string }) {
+    const { page = 1, limit = 10, search } = queryDto;
+    const skip = (Number(page) - 1) * Number(limit);
 
-  // Mendapatkan satu merek berdasarkan ID
+    const where: Prisma.BrandWhereInput = {};
+    if (search) {
+      where.name = {
+        contains: search,
+        mode: 'insensitive',
+      };
+    }
+
+    const [brands, total] = await this.prisma.$transaction([
+      this.prisma.brand.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.brand.count({ where }),
+    ]);
+
+    return {
+      data: brands,
+      meta: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        lastPage: Math.ceil(total / Number(limit)),
+      },
+    };
+  }
+  // 👆 --- AKHIR PERUBAHAN --- 👆
+
   async findOne(id: string) {
     const brand = await this.prisma.brand.findUnique({ where: { id } });
     if (!brand) {
@@ -27,18 +57,16 @@ export class BrandsService {
     return brand;
   }
 
-  // Memperbarui merek berdasarkan ID
   async update(id: string, updateBrandDto: UpdateBrandDto) {
-    await this.findOne(id); // Memastikan merek ada sebelum update
+    await this.findOne(id);
     return this.prisma.brand.update({
       where: { id },
       data: updateBrandDto,
     });
   }
 
-  // Menghapus merek berdasarkan ID
   async remove(id: string) {
-    await this.findOne(id); // Memastikan merek ada sebelum dihapus
+    await this.findOne(id);
     return this.prisma.brand.delete({ where: { id } });
   }
 }

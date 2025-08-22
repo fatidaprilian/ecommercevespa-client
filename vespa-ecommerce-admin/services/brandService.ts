@@ -15,11 +15,35 @@ export interface BrandData {
   logoUrl?: string;
 }
 
-// Fetch all brands from the API
-export const getBrands = async (): Promise<Brand[]> => {
-  const response = await api.get('/brands');
-  return response.data;
+// Tipe data untuk struktur respons paginasi dari API
+export interface PaginatedBrands {
+  data: Brand[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
+}
+
+
+// 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
+/**
+ * Mengambil merek dari API dengan paginasi dan pencarian.
+ * @param page - Nomor halaman
+ * @param search - Kata kunci pencarian (opsional)
+ */
+export const getBrands = async ({ page, search }: { page: number; search: string }): Promise<PaginatedBrands> => {
+  const { data } = await api.get('/brands', {
+    params: {
+      page,
+      limit: 10,
+      search: search || undefined,
+    },
+  });
+  return data;
 };
+// 👆 --- AKHIR PERUBAHAN --- 👆
 
 // Create a new brand
 export const createBrand = async (data: BrandData): Promise<Brand> => {

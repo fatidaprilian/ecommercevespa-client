@@ -1,4 +1,4 @@
-// file: vespa-ecommerce-api/src/products/products.service.ts
+// file: src/products/products.service.ts
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -93,14 +93,11 @@ export class ProductsService {
 
     const where: Prisma.ProductWhereInput = {};
     
-    // --- AWAL PERBAIKAN ---
-    // Logika disesuaikan untuk menangani categoryId sebagai array
     if (categoryId && categoryId.length > 0) {
       where.categoryId = {
         in: categoryId,
       };
     }
-    // --- AKHIR PERBAIKAN ---
 
     if (brandId && brandId.length > 0) {
       where.brandId = {

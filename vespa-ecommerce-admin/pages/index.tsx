@@ -1,5 +1,5 @@
 // vespa-ecommerce-admin/pages/index.tsx
-'use client'; // Diperlukan untuk Framer Motion
+'use client'; 
 
 import { motion } from 'framer-motion';
 import {
@@ -8,80 +8,62 @@ import {
   Users,
   DollarSign,
   ArrowRight,
-  PlusCircle,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// Data statistik (contoh)
-const statsData = [
-  {
-    title: 'Total Produk',
-    value: '1,250',
-    icon: Package,
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-100',
-  },
-  {
-    title: 'Pesanan Baru',
-    value: '82',
-    icon: ShoppingCart,
-    color: 'text-green-500',
-    bgColor: 'bg-green-100',
-  },
-  {
-    title: 'Total Pelanggan',
-    value: '4,670',
-    icon: Users,
-    color: 'text-orange-500',
-    bgColor: 'bg-orange-100',
-  },
-  {
-    title: 'Pendapatan (Bulan Ini)',
-    value: 'Rp 52.8M',
-    icon: DollarSign,
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-100',
-  },
-];
 
-// Varian animasi untuk container utama
+const getDashboardStats = async () => {
+  const { data } = await api.get('/dashboard/stats');
+  return data;
+};
+
+const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
+};
+
 const containerVariants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.15, // Memberi jeda animasi untuk setiap item di dalamnya
+      staggerChildren: 0.1,
     },
   },
 };
 
-// Varian animasi untuk setiap item (kartu)
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
-  show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } },
+  show: { y: 0, opacity: 1, transition: { duration: 0.4, ease: 'easeOut' } },
 };
 
 export default function DashboardPage() {
+
+    const { data: stats, isLoading } = useQuery({
+        queryKey: ['dashboardStats'],
+        queryFn: getDashboardStats
+    });
+
+    const statsData = [
+        { title: 'Total Produk', value: stats?.totalProducts ?? '...', icon: Package, color: 'text-blue-500', bgColor: 'bg-blue-100' },
+        { title: 'Total Pesanan', value: stats?.totalOrdersCount ?? '...', icon: ShoppingCart, color: 'text-green-500', bgColor: 'bg-green-100' },
+        { title: 'Total Pelanggan', value: stats?.totalUsers ?? '...', icon: Users, color: 'text-orange-500', bgColor: 'bg-orange-100' },
+        { title: 'Pendapatan (Bulan Ini)', value: stats ? formatPrice(stats.monthlyRevenue) : '...', icon: DollarSign, color: 'text-purple-500', bgColor: 'bg-purple-100' },
+    ];
+
+
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="space-y-8"
+      className="space-y-6"
     >
-      {/* --- Header --- */}
-      <motion.div variants={itemVariants}>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          Dashboard Admin
-        </h1>
-        <p className="text-muted-foreground">
-          Ringkasan aktivitas dan statistik terbaru dari toko Anda.
-        </p>
-      </motion.div>
-
-      {/* --- Grid Kartu Statistik --- */}
       <motion.div
         variants={containerVariants}
         className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
@@ -90,10 +72,8 @@ export default function DashboardPage() {
           <motion.div
             key={stat.title}
             variants={itemVariants}
-            whileHover={{ y: -5, scale: 1.02 }} // Efek saat cursor di atas kartu
-            transition={{ type: 'spring', stiffness: 300 }}
           >
-            <Card className="overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   {stat.title}
@@ -103,53 +83,58 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground pt-1">
-                  Lihat Detail
-                </p>
+                {isLoading ? <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /> : <div className="text-3xl font-bold">{stat.value}</div>}
               </CardContent>
             </Card>
           </motion.div>
         ))}
       </motion.div>
 
-      {/* --- Aksi Cepat & Aktivitas Terbaru --- */}
       <motion.div
         variants={containerVariants}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        className="grid grid-cols-1 lg:grid-cols-5 gap-6"
       >
-        {/* Aksi Cepat */}
-        <motion.div variants={itemVariants} className="lg:col-span-1">
+        <motion.div variants={itemVariants} className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>Aksi Cepat</CardTitle>
+              <CardTitle>Pesanan Terbaru</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Button asChild className="w-full justify-start">
-                <Link href="/products/new">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Tambah Produk Baru
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full justify-start">
-                <Link href="/orders">
-                  <ShoppingCart className="mr-2 h-4 w-4" /> Lihat Semua Pesanan
-                </Link>
-              </Button>
+            <CardContent>
+               {isLoading ? (
+                 <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+               ) : (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Pelanggan</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {stats?.recentOrders.map((order: any) => (
+                            <TableRow key={order.id}>
+                                <TableCell>
+                                    <div className="font-medium">{order.user.name}</div>
+                                </TableCell>
+                                <TableCell>{order.status}</TableCell>
+                                <TableCell className="text-right">{formatPrice(order.totalAmount)}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+               )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Aktivitas Terbaru */}
         <motion.div variants={itemVariants} className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Aktivitas Terbaru</CardTitle>
+              <CardTitle>Aktivitas</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Fitur aktivitas terbaru akan segera hadir di sini.
-              </p>
-              {/* Di sini Anda bisa menampilkan daftar pesanan terbaru atau log aktivitas admin */}
+              <p className="text-muted-foreground text-sm">Log aktivitas akan ditampilkan di sini.</p>
             </CardContent>
           </Card>
         </motion.div>

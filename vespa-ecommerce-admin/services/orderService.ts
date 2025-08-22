@@ -20,7 +20,7 @@ export interface OrderItem {
         id: string;
         name: string;
         sku: string;
-        weight?: number; // Pastikan weight ada untuk kalkulasi ulang jika perlu
+        weight?: number;
     };
 }
 
@@ -37,10 +37,10 @@ export interface Order {
   totalAmount: number;
   shippingCost: number;
   shippingAddress: string;
-  destinationPostalCode?: string; // Diperlukan untuk kalkulasi ulang ongkir di admin
-  destinationAreaId?: string;     // Diperlukan untuk kalkulasi ulang ongkir di admin
+  destinationPostalCode?: string;
+  destinationAreaId?: string;
   courier: string;
-  status: string; // Tetap string agar fleksibel, tapi gunakan OrderStatus untuk perbandingan
+  status: string;
   createdAt: string;
   user: {
       id: string;
@@ -51,13 +51,43 @@ export interface Order {
   shipment: Shipment | null;
   payment?: {
       proofOfPayment?: string | null;
+      manualPaymentMethod?: { // Tambahkan ini untuk detail bank
+        bankName: string;
+        accountNumber: string;
+      } | null;
   } | null;
 }
 
-export const getOrders = async (): Promise<Order[]> => {
-  const { data } = await api.get('/orders');
+// 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
+
+// 1. Definisikan tipe data untuk respons paginasi
+export interface PaginatedOrders {
+  data: Order[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
+}
+
+/**
+ * Mengambil pesanan dari API dengan paginasi dan pencarian.
+ * @param page - Nomor halaman yang ingin diambil.
+ * @param search - Kata kunci pencarian (opsional).
+ */
+export const getOrders = async ({ page, search }: { page: number; search: string }): Promise<PaginatedOrders> => {
+  const { data } = await api.get('/orders', {
+    params: {
+      page,
+      limit: 10, // Menampilkan 10 pesanan per halaman
+      search: search || undefined,
+    },
+  });
   return data;
 };
+// 👆 --- AKHIR PERUBAHAN --- 👆
+
 
 export const getOrderById = async (orderId: string): Promise<Order> => {
     const { data } = await api.get(`/orders/${orderId}`);

@@ -1,20 +1,23 @@
+// src/products/dto/query-product.dto.ts
 import { Transform } from 'class-transformer';
 import { IsString, IsOptional, IsIn, IsEnum, IsArray } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
-// Helper function to reliably convert incoming query params to an array
+// 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
+// Helper function to handle both comma-separated strings and multiple query params
 const transformToArray = ({ value }: { value: string | string[] }): string[] | undefined => {
-  // If the value is a single string, put it into an array
   if (value && typeof value === 'string') {
-    return [value];
+    // Jika nilainya adalah string, pecah berdasarkan koma menjadi array
+    return value.split(',');
   }
-  // If it's already an array, just return it
   if (Array.isArray(value)) {
+    // Jika sudah berupa array, langsung kembalikan
     return value;
   }
-  // Return undefined if no value is provided
+  // Kembalikan undefined jika tidak ada nilai
   return undefined;
 };
+// 👆 --- AKHIR PERUBAHAN --- 👆
 
 export class QueryProductDto extends PaginationDto {
   @IsOptional()
@@ -26,7 +29,7 @@ export class QueryProductDto extends PaginationDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(transformToArray) // <-- PERBAIKAN UTAMA DI SINI
+  @Transform(transformToArray)
   brandId?: string[];
 
   @IsOptional()

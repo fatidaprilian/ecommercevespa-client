@@ -1,6 +1,7 @@
 // file: app/orders/page.tsx
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -11,26 +12,23 @@ import {
     Package, 
     Clock, 
     Truck, 
-    CheckCircle 
+    CheckCircle,
+    Search,
+    ChevronLeft // <-- Tambahkan impor ini
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
-import api from '@/lib/api';
 import { Order } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge'; // Kita akan butuh ini, mari kita asumsikan sudah ada
+import { Input } from '@/components/ui/input';
+import { useDebounce } from 'use-debounce';
+import { getMyOrders, PaginatedOrders } from '@/services/orderService';
 
-// Helper untuk format tanggal dan harga
+// Helper (tidak berubah)
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 
-// Fungsi untuk mengambil pesanan
-const getMyOrders = async (): Promise<Order[]> => {
-  const { data } = await api.get('/orders');
-  return data;
-};
-
-// Objek konfigurasi untuk status pesanan (Ikon, Warna, Teks)
-const statusConfig = {
+// Objek konfigurasi status (tidak berubah)
+const statusConfig: { [key: string]: { icon: React.ElementType; color: string; text: string } } = {
   PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-200', text: 'Menunggu Pembayaran' },
   PROCESSING: { icon: Package, color: 'bg-orange-100 text-orange-800 border-orange-200', text: 'Sedang Diproses' },
   SHIPPED: { icon: Truck, color: 'bg-blue-100 text-blue-800 border-blue-200', text: 'Dikirim' },
@@ -43,14 +41,21 @@ const statusConfig = {
 
 export default function OrdersPage() {
   const { isAuthenticated } = useAuthStore();
+  const [page, setPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
   
-  const { data: orders, isLoading, isError } = useQuery({
-    queryKey: ['my-orders'],
-    queryFn: getMyOrders,
+  const { data: ordersResponse, isLoading, isError } = useQuery<PaginatedOrders, Error>({
+    queryKey: ['my-orders', page, debouncedSearchTerm],
+    queryFn: () => getMyOrders({ page, search: debouncedSearchTerm }),
     enabled: isAuthenticated,
+    keepPreviousData: true,
   });
 
-  if (isLoading) {
+  const orders = ordersResponse?.data;
+  const meta = ordersResponse?.meta;
+
+  if (isLoading && !orders) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -100,6 +105,15 @@ export default function OrdersPage() {
             </p>
         </motion.div>
 
+        <div className="relative w-full max-w-lg mb-8">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+                placeholder="Cari berdasarkan nomor pesanan..."
+                className="pl-9 bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
 
         <motion.div
           initial="hidden"
@@ -152,7 +166,7 @@ export default function OrdersPage() {
                         </div>
                         <div className="text-right">
                             <p className="text-sm text-gray-500">Total</p>
-                            <p className="font-bold text-xl text-gray-800">{formatPrice(order.totalAmount + order.shippingCost)}</p>
+                            <p className="font-bold text-xl text-gray-800">{formatPrice(order.totalAmount)}</p>
                         </div>
                     </div>
                     
@@ -167,6 +181,20 @@ export default function OrdersPage() {
             )
           })}
         </motion.div>
+
+        {meta && meta.lastPage > 1 && (
+            <div className="flex items-center justify-center space-x-2 pt-8">
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1 || isLoading}>
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Sebelumnya</span>
+                </Button>
+                <span className="text-sm text-muted-foreground">Halaman {meta.page} dari {meta.lastPage}</span>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page === meta.lastPage || isLoading}>
+                    <span>Berikutnya</span>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+        )}
       </div>
     </div>
   );

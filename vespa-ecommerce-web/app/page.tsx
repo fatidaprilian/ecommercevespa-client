@@ -59,9 +59,9 @@ const HeroSection = () => {
             </motion.div>
             <motion.div style={{ opacity }} className="relative z-10 px-6 max-w-4xl">
                  <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="mb-6">
-                     <span className="inline-flex items-center gap-2 bg-[#C9D6DF]/10 backdrop-blur-sm border border-white/20 text-[#F0F5F9] px-5 py-2 rounded-full text-sm font-medium">
-                         <Award className="w-4 h-4 text-[#C9D6DF]" /> Spesialis Suku Cadang Vespa
-                     </span>
+                      <span className="inline-flex items-center gap-2 bg-[#C9D6DF]/10 backdrop-blur-sm border border-white/20 text-[#F0F5F9] px-5 py-2 rounded-full text-sm font-medium">
+                          <Award className="w-4 h-4 text-[#C9D6DF]" /> Spesialis Suku Cadang Vespa
+                      </span>
                  </motion.div>
                  <motion.h1
                      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
@@ -86,7 +86,10 @@ const HeroSection = () => {
 };
 
 const CategoriesSection = () => {
-    const { data: categories, isLoading, error } = useCategories();
+    const { data: categoriesResponse, isLoading, error } = useCategories();
+    // ✅ PERBAIKAN DI SINI
+    const categories = categoriesResponse?.data; 
+
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const categoryIcons: { [key: string]: React.ElementType } = {
         'Engine Parts': Wrench,
@@ -102,15 +105,12 @@ const CategoriesSection = () => {
         }
     };
 
-    // === PERUBAHAN LOGIKA SCROLL PER ITEM ADA DI FUNGSI INI ===
     const scroll = (direction: 'left' | 'right') => {
         if (scrollContainerRef.current) {
             const { current } = scrollContainerRef;
-            // Ambil elemen item pertama di dalam container
             const firstItem = current.children[0] as HTMLElement;
 
             if (firstItem) {
-                // Jarak scroll sekarang adalah lebar dari satu item tersebut
                 const scrollAmount = firstItem.offsetWidth; 
                 current.scrollBy({
                     left: direction === 'left' ? -scrollAmount : scrollAmount,
@@ -119,8 +119,7 @@ const CategoriesSection = () => {
             }
         }
     };
-    // =======================================================
-
+    
     if (isLoading) return <Section className="bg-white"><p className="text-center text-gray-500">Memuat kategori...</p></Section>;
     if (error || !categories || categories.length === 0) return null;
 
@@ -187,10 +186,12 @@ const CategoriesSection = () => {
 };
 
 const BrandsSection = () => {
-    const { data: brands, isLoading, error } = useBrands();
+    const { data: brandsResponse, isLoading, error } = useBrands();
+    // ✅ PERBAIKAN DI SINI
+    const brands = brandsResponse?.data; 
 
     if (isLoading) return <Section className="bg-[#F0F5F9]"><p className="text-center text-gray-500">Memuat merek...</p></Section>;
-    if (error || !brands) return null;
+    if (error || !brands || brands.length === 0) return null;
 
     return (
         <Section className="bg-[#F0F5F9]">
@@ -284,10 +285,10 @@ export default function HomePage() {
 
   return (
     <div className="bg-[#F0F5F9]">
-      <HeroSection />
-      <FeaturedProducts />
-      <CategoriesSection />
-      <BrandsSection />
+        <HeroSection />
+        <FeaturedProducts />
+        <CategoriesSection />
+        <BrandsSection />
     </div>
   );
 }

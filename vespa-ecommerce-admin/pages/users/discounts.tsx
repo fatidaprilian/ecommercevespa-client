@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { getUserById } from '@/services/userService';
-import { getCategories, Category } from '@/services/categoryService';
+import { getCategories, Category, PaginatedCategories } from '@/services/categoryService'; // Import PaginatedCategories
 import { searchProducts, Product } from '@/services/productService';
 import api from '@/lib/api';
 
@@ -357,9 +357,20 @@ function SetDiscountDialog({ isOpen, onClose, itemName, onSubmit }: { isOpen: bo
 // Komponen Picker
 function CategoryPicker({ onSelect }: { onSelect: (category: Category) => void }) {
     const [isOpen, setIsOpen] = useState(false);
-    const { data: categories } = useQuery<Category[]>({ queryKey: ['categories'], queryFn: getCategories });
+    // 👇 --- PERBAIKAN UTAMA DI SINI --- 👇
+    // 1. Gunakan tipe data PaginatedCategories
+    // 2. Kirim parameter default ke getCategories
+    // 3. Ambil array dari properti .data
+    const { data: categoriesResponse } = useQuery<PaginatedCategories, Error>({ 
+        queryKey: ['categories'], 
+        queryFn: () => getCategories({ page: 1, search: '' }) // Ambil semua data untuk picker
+    });
+    const categories = categoriesResponse?.data;
+    // 👆 --- AKHIR PERBAIKAN --- 👆
+    
     return(<Dialog open={isOpen} onOpenChange={setIsOpen}><DialogTrigger asChild><Button type="button" variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4"/> Tambah</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Pilih Kategori</DialogTitle></DialogHeader><div className="max-h-80 overflow-y-auto">{categories?.map(cat => (<div key={cat.id} onClick={() => { onSelect(cat); setIsOpen(false); }} className="p-2 rounded-md hover:bg-accent cursor-pointer">{cat.name}</div>))}</div></DialogContent></Dialog>);
 }
+
 function ProductPicker({ onSelect }: { onSelect: (product: Product) => void }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");

@@ -53,8 +53,12 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
   const [tempBrandIds, setTempBrandIds] = useState(new Set(currentFilters.brandId));
   const [searchTerm, setSearchTerm] = useState({ category: '', brand: '' });
 
-  const { data: allCategories } = useCategories();
-  const { data: allBrands } = useBrands();
+  // 👇 PERBAIKAN DI SINI 👇
+  const { data: categoriesResponse } = useCategories();
+  const allCategories = categoriesResponse?.data;
+  const { data: brandsResponse } = useBrands();
+  const allBrands = brandsResponse?.data;
+  // 👆 AKHIR PERBAIKAN 👆
 
   const filteredCategories = useMemo(() =>
     allCategories?.filter(c => c.name.toLowerCase().includes(searchTerm.category.toLowerCase())) || [],
@@ -183,8 +187,13 @@ export default function ProductClient() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
-  const { data: allCategories } = useCategories();
-  const { data: allBrands } = useBrands();
+  
+  // 👇 PERBAIKAN DI SINI JUGA 👇
+  const { data: categoriesResponse } = useCategories();
+  const allCategories = categoriesResponse?.data;
+  const { data: brandsResponse } = useBrands();
+  const allBrands = brandsResponse?.data;
+  // 👆 AKHIR PERBAIKAN 👆
 
   const [categoryPage, setCategoryPage] = useState(1);
   const CATEGORIES_PER_PAGE = 4;
@@ -272,7 +281,6 @@ export default function ProductClient() {
     [allBrands, queryParams.brandId]
   );
   
-  // --- PERUBAHAN LOGIKA PENGURUTAN KATEGORI ---
   const productsByCategory = useMemo(() => {
     if (!products) return [];
 
@@ -285,14 +293,12 @@ export default function ProductClient() {
       return acc;
     }, {} as Record<string, Product[]>);
 
-    // Ubah ke array dan urutkan: "Lainnya" selalu di atas
     return Object.entries(grouped).sort((a, b) => {
       if (a[0] === 'Lainnya') return -1;
       if (b[0] === 'Lainnya') return 1;
-      return a[0].localeCompare(b[0]); // Urutkan sisanya berdasarkan abjad
+      return a[0].localeCompare(b[0]);
     });
   }, [products]);
-  // --- AKHIR PERUBAHAN ---
 
   const totalCategoryPages = Math.ceil(productsByCategory.length / CATEGORIES_PER_PAGE);
   const paginatedCategories = useMemo(() => {

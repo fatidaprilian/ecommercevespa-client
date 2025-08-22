@@ -38,7 +38,10 @@ export default function Navbar() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const { data: categories, isLoading: isLoadingCategories } = useCategories();
+  // 👇 PERBAIKAN DI SINI 👇
+  const { data: categoriesResponse, isLoading: isLoadingCategories } = useCategories();
+  const categories = categoriesResponse?.data; // Ambil array dari properti 'data'
+  // 👆 AKHIR PERBAIKAN 👆
   
   const { cart } = useCartStore();
   const uniqueItemCount = cart?.items?.length || 0;
@@ -143,6 +146,7 @@ export default function Navbar() {
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.2 }} className="absolute top-full pt-4 left-1/2 -translate-x-1/2 w-64">
                       <div className="bg-white rounded-lg shadow-xl overflow-hidden p-2">
                         {isLoadingCategories ? ( <div className="p-3 text-center text-gray-500">Memuat...</div> ) : (
+                          // Ini sekarang akan berfungsi karena `categories` adalah array
                           categories?.map((category: Category) => {
                             const Icon = getCategoryIcon(category.name);
                             return ( <Link key={category.id} href={`/products?categoryId=${category.id}`} className="flex items-center p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200">
@@ -192,8 +196,8 @@ export default function Navbar() {
                             )}
                             {!isSearching && searchResults.map((product: Product) => (
                               <button key={product.id} onClick={() => handleSearchSelect(product.id)} className="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors">
-                                 <img src={product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={product.name} className="w-10 h-10 object-cover rounded-md flex-shrink-0" />
-                                 <span className="text-sm text-gray-800">{product.name}</span>
+                                  <img src={product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={product.name} className="w-10 h-10 object-cover rounded-md flex-shrink-0" />
+                                  <span className="text-sm text-gray-800">{product.name}</span>
                               </button>
                             ))}
                           </div>
@@ -256,6 +260,7 @@ export default function Navbar() {
                           {activeDropdown === link.name && (
                             <motion.div initial="collapsed" animate="open" exit="collapsed" variants={{ open: { opacity: 1, height: 'auto' }, collapsed: { opacity: 0, height: 0 } }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="overflow-hidden pl-4 mt-2">
                               {isLoadingCategories ? ( <div className="p-3 text-gray-500">Memuat...</div> ) : (
+                                // Ini sekarang akan berfungsi karena `categories` adalah array
                                 categories?.map(category => {
                                   const Icon = getCategoryIcon(category.name);
                                   return ( <Link key={category.id} href={`/products?categoryId=${category.id}`} onClick={() => setIsOpen(false)} className="flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-100">

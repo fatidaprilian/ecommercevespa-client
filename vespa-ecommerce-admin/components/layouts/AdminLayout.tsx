@@ -1,7 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-// --- 1. TAMBAHKAN IKON BARU (Link2) ---
 import { Home, Package, ShoppingCart, Users, CircleUser, Settings, Landmark, Link2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -35,7 +34,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { href: '/orders', label: 'Pesanan', icon: ShoppingCart },
     { href: '/users', label: 'Pengguna', icon: Users },
     { href: '/payment-methods', label: 'Metode Pembayaran', icon: Landmark },
-    // --- 2. TAMBAHKAN ITEM MENU BARU DI SINI ---
     { href: '/payment-mappings', label: 'Pemetaan Pembayaran', icon: Link2 },
     { href: '/settings', label: 'Pengaturan', icon: Settings },
   ];
@@ -67,10 +65,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-card px-6">
-          <h2 className="text-xl font-semibold text-foreground">
-            {navItems.find(item => pathname.startsWith(item.href))?.label || 'Dashboard'}
-          </h2>
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-end border-b bg-card px-6">
+          {/* Judul Halaman dinamis telah dihapus dari sini untuk tampilan yang lebih bersih */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">

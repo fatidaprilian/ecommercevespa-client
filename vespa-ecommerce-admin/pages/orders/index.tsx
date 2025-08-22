@@ -1,24 +1,16 @@
 // file: vespa-ecommerce-admin/pages/orders/index.tsx
 
-import { useState, useMemo } from 'react'; // <-- Import useState & useMemo
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Eye, Search } from 'lucide-react'; // <-- Import Search
+import { Eye, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useDebounce } from 'use-debounce';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input'; // <-- Import Input
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-
-import { getOrders, Order } from '@/services/orderService';
-
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { getOrders, Order, PaginatedOrders } from '@/services/orderService';
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('id-ID', {
@@ -31,28 +23,22 @@ const formatPrice = (price: number) => {
 };
 
 export default function OrdersPage() {
+  const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: orders, isLoading, isError, error } = useQuery<Order[], Error>({
-    queryKey: ['orders'],
-    queryFn: getOrders,
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
+
+  const { data: ordersResponse, isLoading, isError, error } = useQuery<PaginatedOrders, Error>({
+    queryKey: ['orders', page, debouncedSearchTerm],
+    queryFn: () => getOrders({ page, search: debouncedSearchTerm }),
+    keepPreviousData: true,
   });
 
-  // Logika untuk memfilter pesanan
-  const filteredOrders = useMemo(() => {
-    if (!orders) return [];
-    if (!searchTerm) return orders;
-
-    const lowercasedTerm = searchTerm.toLowerCase();
-    return orders.filter(order =>
-      order.orderNumber.toLowerCase().includes(lowercasedTerm) ||
-      order.user.name.toLowerCase().includes(lowercasedTerm) ||
-      order.user.email.toLowerCase().includes(lowercasedTerm)
-    );
-  }, [orders, searchTerm]);
+  const orders = ordersResponse?.data;
+  const meta = ordersResponse?.meta;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Manajemen Pesanan</h1>
           <p className="text-muted-foreground">
@@ -67,7 +53,7 @@ export default function OrdersPage() {
                 <div>
                     <CardTitle>Daftar Pesanan</CardTitle>
                     <CardDescription>
-                        Menampilkan {filteredOrders.length} dari {orders?.length || 0} pesanan ditemukan.
+                        Total {meta?.total || 0} pesanan. Halaman {meta?.page || 1} dari {meta?.lastPage || 1}.
                     </CardDescription>
                 </div>
                 <div className="relative w-full max-w-sm">
@@ -94,21 +80,23 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={6} className="text-center h-24">Memuat data...</TableCell></TableRow>}
+              {isLoading && <TableRow><TableCell colSpan={6} className="text-center h-24"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground"/></TableCell></TableRow>}
               {isError && <TableRow><TableCell colSpan={6} className="text-center h-24 text-red-500">Gagal memuat data: {error.message}</TableCell></TableRow>}
               
-              {filteredOrders && filteredOrders.length > 0 ? (
-                filteredOrders.map((order) => (
+              {orders && orders.length > 0 ? (
+                orders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-mono text-xs">{order.orderNumber}</TableCell>
                     <TableCell>{formatDate(order.createdAt)}</TableCell>
                     <TableCell className="font-medium">{order.user.name}</TableCell>
-                    <TableCell>{formatPrice(order.totalAmount + order.shippingCost)}</TableCell>
+                    <TableCell>{formatPrice(order.totalAmount)}</TableCell>
                     <TableCell>
                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                           order.status === 'PAID' ? 'bg-green-100 text-green-800' :
+                          order.status === 'PROCESSING' ? 'bg-orange-100 text-orange-800' :
+                          order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                          order.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-800' :
                           order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                           order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {order.status}
@@ -128,6 +116,20 @@ export default function OrdersPage() {
               )}
             </TableBody>
           </Table>
+
+          {meta && meta.lastPage > 1 && (
+            <div className="flex items-center justify-end space-x-2 pt-4">
+              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1 || isLoading}>
+                <ChevronLeft className="h-4 w-4" />
+                <span>Sebelumnya</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page === meta.lastPage || isLoading}>
+                <span>Berikutnya</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
         </CardContent>
       </Card>
     </div>

@@ -1,24 +1,27 @@
-// file: vespa-ecommerce-web/app/hooks/use-categories.ts
-'use client';
+// file: app/hooks/use-categories.ts
 
 import { useQuery } from '@tanstack/react-query';
-import api from '../lib/api';
-import { Category } from '../types';
+import api from '@/lib/api';
+import { PaginatedCategories } from '@/types';
 
-/**
- * Fungsi untuk mengambil SEMUA kategori dari API.
- */
-const getCategories = async (): Promise<Category[]> => {
-  const { data } = await api.get('/categories');
+// Definisikan tipe untuk parameter query
+interface CategoryQueryParams {
+  limit?: number;
+  page?: number;
+}
+
+// Fungsi untuk mengambil data dari API
+const getCategories = async (params: CategoryQueryParams): Promise<PaginatedCategories> => {
+  const { data } = await api.get('/categories', { params });
   return data;
 };
 
-/**
- * Custom hook untuk mengambil data SEMUA kategori.
- */
-export const useCategories = () => {
-  return useQuery({
-    queryKey: ['categories'], // Kunci query untuk semua kategori
-    queryFn: getCategories,
+// Custom hook `useCategories`
+// Secara default, hook ini akan mengambil hingga 999 item
+export const useCategories = (params: CategoryQueryParams = { limit: 999, page: 1 }) => {
+  return useQuery<PaginatedCategories, Error>({
+    queryKey: ['categories', params], // Gunakan params sebagai bagian dari query key
+    queryFn: () => getCategories(params),
+    staleTime: 1000 * 60 * 5, // Cache data selama 5 menit
   });
 };

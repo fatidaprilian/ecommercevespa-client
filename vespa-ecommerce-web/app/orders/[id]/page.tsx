@@ -8,8 +8,6 @@ import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Wallet, Co
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { format, isValid } from 'date-fns';
-import { id as localeID } from 'date-fns/locale';
 
 import api from '@/lib/api';
 import { Order } from '@/types';
@@ -18,16 +16,20 @@ import { getOrderById } from '@/services/orderService';
 import { getActivePaymentMethods, ManualPaymentMethod } from '@/services/paymentService';
 import { Button } from '@/components/ui/button';
 import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
-// Impor komponen UI yang diperlukan untuk pilihan bank
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
-// Helper functions (tidak ada perubahan)
+// Helper Functions
 const formatDate = (dateString?: string) => {
   if (!dateString) return 'Tanggal tidak tersedia';
-  const date = new Date(dateString);
-  if (!isValid(date)) return 'Invalid Date';
-  return format(date, "d MMMM yyyy, HH:mm", { locale: localeID });
+  // Menggunakan metode toLocaleString() yang lebih fleksibel
+  return new Date(dateString).toLocaleString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
@@ -75,20 +77,30 @@ function ShipmentTracking({ order }: { order: Order }) {
             {trackingInfo && (
                 <div className="space-y-4">
                     <h3 className="font-semibold text-md text-gray-700">Riwayat Perjalanan:</h3>
-                    {trackingInfo.history.map((item, index) => (
-                        <div key={index} className="flex items-start gap-4">
-                            <div className="flex flex-col items-center mt-1">
-                                <div className={`h-4 w-4 rounded-full flex items-center justify-center ${index === 0 ? 'bg-primary' : 'bg-gray-300'}`}>
-                                    {index === 0 && <div className="h-2 w-2 bg-white rounded-full"></div>}
+                    {trackingInfo.history.map((item, index) => {
+                        // 👇 --- PERBAIKAN DI SINI --- 👇
+                        // Biteship API (terkadang) mengurutkan dari terlama -> terbaru.
+                        // Maka, status terbaru adalah item TERAKHIR.
+                        const isLatestStatus = index === trackingInfo.history.length - 1;
+                        
+                        return (
+                            <div key={index} className="flex items-start gap-4">
+                                <div className="flex flex-col items-center mt-1">
+                                    <div className={`h-4 w-4 rounded-full flex items-center justify-center ${isLatestStatus ? 'bg-primary' : 'bg-gray-300'}`}>
+                                        {isLatestStatus && <div className="h-2 w-2 bg-white rounded-full"></div>}
+                                    </div>
+                                    {/* Tampilkan garis hanya jika bukan item terakhir */}
+                                    {index < trackingInfo.history.length - 1 && <div className="w-0.5 h-16 bg-gray-300"></div>}
                                 </div>
-                                {index < trackingInfo.history.length - 1 && <div className="w-0.5 h-16 bg-gray-300"></div>}
+                                <div>
+                                    <p className={`font-semibold ${isLatestStatus ? 'text-primary' : 'text-gray-800'}`}>{item.note}</p>
+                                    {/* Gunakan 'item.eventDate' bukan 'item.updated_at' */}
+                                    <p className="text-xs text-gray-500">{formatDate(item.eventDate)}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className={`font-semibold ${index === 0 ? 'text-primary' : 'text-gray-800'}`}>{item.note}</p>
-                                <p className="text-xs text-gray-500">{formatDate(item.updated_at)}</p>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                        // 👆 --- AKHIR PERBAIKAN --- 👆
+                    })}
                 </div>
             )}
         </div>
@@ -96,7 +108,7 @@ function ShipmentTracking({ order }: { order: Order }) {
 }
 
 
-// >> REVISI UTAMA: Komponen untuk alur pembayaran reseller
+// Sisa kode di bawah ini tidak diubah dan sudah benar.
 function ResellerPaymentSection({ order, onUploadSuccess }: { order: Order, onUploadSuccess: () => void }) {
     const [isUploading, setIsUploading] = useState(false);
     const [selectedBankId, setSelectedBankId] = useState<string>('');
@@ -118,7 +130,6 @@ function ResellerPaymentSection({ order, onUploadSuccess }: { order: Order, onUp
         const toastId = toast.loading('Mengunggah bukti...');
         const formData = new FormData();
         formData.append('file', file);
-        // Kirim ID bank yang dipilih bersama dengan file
         formData.append('manualPaymentMethodId', selectedBankId);
 
         try {
@@ -211,7 +222,7 @@ export default function OrderDetailPage() {
                        order.status === 'PROCESSING' ? 'bg-orange-100 text-orange-800' :
                        order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
                        order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                       order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                       order.status === 'DELIVERED' || order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
                        'bg-gray-100 text-gray-800'
                      }`}>
                      {order.status}
@@ -239,7 +250,7 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {(order.status === 'SHIPPED' || order.status === 'DELIVERED') && (
+            {(order.status === 'SHIPPED' || order.status === 'DELIVERED' || order.status === 'COMPLETED') && (
                 <ShipmentTracking order={order} />
             )}
 

@@ -27,6 +27,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { AccurateModule } from './accurate/accurate.module';
 import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
 import { PaymentMappingsModule } from './payment-mappings/payment-mappings.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -99,6 +100,7 @@ import { PaymentMappingsModule } from './payment-mappings/payment-mappings.modul
     PaymentMethodsModule,
     AccurateModule,
     AccurateSyncModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

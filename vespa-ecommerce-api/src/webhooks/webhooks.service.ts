@@ -11,7 +11,10 @@ export class WebhooksService {
   constructor(private prisma: PrismaService) {}
 
   async handleBiteshipTrackingUpdate(payload: any) {
-    const { status, waybill_id, order_id } = payload;
+    // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
+    // Ambil nomor resi dari 'courier_waybill_id', bukan 'waybill_id'
+    const { status, courier_waybill_id: waybill_id } = payload;
+    // 👆 --- AKHIR PERUBAHAN --- 👆
 
     if (!waybill_id || !status) {
       this.logger.warn('Webhook received with missing waybill_id or status.', payload);
