@@ -1,6 +1,6 @@
 // file: vespa-ecommerce-admin/pages/products/edit.tsx
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getCategories, getBrands } from '@/services/pageService';
-import { getProductById, updateProduct, uploadImage, deleteProduct, Product } from '@/services/productService'; // Import Product type
+import { getProductById, updateProduct, uploadImage, deleteProduct, Product } from '@/services/productService';
 
 const productFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama produk minimal 3 karakter.' }),
@@ -41,22 +41,19 @@ export default function EditProductPage() {
 
   const [isUploading, setIsUploading] = useState(false);
 
-  // Fetching data tetap sama
   const { data: product, isLoading: isLoadingProduct, isError } = useQuery<Product, Error>({
     queryKey: ['product', productId],
     queryFn: () => getProductById(productId),
     enabled: !!productId,
   });
 
+  // Kueri ini sekarang akan menerima array langsung dari service yang sudah diperbaiki
   const { data: categories, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: getCategories });
   const { data: brands, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: getBrands });
 
-  // 👇 **START OF FIX** 👇
-  // We use the `values` option to make the form fully controlled by our query data.
-  // This is a more robust pattern for handling forms with async default data
-  // than using useEffect + form.reset().
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
+    // `values` memastikan form selalu sinkron dengan data dari `useQuery`
     values: {
       name: product?.name || '',
       sku: product?.sku || '',
@@ -69,9 +66,6 @@ export default function EditProductPage() {
       images: product?.images || [],
     },
   });
-  // 👆 **END OF FIX** 👆
-
-  // useEffect for form.reset() is no longer needed and has been removed.
 
   const updateMutation = useMutation({
     mutationFn: (values: ProductFormValues) => updateProduct(productId, values),
@@ -198,11 +192,11 @@ export default function EditProductPage() {
             <Card>
                 <CardHeader><CardTitle>Organisasi</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* 👇 **NO CHANGE NEEDED HERE, BUT IT NOW WORKS CORRECTLY** 👇 */}
                 <FormField name="categoryId" control={form.control} render={({ field }) => (
                     <FormItem>
                     <FormLabel>Kategori</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCategories}>
+                    {/* 👇 **PERBAIKAN KECIL DI SINI** 👇 */}
+                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingCategories}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
                         <SelectContent>{categories?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                     </Select>

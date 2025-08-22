@@ -19,19 +19,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getCategories, getBrands } from '@/services/pageService';
 import { createProduct, uploadImage } from '@/services/productService';
 
-// 👇 **START OF CHANGES** 👇
 const productFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama produk minimal 3 karakter.' }),
   sku: z.string().min(3, { message: 'SKU minimal 3 karakter.' }),
   price: z.coerce.number().min(1, { message: 'Harga harus lebih dari 0.' }),
   stock: z.coerce.number().int().min(0, { message: 'Stok tidak boleh negatif.' }),
-  weight: z.coerce.number().int().min(1, { message: 'Berat minimal 1 gram.' }), // Field baru ditambahkan
+  weight: z.coerce.number().int().min(1, { message: 'Berat minimal 1 gram.' }),
   description: z.string().optional(),
   categoryId: z.string().min(1, { message: 'Kategori harus dipilih.' }),
   brandId: z.string().optional(),
   images: z.array(z.object({ url: z.string() })).optional(),
 });
-// 👆 **END OF CHANGES** 👆
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
@@ -40,14 +38,13 @@ export default function NewProductPage() {
   const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
 
+  // useQuery sekarang akan menerima array langsung dari service yang sudah diperbaiki
   const { data: categories, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: getCategories });
   const { data: brands, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: getBrands });
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
-    // 👇 **START OF CHANGES** 👇
     defaultValues: { name: '', sku: '', price: 0, stock: 0, weight: 1000, description: '', categoryId: '', brandId: '', images: [] },
-    // 👆 **END OF CHANGES** 👆
   });
 
   const mutation = useMutation({
@@ -105,14 +102,12 @@ export default function NewProductPage() {
             <CardContent className="space-y-6">
               <FormField name="name" control={form.control} render={({ field }) => (<FormItem><FormLabel>Nama Produk</FormLabel><FormControl><Input placeholder="Contoh: Kampas Rem Depan" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField name="description" control={form.control} render={({ field }) => (<FormItem><FormLabel>Deskripsi</FormLabel><FormControl><Textarea placeholder="Jelaskan detail produk di sini..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-              {/* 👇 **START OF CHANGES** 👇 */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="price" control={form.control} render={({ field }) => (<FormItem><FormLabel>Harga</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="stock" control={form.control} render={({ field }) => (<FormItem><FormLabel>Stok</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="weight" control={form.control} render={({ field }) => (<FormItem><FormLabel>Berat (gram)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
-              {/* 👆 **END OF CHANGES** 👆 */}
             </CardContent>
           </Card>
 
@@ -156,6 +151,7 @@ export default function NewProductPage() {
                   <FormLabel>Kategori</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingCategories}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
+                    {/* Kode ini sekarang akan berfungsi karena 'categories' adalah array */}
                     <SelectContent>{categories?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <FormMessage />
@@ -166,6 +162,7 @@ export default function NewProductPage() {
                   <FormLabel>Merek (Opsional)</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingBrands}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Pilih merek..." /></SelectTrigger></FormControl>
+                    {/* Kode ini sekarang akan berfungsi karena 'brands' adalah array */}
                     <SelectContent>{brands?.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <FormMessage />
