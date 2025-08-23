@@ -1,10 +1,13 @@
+// file: pages/payment-methods/index.tsx
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { motion, AnimatePresence } from 'framer-motion'; // 1. Impor motion dan AnimatePresence
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,6 +19,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAllPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod, PaymentMethod } from '@/services/paymentMethodService';
 import { getAccurateBankAccounts, AccurateBankAccount } from '@/services/accurateService';
+
+// 2. Definisikan varian animasi
+const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { ease: 'easeOut', duration: 0.4 } },
+};
 
 const formSchema = z.object({
   bankName: z.string().min(2, { message: 'Nama bank harus diisi.' }),
@@ -48,7 +58,6 @@ function PaymentMethodForm({ method, onClose }: { method?: PaymentMethod; onClos
     },
   });
   
-  // Sinkronisasi form jika data 'method' berubah (penting untuk edit)
   useEffect(() => {
     if (method) {
         form.reset({
@@ -88,11 +97,13 @@ function PaymentMethodForm({ method, onClose }: { method?: PaymentMethod; onClos
         ...data,
         accurateBankNo: no,
         accurateBankName: name,
-        // Pastikan accurateBankId juga dikirim jika ada (opsional)
         accurateBankId: bankAccounts?.find(acc => acc.no === no)?.id,
     };
 
-    delete payload.isActive;
+    // Note: This logic seems incorrect. 'isActive' should probably be part of the payload.
+    // If you intend to send 'isActive', you should remove 'delete payload.isActive'.
+    // However, I will keep it as is to not change your business logic.
+    delete payload.isActive; 
     delete payload.accurateBankData;
     if (!payload.logoUrl) {
       delete payload.logoUrl;
@@ -185,44 +196,58 @@ export default function PaymentMethodsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Metode Pembayaran Manual</h1>
+    // 3. Bungkus seluruh halaman dengan motion.div
+    <motion.div className="space-y-6" initial="hidden" animate="visible" variants={pageVariants}>
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Metode Pembayaran Manual</h1>
         <Button onClick={() => handleOpenDialog()}>
           <PlusCircle className="mr-2 h-4 w-4" /> Tambah Metode
         </Button>
-      </div>
-      <Card>
-        <CardHeader><CardTitle>Daftar Rekening Bank</CardTitle></CardHeader>
-        <CardContent>
-          {isLoading ? <Loader2 className="mx-auto animate-spin" /> : (
-            <Table>
-              <TableHeader><TableRow><TableHead>Bank</TableHead><TableHead>Nomor Rekening</TableHead><TableHead>Pemilik</TableHead><TableHead>Akun Accurate</TableHead><TableHead>Status</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {methods?.map((method) => (
-                  <TableRow key={method.id}>
-                    <TableCell>{method.bankName}</TableCell>
-                    <TableCell>{method.accountNumber}</TableCell>
-                    <TableCell>{method.accountHolder}</TableCell>
-                    <TableCell className="font-mono text-xs">{method.accurateBankName}</TableCell>
-                    <TableCell>{method.isActive ? 'Aktif' : 'Tidak Aktif'}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(method)}>Edit</Button>
-                      <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDelete(method.id)}>Hapus</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      </motion.div>
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader><CardTitle>Daftar Rekening Bank</CardTitle></CardHeader>
+          <CardContent>
+            {isLoading ? <div className="flex justify-center"><Loader2 className="animate-spin" /></div> : (
+              <Table>
+                <TableHeader><TableRow><TableHead>Bank</TableHead><TableHead>Nomor Rekening</TableHead><TableHead>Pemilik</TableHead><TableHead>Akun Accurate</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
+                {/* 4. Gunakan AnimatePresence dan motion.tbody */}
+                <AnimatePresence>
+                    <motion.tbody
+                        initial="hidden"
+                        animate="visible"
+                        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+                    >
+                        {methods?.map((method) => (
+                        <motion.tr key={method.id} variants={itemVariants}>
+                            <TableCell>{method.bankName}</TableCell>
+                            <TableCell>{method.accountNumber}</TableCell>
+                            <TableCell>{method.accountHolder}</TableCell>
+                            <TableCell className="font-mono text-xs">{method.accurateBankName}</TableCell>
+                            <TableCell>{method.isActive ? 'Aktif' : 'Tidak Aktif'}</TableCell>
+                            <TableCell className="text-right space-x-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(method)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(method.id)} disabled={deleteMutation.isPending}>
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                            </TableCell>
+                        </motion.tr>
+                        ))}
+                    </motion.tbody>
+                </AnimatePresence>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <PaymentMethodForm method={editingMethod} onClose={handleCloseDialog} />
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

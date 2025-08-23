@@ -33,19 +33,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 // KOMPONEN BARU: PENGATURAN PPN (VAT)
 // ====================================================================
 const VatSettings = () => {
+  // State untuk menyimpan nilai input dari form
   const [vatValue, setVatValue] = useState('');
   const queryClient = useQueryClient();
 
-  // Query untuk mengambil data PPN
+  // Query untuk mengambil data PPN dari server
   const { data: vatData, isLoading: isLoadingVat } = useQuery({
     queryKey: ['vatSetting'],
     queryFn: getVatSetting,
-    onSuccess: (data) => {
-      if (data && data.value) {
-        setVatValue(data.value.toString());
-      }
-    },
   });
+
+  // ✅ PERBAIKAN 1: Gunakan useEffect untuk menyinkronkan data dari server ke state form
+  // Ini lebih deklaratif dan akan berjalan setiap kali data dari server (vatData) berubah.
+  useEffect(() => {
+    // ✅ PERBAIKAN 2: Cek tipe data untuk memastikan nilai 0 tetap dianggap valid.
+    if (vatData && typeof vatData.value === 'number') {
+      setVatValue(vatData.value.toString());
+    }
+  }, [vatData]); // <-- Dependency array ini penting!
 
   // Mutasi untuk memperbarui data PPN
   const mutation = useMutation({
@@ -68,6 +73,7 @@ const VatSettings = () => {
     }
     mutation.mutate(numericValue);
   };
+
 
   return (
     <Card>

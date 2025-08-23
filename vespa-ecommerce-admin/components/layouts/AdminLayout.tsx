@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Home, Package, ShoppingCart, Users, CircleUser, Settings, Landmark, Link2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { logoutUser } from '@/services/userService';
 
 // Helper untuk menggabungkan class CSS dengan lebih mudah
 function cn(...classes: string[]) {
@@ -25,6 +27,19 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = router.pathname;
+
+  // Fungsi handler untuk logout
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      toast.success('Anda berhasil logout.');
+      // Arahkan kembali ke halaman login setelah berhasil
+      router.push('/auth/login');
+    } catch (error) {
+      toast.error('Gagal logout, silakan coba lagi.');
+      console.error('Logout failed:', error);
+    }
+  };
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: Home },
@@ -66,7 +81,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-end border-b bg-card px-6">
-          {/* Judul Halaman dinamis telah dihapus dari sini untuk tampilan yang lebih bersih */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">
@@ -80,7 +94,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuItem>Support</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  handleLogout();
+                }}
+                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
+                Logout
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>

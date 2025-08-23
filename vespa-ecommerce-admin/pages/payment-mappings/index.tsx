@@ -1,3 +1,5 @@
+// file: pages/payment-mappings/index.tsx
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
@@ -5,9 +7,12 @@ import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// 👇 --- PERBAIKAN DI SINI --- 👇
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+// 👆 --- AKHIR PERBAIKAN --- 👆
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -15,6 +20,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAccurateBankAccounts, AccurateBankAccount } from '@/services/accurateService';
 import api from '@/lib/api';
+
+// Varian animasi
+const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { ease: 'easeOut', duration: 0.4 } },
+};
 
 interface PaymentMapping {
   id: string;
@@ -174,54 +186,64 @@ export default function PaymentMappingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Pemetaan Pembayaran Midtrans</h1>
+    <motion.div className="space-y-6" initial="hidden" animate="visible" variants={pageVariants}>
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Pemetaan Pembayaran</h1>
         <Button onClick={() => handleOpenDialog()}>
           <PlusCircle className="mr-2 h-4 w-4" /> Tambah Pemetaan Baru
         </Button>
-      </div>
-
-      <Card>
-        <CardHeader><CardTitle>Daftar Pemetaan</CardTitle></CardHeader>
-        <CardContent>
-          {isLoading ? <div className="flex justify-center"><Loader2 className="animate-spin" /></div> : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Kunci Metode</TableHead>
-                  <TableHead>Nama Akun Accurate</TableHead>
-                  <TableHead>Deskripsi</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mappings?.map((mapping) => (
-                  <TableRow key={mapping.id}>
-                    <TableCell className="font-mono">{mapping.paymentMethodKey}</TableCell>
-                    <TableCell>{mapping.accurateBankName}</TableCell>
-                    <TableCell>{mapping.description}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(mapping)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(mapping.id)} disabled={deleteMutation.isPending}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </TableCell>
+      </motion.div>
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Daftar Pemetaan</CardTitle>
+            <CardDescription>Hubungkan metode pembayaran dari Midtrans ke akun Kas & Bank di Accurate.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <div className="flex justify-center"><Loader2 className="animate-spin" /></div> : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Kunci Metode</TableHead>
+                    <TableHead>Nama Akun Accurate</TableHead>
+                    <TableHead>Deskripsi</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <AnimatePresence>
+                    <motion.tbody
+                        initial="hidden"
+                        animate="visible"
+                        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+                    >
+                        {mappings?.map((mapping) => (
+                        <motion.tr key={mapping.id} variants={itemVariants}>
+                            <TableCell className="font-mono">{mapping.paymentMethodKey}</TableCell>
+                            <TableCell>{mapping.accurateBankName}</TableCell>
+                            <TableCell>{mapping.description}</TableCell>
+                            <TableCell className="text-right space-x-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(mapping)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(mapping.id)} disabled={deleteMutation.isPending}>
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                            </TableCell>
+                        </motion.tr>
+                        ))}
+                    </motion.tbody>
+                </AnimatePresence>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <PaymentMappingForm mapping={editingMapping} onClose={handleCloseDialog} />
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }
