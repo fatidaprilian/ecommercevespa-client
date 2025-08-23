@@ -28,6 +28,8 @@ import { AccurateModule } from './accurate/accurate.module';
 import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
 import { PaymentMappingsModule } from './payment-mappings/payment-mappings.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { EmailModule } from './email/email.module';
+
 
 @Module({
   imports: [
@@ -100,6 +102,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     PaymentMethodsModule,
     AccurateModule,
     AccurateSyncModule,
+    EmailModule,
     DashboardModule,
   ],
   controllers: [AppController],

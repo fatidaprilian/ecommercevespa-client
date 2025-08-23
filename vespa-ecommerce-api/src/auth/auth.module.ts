@@ -1,3 +1,5 @@
+// file: src/auth/auth.module.ts
+
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -6,12 +8,14 @@ import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from 'src/users/users.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { LocalStrategy } from './strategies/local.strategy'; // <-- IMPORT
+import { LocalStrategy } from './strategies/local.strategy';
+import { EmailModule } from 'src/email/email.module'; // <-- WAJIB DI-IMPORT
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
+    EmailModule, // <-- WAJIB DIDAFTARKAN DI SINI
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -24,6 +28,6 @@ import { LocalStrategy } from './strategies/local.strategy'; // <-- IMPORT
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy], // <-- DAFTARKAN DI SINI
+  providers: [AuthService, JwtStrategy, LocalStrategy],
 })
 export class AuthModule {}

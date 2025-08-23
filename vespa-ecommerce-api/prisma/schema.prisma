@@ -47,6 +47,11 @@ model User {
   role                    Role                   @default(MEMBER)
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt
+  emailVerified           DateTime?
+  verificationToken       String?
+  verificationTokenExpires DateTime?
+  passwordResetToken      String?
+  passwordResetTokenExpires DateTime?
   defaultDiscountPercentage Float                  @default(0)
   productDiscounts        UserProductDiscount[]
   categoryDiscounts       UserCategoryDiscount[]
