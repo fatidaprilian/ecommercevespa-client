@@ -148,3 +148,8 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Menonaktifkan animasi transform yang bermasalah saat scrolling */
+body.scrolling .group:hover .group-hover\:-translate-y-1 {
+  transform: none;
+}

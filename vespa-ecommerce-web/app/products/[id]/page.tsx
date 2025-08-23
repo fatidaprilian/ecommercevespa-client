@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Check, Minus, Plus, Package, Ruler, Tag, Edit, Info, ShieldCheck, Heart, Star, CreditCard, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Check, Minus, Plus, Package, Ruler, CreditCard, ArrowLeft, Heart, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -28,11 +28,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 
-
 const ProductDetailSkeleton = () => (
     <div className="bg-white min-h-screen pt-28 animate-pulse">
         <div className="container mx-auto px-4 py-12">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
                 <div>
                     <div className="bg-gray-200 h-[450px] rounded-xl"></div>
                     <div className="flex gap-4 mt-4">
@@ -57,13 +56,29 @@ const ProductDetailSkeleton = () => (
     </div>
 );
 
+// Varian animasi untuk staggered effect
+const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1,
+        },
+    },
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
+};
+
 export default function ProductDetailPage() {
     const params = useParams();
     const router = useRouter();
     const productId = params.id as string;
 
     const { addItem, isLoading: isCartLoading } = useCartStore();
-    const { user, isAuthenticated } = useAuthStore();
+    const { isAuthenticated } = useAuthStore();
     const { data: product, isLoading, error } = useProduct(productId);
 
     const [quantity, setQuantity] = useState(1);
@@ -72,7 +87,7 @@ export default function ProductDetailPage() {
     const [isInWishlist, setIsInWishlist] = useState(false);
 
     useEffect(() => {
-        if (product && product.images && product.images.length > 0) {
+        if (product?.images?.length) {
             setSelectedImage(product.images[0].url);
         }
     }, [product]);
@@ -98,9 +113,7 @@ export default function ProductDetailPage() {
             return;
         }
         setIsInWishlist(!isInWishlist);
-        toast.success(
-            !isInWishlist ? "Produk ditambahkan ke wishlist!" : "Produk dihapus dari wishlist."
-        );
+        toast.success(!isInWishlist ? "Produk ditambahkan ke wishlist!" : "Produk dihapus dari wishlist.");
     };
     
     const handleBuyNow = async () => {
@@ -122,27 +135,16 @@ export default function ProductDetailPage() {
     return (
         <div className="bg-white min-h-screen pt-28">
             <div className="container mx-auto px-4 py-12">
-                <div className="mb-6">
-                    <Button
-                        onClick={() => router.back()}
-                        variant="ghost"
-                        className="pl-0 text-gray-600 hover:text-gray-900"
-                    >
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-6">
+                    <Button onClick={() => router.back()} variant="ghost" className="pl-0 text-gray-600 hover:text-gray-900">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Kembali
+                        Kembali ke Katalog
                     </Button>
-                </div>
+                </motion.div>
             
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6 }}
-                    className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start"
-                >
-                    {/* ================================================================== */}
-                    {/* === PERBAIKAN DI SINI: `sticky` diubah menjadi `lg:sticky` === */}
-                    {/* ================================================================== */}
-                    <div className="lg:sticky lg:top-28 self-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+                    {/* Kolom Kiri: Galeri Gambar */}
+                    <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="lg:sticky lg:top-28 self-start">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={selectedImage}
@@ -162,46 +164,39 @@ export default function ProductDetailPage() {
                         <div className="grid grid-cols-5 gap-3">
                             {product.images?.map((image) => (
                                 <button key={image.id} onClick={() => setSelectedImage(image.url)} className={cn('aspect-square rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 ring-offset-2 hover:ring-2 hover:ring-primary', selectedImage === image.url ? 'ring-2 ring-primary' : 'ring-0')}>
-                                    <img src={image.url} alt="" className="w-full h-full object-cover"/>
+                                    <img src={image.url} alt={`Thumbnail ${product.name}`} className="w-full h-full object-cover"/>
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
 
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-3 mb-3">
-                            {product.category && (
-                                <Link href={`/products?categoryId=${product.category.id}`} className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors">
-                                    {product.category.name}
-                                </Link>
-                            )}
-                            {product.brand && (
-                                <Link href={`/products?brandId=${product.brand.id}`} className="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full hover:bg-primary/20 transition-colors">
-                                    {product.brand.name}
-                                </Link>
-                            )}
-                        </div>
+                    {/* Kolom Kanan: Detail Produk */}
+                    <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col">
+                        <motion.div variants={itemVariants} className="flex items-center gap-3 mb-3">
+                            {product.category && <Link href={`/products?categoryId=${product.category.id}`} className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors">{product.category.name}</Link>}
+                            {product.brand && <Link href={`/products?brandId=${product.brand.id}`} className="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full hover:bg-primary/20 transition-colors">{product.brand.name}</Link>}
+                        </motion.div>
                         
-                        <div className="flex items-start justify-between gap-4">
+                        <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
                             <h1 className="text-4xl lg:text-5xl font-bold text-gray-800 mb-2 font-playfair">{product.name}</h1>
                             <Button onClick={handleToggleWishlist} variant="outline" size="icon" className="rounded-full h-12 w-12 flex-shrink-0 border-2 hover:bg-red-50">
                                 <Heart className={cn("h-6 w-6 transition-all duration-300", isInWishlist ? "text-red-500 fill-red-500" : "text-gray-400" )} />
                             </Button>
-                        </div>
+                        </motion.div>
                         
-                        <div className="mb-6">
+                        <motion.div variants={itemVariants} className="mb-6">
                             <PriceDisplay priceInfo={product.priceInfo} className="text-5xl" originalPriceClassName="text-2xl" />
-                        </div>
+                        </motion.div>
 
-                        <p className="text-gray-600 leading-relaxed mb-8">{product.description || 'Tidak ada deskripsi untuk produk ini.'}</p>
+                        <motion.p variants={itemVariants} className="text-gray-600 leading-relaxed mb-8">{product.description || 'Tidak ada deskripsi untuk produk ini.'}</motion.p>
 
-                        <div className="bg-gray-50 border rounded-lg p-4 space-y-3 mb-8">
-                            <div className="flex items-center gap-3 text-sm"><Tag size={16} className="text-gray-500"/><span>SKU: <span className="font-semibold text-gray-800">{product.sku}</span></span></div>
+                        <motion.div variants={itemVariants} className="bg-gray-50 border rounded-lg p-4 space-y-3 mb-8">
+                            {/* SKU Dihapus Sesuai Permintaan */}
                             <div className="flex items-center gap-3 text-sm"><Package size={16} className="text-gray-500"/><span>Stok: <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}</span></span></div>
-                            <div className="flex items-center gap-3 text-sm"><Ruler size={16} className="text-gray-500"/><span>Berat: <span className="font-semibold text-gray-800">{product.weight} gram</span></span></div>
-                        </div>
+                            <div className="flex items-center gap-3 text-sm"><Ruler size={16} className="text-gray-500"/><span>Berat: <span className="font-semibold text-gray-800">{product.weight || 'N/A'} gram</span></span></div>
+                        </motion.div>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 items-center">
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 items-center">
                             <div className="flex items-center justify-center border rounded-lg w-full sm:w-auto">
                                 <Button variant="ghost" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-5 py-3 h-14" disabled={quantity <= 1}><Minus /></Button>
                                 <span className="px-6 font-bold text-xl w-16 text-center">{quantity}</span>
@@ -234,14 +229,14 @@ export default function ProductDetailPage() {
                                     Beli Sekarang
                                 </Button>
                             </div>
-                        </div>
+                        </motion.div>
 
-                        <div className="flex items-center gap-3 mt-6 text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
+                        <motion.div variants={itemVariants} className="flex items-center gap-3 mt-6 text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
                             <ShieldCheck className="h-8 w-8 text-green-600 flex-shrink-0"/>
                             <span>Garansi produk original. Kami menjamin keaslian dan kualitas setiap suku cadang yang kami jual.</span>
-                        </div>
-                    </div>
-                </motion.div>
+                        </motion.div>
+                    </motion.div>
+                </div>
 
                 <div className="mt-24">
                     <Separator className="mb-12"/>

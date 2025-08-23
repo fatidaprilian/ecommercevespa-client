@@ -1,23 +1,28 @@
-// file: pages/orders/[id].tsx
+// file: pages/orders/[id].tsx (Revisi Lengkap & Final)
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Loader2, User, Package, MapPin, Truck, CheckCircle, ChevronsRight, Landmark } from 'lucide-react';
+import { ArrowLeft, Loader2, User, Package, MapPin, Truck, CheckCircle, ChevronsRight, Landmark, Copy } from 'lucide-react';
 
 import { getOrderById, Order, OrderItem, OrderStatus } from '@/services/orderService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import api from '@/lib/api';
+// [DIPERBAIKI] Impor ini sekarang akan berfungsi dengan benar
+import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
 
-// --- Helper Functions (tidak ada perubahan) ---
+// --- Helper Functions ---
 const formatDate = (dateString: string) => new Date(dateString).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
+const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} disalin!`);
+};
 
 // --- Service Functions ---
-// ✅ Disederhanakan: Tidak perlu lagi mengirim manualPaymentMethodId
 const updateOrderStatus = async ({ orderId, status }: { orderId: string; status: OrderStatus }) => {
     const { data } = await api.patch(`/orders/${orderId}/status`, { status });
     return data;
@@ -28,13 +33,79 @@ const createShipment = async ({ orderId, courier_company, courier_type }: { orde
     return data;
 };
 
+// Komponen untuk menampilkan detail pelacakan (ShipmentTracking)
+function ShipmentTracking({ order }: { order: Order }) {
+    if (!order.shipment?.trackingNumber || !order.courier) {
+        return null;
+    }
+
+    const courierCode = order.courier.split(' - ')[0].trim().toLowerCase();
+    const waybillId = order.shipment.trackingNumber;
+
+    const { data: trackingInfo, isLoading, isError } = useQuery<TrackingDetails>({
+        queryKey: ['tracking', waybillId, courierCode],
+        queryFn: () => getTrackingDetails(waybillId, courierCode),
+        enabled: !!waybillId && !!courierCode,
+    });
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Truck size={20}/> Informasi Pengiriman</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div>
+                    <p className="text-sm text-muted-foreground">Kurir</p>
+                    <p className="font-semibold">{order.courier}</p>
+                </div>
+                <div>
+                    <p className="text-sm text-muted-foreground">Nomor Resi</p>
+                    <div className="flex items-center gap-2">
+                        <p className="font-mono font-semibold">{waybillId}</p>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(waybillId, 'Nomor resi')}>
+                            <Copy className="h-4 w-4"/>
+                        </Button>
+                    </div>
+                </div>
+                
+                <div className="border-t pt-4">
+                    <h3 className="font-semibold text-md text-gray-700 mb-2">Riwayat Perjalanan:</h3>
+                    {isLoading && <div className="flex items-center gap-2 text-gray-500 py-2"><Loader2 className="animate-spin h-4 w-4"/> Memuat riwayat...</div>}
+                    {isError && <p className="text-red-500 text-sm py-2">Gagal memuat riwayat pelacakan.</p>}
+
+                    {trackingInfo && (
+                        <div className="space-y-4">
+                            {trackingInfo.history.map((item, index) => {
+                                const isLatestStatus = index === trackingInfo.history.length - 1;
+                                return (
+                                    <div key={index} className="flex items-start gap-4">
+                                        <div className="flex flex-col items-center mt-1">
+                                            <div className={`h-4 w-4 rounded-full flex items-center justify-center ${isLatestStatus ? 'bg-primary' : 'bg-gray-300'}`}>
+                                                {isLatestStatus && <div className="h-2 w-2 bg-white rounded-full"></div>}
+                                            </div>
+                                            {index < trackingInfo.history.length - 1 && <div className="w-0.5 h-12 bg-gray-300"></div>}
+                                        </div>
+                                        <div>
+                                            <p className={`font-semibold ${isLatestStatus ? 'text-primary' : 'text-gray-800'}`}>{item.note}</p>
+                                            {/* [PERBAIKAN] Menggunakan item.eventDate yang benar sesuai payload API */}
+                                            <p className="text-xs text-muted-foreground">{formatDate(item.eventDate)}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function OrderDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { id } = router.query;
   const orderId = typeof id === 'string' ? id : '';
-
-  // state 'selectedBankId' dan query 'paymentMethods' dihapus.
   
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', orderId],
@@ -62,7 +133,6 @@ export default function OrderDetailPage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal memproses pengiriman.')
   });
 
-  // ✅ Disederhanakan: Fungsi validasi sekarang hanya butuh konfirmasi.
   const handleValidatePayment = () => {
       if(window.confirm('Konfirmasi bahwa Anda telah menerima pembayaran untuk pesanan ini? Status akan diubah menjadi PROCESSING.')) {
           statusMutation.mutate({
@@ -130,6 +200,10 @@ export default function OrderDetailPage() {
                   </Table>
                 </CardContent>
             </Card>
+
+            {(order.status === 'SHIPPED' || order.status === 'DELIVERED' || order.status === 'COMPLETED') && (
+                <ShipmentTracking order={order} />
+            )}
         </div>
 
         <div className="space-y-6">
@@ -162,7 +236,6 @@ export default function OrderDetailPage() {
                         <img src={order.payment.proofOfPayment} alt="Bukti Pembayaran" className="rounded-lg border hover:opacity-80 transition-opacity"/>
                     </a>
                     
-                    {/* ✅ Menampilkan informasi bank yang dipilih reseller untuk verifikasi */}
                     {order.payment.manualPaymentMethod ? (
                         <div className="bg-blue-50 border-l-4 border-blue-400 p-3 text-sm">
                             <p className="font-semibold text-blue-800">Reseller melakukan transfer ke:</p>

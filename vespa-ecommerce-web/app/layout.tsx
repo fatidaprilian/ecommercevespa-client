@@ -1,8 +1,12 @@
+// file: app/layout.tsx (Revisi)
+
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/components/providers/QueryProvider';
-import Navbar from '@/components/layout/Navbar';
+// [DIUBAH] Impor ConditionalNavbar, bukan Navbar
+import ConditionalNavbar from '@/components/layout/ConditionalNavbar';
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
@@ -23,7 +27,10 @@ export default function RootLayout({
                 className={`${inter.variable} ${playfair.variable} font-sans bg-[#F0F5F9] text-[#1E2022] flex flex-col min-h-screen`}
             >
                 <QueryProvider>
-                    <Navbar />
+                    <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+                    
+                    {/* [DIUBAH] Gunakan ConditionalNavbar di sini */}
+                    <ConditionalNavbar />
 
                     <main className="flex-1">
                         {children}

@@ -7,10 +7,16 @@ export default function ConditionalNavbar() {
   const pathname = usePathname();
 
   // Daftar halaman di mana navbar akan disembunyikan
-  const hiddenPaths = ['/cart', '/checkout', '/login', '/register'];
+  const hiddenPaths = ['/checkout', '/login', '/register',];
+  const isOrderDetailPage = pathname.startsWith('/orders/') && pathname.length > '/orders/'.length;
 
   // Jika halaman saat ini ada di dalam daftar, jangan tampilkan apa-apa
   if (hiddenPaths.includes(pathname)) {
+    return null;
+  }
+
+  // Jika halaman adalah halaman detail pesanan, sembunyikan Navbar
+  if (isOrderDetailPage) {
     return null;
   }
 

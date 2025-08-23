@@ -63,6 +63,7 @@ model User {
   cart                    Cart?
   tier                    ResellerTier?          @relation(fields: [resellerTierId], references: [id])
   resellerTierId          String?
+  accurateCustomerNo String? @unique
 }
 
 model ResellerTier {

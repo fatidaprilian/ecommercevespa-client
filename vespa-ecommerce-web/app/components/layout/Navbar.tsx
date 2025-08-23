@@ -1,3 +1,4 @@
+// file: app/components/layout/Navbar.tsx (Revisi Lengkap)
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -6,7 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
     Menu, X, Search, ShoppingCart,
-    Heart, ChevronDown, Package, Wrench, Zap, Sparkles, Tag, Loader2
+    ChevronDown, Package, Wrench, Zap, Sparkles, Tag, Loader2, ArrowRight
 } from 'lucide-react';
 
 import ClientOnly from '@/components/providers/ClientOnly';
@@ -15,6 +16,7 @@ import { useCartStore } from '@/store/cart';
 import { useCategories } from '@/hooks/use-categories';
 import { Category, Product } from '@/types';
 import api from '@/lib/api';
+import { Separator } from '../ui/separator';
 
 const getCategoryIcon = (categoryName: string) => {
     switch (categoryName.toLowerCase()) {
@@ -38,7 +40,8 @@ export default function Navbar() {
     const searchInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
 
-    const { data: categoriesResponse, isLoading: isLoadingCategories } = useCategories();
+    // [DIUBAH] Ambil hanya 4 kategori untuk dropdown
+    const { data: categoriesResponse, isLoading: isLoadingCategories } = useCategories({ limit: 4 });
     const categories = categoriesResponse?.data;
     
     const { cart } = useCartStore();
@@ -48,8 +51,8 @@ export default function Navbar() {
     const isAuthPage = pathname === '/login' || pathname === '/register';
 
     useEffect(() => {
-        setIsOpen(false); // Tutup menu mobile saat navigasi
-        setIsSearchOpen(false); // Tutup search bar saat navigasi
+        setIsOpen(false);
+        setIsSearchOpen(false);
         const handleScroll = () => setIsScrolled(window.scrollY > 50);
         if (isAuthPage) {
             setIsScrolled(true);
@@ -154,6 +157,12 @@ export default function Navbar() {
                                                         );
                                                     })
                                                 )}
+                                                {/* [BARU] Tombol "Lihat Semua Kategori" */}
+                                                <Separator className="my-1"/>
+                                                <Link href="/categories" className="flex items-center justify-center p-3 rounded-md text-blue-600 font-semibold hover:bg-blue-50 transition-colors duration-200">
+                                                    Lihat Semua Kategori
+                                                    <ArrowRight className="w-4 h-4 ml-2"/>
+                                                </Link>
                                             </div>
                                         </motion.div>
                                     )}
@@ -250,15 +259,10 @@ export default function Navbar() {
                                     <div key={link.name}>
                                         {link.hasDropdown ? (
                                             <div>
-                                                {/* ================================================================== */}
-                                                {/* === PERBAIKAN DI SINI === */}
-                                                {/* ================================================================== */}
                                                 <div className="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-700 p-3 rounded-lg hover:bg-gray-100">
-                                                    {/* Link untuk ke halaman /products */}
                                                     <Link href={link.href} onClick={() => setIsOpen(false)} className="flex-grow">
                                                         {link.name}
                                                     </Link>
-                                                    {/* Tombol panah untuk membuka dropdown */}
                                                     <button onClick={() => setActiveDropdown(activeDropdown === link.name ? null : link.name)} className="p-2 -mr-2">
                                                         <ChevronDown className={`w-5 h-5 transition-transform ${activeDropdown === link.name ? 'rotate-180' : ''}`} />
                                                     </button>
@@ -276,6 +280,11 @@ export default function Navbar() {
                                                                     );
                                                                 })
                                                             )}
+                                                             <Separator className="my-1"/>
+                                                             <Link href="/categories" onClick={() => setIsOpen(false)} className="flex items-center justify-center p-3 rounded-md text-blue-600 font-semibold hover:bg-blue-50 transition-colors duration-200">
+                                                                Lihat Semua Kategori
+                                                                <ArrowRight className="w-4 h-4 ml-2"/>
+                                                            </Link>
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>

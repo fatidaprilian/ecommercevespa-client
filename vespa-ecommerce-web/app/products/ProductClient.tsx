@@ -53,12 +53,10 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
   const [tempBrandIds, setTempBrandIds] = useState(new Set(currentFilters.brandId));
   const [searchTerm, setSearchTerm] = useState({ category: '', brand: '' });
 
-  // 👇 PERBAIKAN DI SINI 👇
   const { data: categoriesResponse } = useCategories();
   const allCategories = categoriesResponse?.data;
   const { data: brandsResponse } = useBrands();
   const allBrands = brandsResponse?.data;
-  // 👆 AKHIR PERBAIKAN 👆
 
   const filteredCategories = useMemo(() =>
     allCategories?.filter(c => c.name.toLowerCase().includes(searchTerm.category.toLowerCase())) || [],
@@ -188,13 +186,12 @@ export default function ProductClient() {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
   
-  // 👇 PERBAIKAN DI SINI JUGA 👇
   const { data: categoriesResponse } = useCategories();
   const allCategories = categoriesResponse?.data;
   const { data: brandsResponse } = useBrands();
   const allBrands = brandsResponse?.data;
-  // 👆 AKHIR PERBAIKAN 👆
 
+  // State untuk paginasi kategori di mode jelajah
   const [categoryPage, setCategoryPage] = useState(1);
   const CATEGORIES_PER_PAGE = 4;
 
@@ -210,22 +207,24 @@ export default function ProductClient() {
 
   const [queryParams, setQueryParams] = useState<ProductQueryParams>(() => buildQueryParams(searchParams));
 
-  const activeFiltersCount = (queryParams.categoryId?.length || 0) + (queryParams.brandId?.length || 0) + (queryParams.search ? 1 : 0);
-  const isFilterActive = activeFiltersCount > 0;
+  // Menentukan apakah filter sedang aktif
+  const isFilterActive = (queryParams.categoryId?.length || 0) > 0 || 
+                         (queryParams.brandId?.length || 0) > 0 || 
+                         !!queryParams.search;
 
+  // Mengubah query ke API berdasarkan mode (jelajah vs filter)
   const apiQuery = useMemo(() => {
     if (isFilterActive) {
+      // Mode filter: gunakan parameter paginasi standar
       return queryParams;
     }
-    return { ...queryParams, limit: 100, page: 1 };
+    // Mode jelajah: ambil banyak produk sekaligus untuk dikelompokkan
+    return { limit: 100, page: 1, sortBy: 'createdAt', sortOrder: 'desc' };
   }, [queryParams, isFilterActive]);
 
   useEffect(() => {
     setQueryParams(buildQueryParams(searchParams));
-    if (!isFilterActive) {
-      setCategoryPage(1);
-    }
-  }, [searchParams, isFilterActive]);
+  }, [searchParams]);
 
   useEffect(() => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -238,6 +237,7 @@ export default function ProductClient() {
   const updateUrlParams = (newParams: Partial<ProductQueryParams>) => {
     const currentParams = new URLSearchParams(searchParams.toString());
     
+    // Hapus parameter array agar tidak terduplikasi
     currentParams.delete('brandId');
     currentParams.delete('categoryId');
 
@@ -250,27 +250,35 @@ export default function ProductClient() {
         currentParams.delete(key);
       }
     });
-    currentParams.set('page', '1');
+    // Selalu reset ke halaman pertama saat filter berubah
+    currentParams.set('page', '1'); 
     router.push(`/products?${currentParams.toString()}`);
   };
 
   const handleApplyFilters = (filters: { categoryId?: string[], brandId?: string[] }) => {
-    updateUrlParams({ ...filters });
+    updateUrlParams({ ...queryParams, ...filters, page: 1 });
   };
 
   const handleClearFilters = () => {
-    updateUrlParams({ categoryId: [], brandId: [], search: undefined });
+    updateUrlParams({ 
+        ...queryParams, 
+        categoryId: [], 
+        brandId: [], 
+        search: undefined, 
+        page: 1 
+    });
   };
 
   const handleSortChange = (value: string) => {
     const [sortBy, sortOrder] = value.split('-');
-    updateUrlParams({ sortBy, sortOrder });
+    updateUrlParams({ ...queryParams, sortBy, sortOrder, page: 1 });
   };
 
   const handlePageChange = (page: number) => {
-    updateUrlParams({ page });
+    updateUrlParams({ ...queryParams, page });
   };
   
+  // Memo untuk mendapatkan nama kategori dan merek yang dipilih
   const selectedCategories = useMemo(
     () => allCategories?.filter(c => queryParams.categoryId?.includes(c.id)) || [],
     [allCategories, queryParams.categoryId]
@@ -281,9 +289,9 @@ export default function ProductClient() {
     [allBrands, queryParams.brandId]
   );
   
+  // Mengelompokkan produk berdasarkan kategori (untuk mode jelajah)
   const productsByCategory = useMemo(() => {
-    if (!products) return [];
-
+    if (isFilterActive || !products) return [];
     const grouped = products.reduce((acc, product) => {
       const categoryName = product.category?.name || 'Lainnya';
       if (!acc[categoryName]) {
@@ -292,19 +300,13 @@ export default function ProductClient() {
       acc[categoryName].push(product);
       return acc;
     }, {} as Record<string, Product[]>);
-
-    return Object.entries(grouped).sort((a, b) => {
-      if (a[0] === 'Lainnya') return -1;
-      if (b[0] === 'Lainnya') return 1;
-      return a[0].localeCompare(b[0]);
-    });
-  }, [products]);
+    return Object.entries(grouped);
+  }, [products, isFilterActive]);
 
   const totalCategoryPages = Math.ceil(productsByCategory.length / CATEGORIES_PER_PAGE);
   const paginatedCategories = useMemo(() => {
       const startIndex = (categoryPage - 1) * CATEGORIES_PER_PAGE;
-      const endIndex = startIndex + CATEGORIES_PER_PAGE;
-      return productsByCategory.slice(startIndex, endIndex);
+      return productsByCategory.slice(startIndex, startIndex + CATEGORIES_PER_PAGE);
   }, [productsByCategory, categoryPage]);
 
 
@@ -325,10 +327,11 @@ export default function ProductClient() {
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                             {selectedCategories.length > 0 && ( <p className="text-sm font-medium text-gray-800"> <strong>Kategori:</strong> {selectedCategories.map(c => c.name).join(', ')} </p> )}
                             {selectedBrands.length > 0 && ( <p className="text-sm font-medium text-gray-800"> <strong>Merek:</strong> {selectedBrands.map(b => b.name).join(', ')} </p> )}
+                            {queryParams.search && ( <p className="text-sm font-medium text-gray-800"> <strong>Pencarian:</strong> "{queryParams.search}" </p> )}
                         </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={handleClearFilters} className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 mt-2 sm:mt-0">
-                        <X className="h-4 w-4" /> Hapus Semua
+                        <X className="h-4 w-4" /> Hapus Semua Filter
                     </Button>
                 </div>
             </motion.div>
@@ -361,10 +364,12 @@ export default function ProductClient() {
                 </div>
               ) : products && products.length > 0 ? (
                 isFilterActive ? (
+                  // Tampilan Grid untuk Hasil Filter
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {products.map((product: Product) => ( <ProductCard key={product.id} product={product} /> ))}
                   </div>
                 ) : (
+                  // Tampilan Jelajah per Kategori
                   <div className="space-y-16">
                     {paginatedCategories.map(([categoryName, categoryProducts]) => (
                       <div key={categoryName}>
@@ -390,6 +395,7 @@ export default function ProductClient() {
           </AnimatePresence>
         </div>
 
+        {/* Logika Paginasi Cerdas */}
         {isFilterActive && meta && meta.lastPage > 1 ? (
             <PaginationControls
               currentPage={meta?.page || 1}

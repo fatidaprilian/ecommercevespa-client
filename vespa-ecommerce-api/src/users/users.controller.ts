@@ -1,4 +1,4 @@
-// file: src/users/users.controller.ts
+// file: src/users/users.controller.ts (Revisi Lengkap)
 import { Controller, Get, UseGuards, Req, ClassSerializerInterceptor, UseInterceptors, Patch, Param, Body, Delete } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -7,24 +7,21 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
-// Impor DTO baru yang akan kita buat nanti
 import { UpdateProfileDto } from './dto/update-profile.dto'; 
 
 @Controller('users')
-@UseGuards(AuthGuard('jwt')) // Hapus RolesGuard dari level controller
+@UseGuards(AuthGuard('jwt'))
 @UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('profile')
   @UseGuards(RolesGuard)
-  @Roles(Role.MEMBER, Role.RESELLER, Role.ADMIN) // Pastikan semua role bisa akses
+  @Roles(Role.MEMBER, Role.RESELLER, Role.ADMIN)
   async getProfile(@Req() req: AuthenticatedRequest) {
-    // ✅ PERBAIKAN UTAMA: Ambil data lengkap dari database
     return this.usersService.findById(req.user.id);
   }
 
-  // Endpoint untuk UPDATE NAMA
   @Patch('profile')
   @UseGuards(RolesGuard)
   @Roles(Role.MEMBER, Role.RESELLER, Role.ADMIN)
@@ -38,6 +35,14 @@ export class UsersController {
   @Roles(Role.ADMIN)
   findAll() {
     return this.usersService.findAll();
+  }
+
+  // [BARU] Endpoint untuk mengambil satu user berdasarkan ID (untuk admin)
+  @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  findOne(@Param('id') id: string) {
+    return this.usersService.findById(id);
   }
 
   @Patch(':id/role')
