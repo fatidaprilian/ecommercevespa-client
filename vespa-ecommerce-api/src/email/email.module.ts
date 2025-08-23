@@ -5,6 +5,6 @@ import { EmailService } from './email.service';
 
 @Module({
   providers: [EmailService],
-  exports: [EmailService], // Ini memastikan service bisa di-'inject' di modul lain
+  exports: [EmailService],
 })
 export class EmailModule {}
