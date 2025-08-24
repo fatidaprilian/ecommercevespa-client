@@ -10,6 +10,8 @@ import { Loader2, PackageCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Address } from '@/services/addressService';
 import { ShippingRate } from '@/services/shippingService';
+// 👇 1. Impor store autentikasi untuk mengecek peran pengguna
+import { useAuthStore } from '@/store/auth';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -39,6 +41,9 @@ export function OrderSummary({
   const router = useRouter();
   const { createOrder, selectedItems, cart } = useCartStore();
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  
+  // 👇 2. Ambil data pengguna dari store
+  const { user } = useAuthStore();
 
   const totalItems = cart?.items
     ?.filter(item => selectedItems.has(item.id))
@@ -63,15 +68,20 @@ export function OrderSummary({
           selectedAddress.districtId
         );
         
-        if (newOrder && newOrder.redirect_url) {
-          // Untuk MEMBER, arahkan ke payment gateway
-          window.location.href = newOrder.redirect_url;
-        } else if (newOrder) {
-          // ✅ REVISI UTAMA: Untuk RESELLER, arahkan langsung ke halaman detail pesanan
-          router.push(`/orders/${newOrder.id}`);
+        // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
+        if (user?.role === 'RESELLER') {
+            // Untuk RESELLER, arahkan langsung ke halaman detail pesanan
+            toast.success("Pesanan berhasil dibuat dan dikirim ke admin!");
+            router.push(`/orders/${newOrder.id}`);
+        } else if (newOrder && newOrder.redirect_url) {
+            // Untuk MEMBER, arahkan ke payment gateway (alur lama)
+            window.location.href = newOrder.redirect_url;
         } else {
-          throw new Error('Respons pesanan tidak valid.');
+            // Fallback jika terjadi kesalahan
+            throw new Error('Respons pesanan tidak valid.');
         }
+        // 👆 --- AKHIR PERUBAHAN --- 👆
+
       } catch (error) {
         toast.error("Gagal memproses pesanan. Silakan coba lagi.");
         console.error("Gagal melanjutkan ke pembayaran:", error);
@@ -124,9 +134,10 @@ export function OrderSummary({
       </div>
 
       <div className="mt-6">
+        {/* 👇 3. Ubah teks tombol berdasarkan peran pengguna */}
         <Button onClick={handleCreateOrder} size="lg" className="w-full" disabled={!selectedAddress || !selectedShippingOption || isCreatingOrder}>
             {isCreatingOrder ? <Loader2 className="mr-2 animate-spin" /> : <PackageCheck className="mr-2" />}
-            {isCreatingOrder ? 'Memproses...' : 'Lanjutkan ke Pembayaran'}
+            {isCreatingOrder ? 'Memproses...' : (user?.role === 'RESELLER' ? 'Proses Pesanan' : 'Lanjutkan ke Pembayaran')}
         </Button>
       </div>
     </div>

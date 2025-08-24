@@ -10,44 +10,84 @@ export class WebhooksService {
 
   constructor(private prisma: PrismaService) {}
 
+  // 👇 --- PENAMBAHAN FUNGSI BARU DIMULAI DI SINI --- 👇
+  /**
+   * Menangani webhook dari Accurate saat Faktur Penjualan (Sales Invoice) dibuat.
+   * Ini menandakan admin telah memproses Pesanan Penjualan dari reseller.
+   */
+  async handleAccurateSalesInvoiceCreated(payload: any) {
+    // Ambil nomor Pesanan Penjualan dari data webhook.
+    // Accurate biasanya menyimpannya di 'fromNumber' atau 'orderNumber'.
+    const salesOrderNumber = payload.orderNumber;
+
+    if (!salesOrderNumber) {
+      this.logger.warn('Accurate webhook for Sales Invoice received without a source Sales Order number.', payload);
+      return;
+    }
+
+    this.logger.log(`Received Accurate webhook for Sales Order: ${salesOrderNumber}`);
+
+    try {
+      // Cari pesanan di database kita yang cocok dengan nomor Pesanan Penjualan.
+      const order = await this.prisma.order.findFirst({
+        where: { accurateSalesOrderNumber: salesOrderNumber },
+      });
+
+      if (order) {
+        // Jika pesanan ditemukan dan statusnya masih PENDING, ubah menjadi PROCESSING.
+        if (order.status === OrderStatus.PENDING) {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: { 
+              status: OrderStatus.PROCESSING,
+              accurateSalesInvoiceNumber: payload.number, // Simpan juga nomor faktur penjualannya
+            },
+          });
+          this.logger.log(`Order ID ${order.id} status updated to PROCESSING via Accurate webhook.`);
+        } else {
+          this.logger.log(`Order ID ${order.id} is already in status ${order.status}. Ignoring webhook.`);
+        }
+      } else {
+        this.logger.warn(`Webhook received for an unknown Sales Order number: ${salesOrderNumber}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to process Accurate webhook for SO Number: ${salesOrderNumber}`, error);
+    }
+  }
+  // 👆 --- PENAMBAHAN FUNGSI BARU SELESAI --- 👆
+
+
+  // Fungsi untuk Biteship (tidak diubah)
   async handleBiteshipTrackingUpdate(payload: any) {
-    // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
-    // Ambil nomor resi dari 'courier_waybill_id', bukan 'waybill_id'
     const { status, courier_waybill_id: waybill_id } = payload;
-    // 👆 --- AKHIR PERUBAHAN --- 👆
 
     if (!waybill_id || !status) {
       this.logger.warn('Webhook received with missing waybill_id or status.', payload);
       return;
     }
 
-    // Tentukan status pesanan di sistem Anda berdasarkan status dari Biteship
     let newStatus: OrderStatus | null = null;
     switch (status) {
-      case 'picked': // Paket sudah dijemput
-      case 'at_origin': // Paket di kantor cabang asal
-      case 'at_destination': // Paket di kota tujuan
+      case 'picked':
+      case 'at_origin':
+      case 'at_destination':
         newStatus = OrderStatus.SHIPPED;
         break;
-      case 'delivered': // Paket terkirim
+      case 'delivered':
         newStatus = OrderStatus.DELIVERED;
         break;
-      case 'returned': // Paket dikembalikan
-        newStatus = OrderStatus.CANCELLED; // Atau status lain yang sesuai
+      case 'returned':
+        newStatus = OrderStatus.CANCELLED;
         break;
-      // Status lain seperti 'allocated', 'picking_up' bisa diabaikan
-      // jika Anda tidak ingin mengubah status internal untuk itu.
     }
 
     if (newStatus) {
       try {
-        // Cari shipment berdasarkan trackingNumber (waybill_id dari Biteship)
         const shipment = await this.prisma.shipment.findFirst({
           where: { trackingNumber: waybill_id },
         });
 
         if (shipment) {
-          // Update status order yang terhubung dengan shipment tersebut
           await this.prisma.order.update({
             where: { id: shipment.orderId },
             data: { status: newStatus },

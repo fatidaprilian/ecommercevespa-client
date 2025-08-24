@@ -6,7 +6,7 @@ import { Queue } from 'bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccurateService } from '../accurate/accurate.service';
-import { User } from '@prisma/client';
+import { Order, User } from '@prisma/client';
 
 // Type definitions for Accurate API responses
 interface AccurateCustomer {
@@ -69,6 +69,82 @@ export class AccurateSyncService {
         }
     }
     
+    /**
+     * Membuat "Pesanan Penjualan" (Sales Order) di Accurate.
+     * Digunakan khusus untuk alur pesanan Reseller.
+     */
+    async createSalesOrder(orderId: string) {
+        this.logger.log(`Creating Sales Order in Accurate for Order ID: ${orderId}`);
+
+        const order = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: { user: true, items: { include: { product: true } } },
+        });
+
+        if (!order) {
+            throw new Error(`Order with ID ${orderId} not found.`);
+        }
+
+        try {
+            const dbInfo = await this.prisma.accurateOAuth.findFirst();
+            if (!dbInfo || !dbInfo.branchName) {
+                throw new InternalServerErrorException('Branch name not found in Accurate configuration.');
+            }
+
+            const accurateCustomer = await this.findOrCreateCustomer(order.user);
+            if (!accurateCustomer || !accurateCustomer.customerNo) {
+                throw new InternalServerErrorException(`Failed to get or create a valid customer in Accurate for user ID: ${order.user.id}`);
+            }
+
+            const apiClient = await this.accurateService.getAccurateApiClient();
+            
+            const detailItem = order.items.map(item => ({
+                itemNo: item.product.sku,
+                quantity: item.quantity,
+                unitPrice: item.price,
+            }));
+            
+            if (order.shippingCost > 0) {
+                detailItem.push({
+                    itemNo: 'SHIPPING',
+                    quantity: 1,
+                    unitPrice: order.shippingCost,
+                });
+            }
+
+            const salesOrderPayload = {
+                customerNo: accurateCustomer.customerNo,
+                transDate: formatDateToAccurate(new Date(order.createdAt)),
+                detailItem: detailItem,
+                branchName: dbInfo.branchName,
+                number: `SO-${order.orderNumber}`
+            };
+
+            const response = await apiClient.post('/accurate/api/sales-order/save.do', salesOrderPayload);
+
+            if (!response.data?.s) {
+                const errorMessage = response.data?.d?.[0] || 'Failed to create Sales Order in Accurate.';
+                throw new Error(errorMessage);
+            }
+            
+            const salesOrderNumber = response.data.r.number as string;
+
+            await this.prisma.order.update({
+                where: { id: orderId },
+                data: { accurateSalesOrderNumber: salesOrderNumber },
+            });
+
+            this.logger.log(`✅✅✅ SUCCESS: Sales Order ${salesOrderNumber} created in Accurate and linked to order ${order.orderNumber}.`);
+            return response.data.r;
+
+        } catch (error) {
+            const errorMessage = error.response?.data?.d?.[0] || error.message;
+            this.logger.error(`[FATAL] Sales Order creation for Order ID: ${orderId} failed. Reason: ${errorMessage}`, error.stack);
+            throw new Error(`Failed to process sale in Accurate: ${errorMessage}`);
+        }
+    }
+
+
     async createSalesInvoiceAndReceipt(orderId: string, accurateBankNo: string, accurateBankName: string) {
         this.logger.log(`Starting sales process for Order ID: ${orderId} -> Bank: ${accurateBankName} (Account No: ${accurateBankNo})`);
         
@@ -169,10 +245,8 @@ export class AccurateSyncService {
         if (user.accurateCustomerNo) {
             this.logger.log(`Local record found for user ${user.email}. Searching Accurate with customerNo: ${user.accurateCustomerNo}`);
             try {
-                // PERBAIKAN 1: Multiple search strategies
                 let foundCustomer: AccurateCustomer | null = null;
 
-                // Strategy 1: Filter dengan EQUAL operator
                 try {
                     const searchResponse = await apiClient.get('/accurate/api/customer/list.do', {
                         params: {
@@ -184,7 +258,6 @@ export class AccurateSyncService {
                     });
 
                     if (searchResponse.data?.s && searchResponse.data?.d && searchResponse.data.d.length > 0) {
-                        // PERBAIKAN 2: Client-side exact match validation
                         foundCustomer = searchResponse.data.d.find((customer: AccurateCustomer) => 
                             customer.customerNo === user.accurateCustomerNo
                         ) || null;
@@ -193,7 +266,6 @@ export class AccurateSyncService {
                             this.logger.log(`Found customer via filtered search: ${foundCustomer.customerNo} (ID: ${foundCustomer.id})`);
                         } else {
                             this.logger.warn(`Filter returned ${searchResponse.data.d.length} customers but none matched exactly: ${user.accurateCustomerNo}`);
-                            // Log first few results for debugging
                             searchResponse.data.d.slice(0, 3).forEach((customer: AccurateCustomer) => {
                                 this.logger.warn(`  - Found: ${customer.customerNo} (${customer.name})`);
                             });
@@ -203,14 +275,13 @@ export class AccurateSyncService {
                     this.logger.warn(`Filtered search failed: ${filterError.message}`);
                 }
 
-                // Strategy 2: Manual search without filter (fallback)
                 if (!foundCustomer) {
                     this.logger.log(`Fallback to manual search for customerNo: ${user.accurateCustomerNo}`);
                     try {
                         const manualSearchResponse = await apiClient.get('/accurate/api/customer/list.do', {
                             params: {
                                 fields: 'id,name,customerNo,email',
-                                'sp.pageSize': 500 // Get more records for manual search
+                                'sp.pageSize': 500
                             }
                         });
 
@@ -229,25 +300,20 @@ export class AccurateSyncService {
                 }
 
                 if (foundCustomer) {
-                    // PERBAIKAN 3: Validation before returning
                     this.logger.log(`Successfully fetched existing customer from Accurate: ${foundCustomer.customerNo} (ID: ${foundCustomer.id}, Name: ${foundCustomer.name})`);
                     
-                    // Additional validation for ECOMM format
                     if (!foundCustomer.customerNo.startsWith('ECOMM-')) {
                         this.logger.error(`VALIDATION ERROR: Found customer ${foundCustomer.customerNo} but it doesn't match ECOMM format. Expected: ${user.accurateCustomerNo}`);
                         this.logger.error(`This indicates a data integrity issue. Will reset and create new customer.`);
                         
-                        // Reset the accurateCustomerNo to force recreation
                         await this.prisma.user.update({
                             where: { id: user.id },
                             data: { accurateCustomerNo: null },
                         });
                         
-                        // Don't return this customer, continue to creation logic
                         foundCustomer = null;
                     }
                     
-                    // Email cross-validation if available
                     if (foundCustomer && foundCustomer.email && foundCustomer.email !== user.email) {
                         this.logger.warn(`Email mismatch detected! User email: ${user.email}, Accurate email: ${foundCustomer.email}`);
                         this.logger.warn(`Customer might be incorrect, but continuing with found customer.`);
@@ -262,7 +328,6 @@ export class AccurateSyncService {
                     this.logger.warn(`Customer with customerNo ${user.accurateCustomerNo} not found in Accurate despite local record existing.`);
                     this.logger.log(`Will reset local record and create new customer.`);
                     
-                    // Reset accurateCustomerNo in database
                     await this.prisma.user.update({
                         where: { id: user.id },
                         data: { accurateCustomerNo: null },
@@ -271,7 +336,6 @@ export class AccurateSyncService {
             } catch (error) {
                 this.logger.error(`Failed to fetch existing customer ${user.accurateCustomerNo}. Will attempt to create a new one.`, error.response?.data || error.message);
                 
-                // Reset accurateCustomerNo on persistent errors
                 await this.prisma.user.update({
                     where: { id: user.id },
                     data: { accurateCustomerNo: null },
@@ -279,14 +343,12 @@ export class AccurateSyncService {
             }
         }
 
-        // Generate unique customerNo
         const newCustomerNo = `ECOMM-${user.id}`;
         this.logger.log(`Creating new customer in Accurate with customerNo: ${newCustomerNo} for user: ${user.email}`);
         
         try {
             const customerName = user.name || user.email;
             
-            // PERBAIKAN 4: Simple payload without NIK
             const createPayload = { 
                 name: customerName, 
                 customerNo: newCustomerNo, 
@@ -300,7 +362,6 @@ export class AccurateSyncService {
                 const newAccurateCustomer: AccurateCustomer = createResponse.data.r;
                 this.logger.log(`Successfully created new customer in Accurate with ID: ${newAccurateCustomer.id}, customerNo: ${newAccurateCustomer.customerNo}, name: ${newAccurateCustomer.name}`);
                 
-                // Update local record
                 await this.prisma.user.update({
                     where: { id: user.id },
                     data: { accurateCustomerNo: newCustomerNo },

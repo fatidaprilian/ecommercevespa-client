@@ -166,6 +166,7 @@ model Order {
   accurateSalesInvoiceId     Int?
   accurateSalesInvoiceNumber String?
   accurateSalesReceiptId     Int?
+  accurateSalesOrderNumber     String?
 }
 
 model OrderItem {

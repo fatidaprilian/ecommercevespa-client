@@ -16,7 +16,7 @@ import { DiscountsCalculationService } from 'src/discounts/discounts-calculation
 import { UserPayload } from 'src/auth/interfaces/jwt.payload';
 import { AccurateSyncService } from 'src/accurate-sync/accurate-sync.service';
 import { SettingsService } from 'src/settings/settings.service';
-import { PaginationDto } from 'src/common/dto/pagination.dto'; // Impor DTO Paginasi
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class OrdersService {
@@ -95,48 +95,44 @@ export class OrdersService {
         await tx.cartItem.deleteMany({ where: { cartId: cart.id, productId: { in: productIdsInOrder } } });
       }
 
+      // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
       if (user.role === Role.RESELLER) {
-        await tx.payment.create({
-          data: {
-            orderId: createdOrder.id,
-            amount: totalAmount,
-            method: 'MANUAL_TRANSFER',
-            status: PaymentStatus.PENDING,
-          }
-        });
+        // Untuk Reseller: Langsung buat Sales Order di Accurate tanpa membuat record pembayaran.
+        this.accurateSyncService.createSalesOrder(createdOrder.id)
+            .catch(err => {
+                // Log error jika sinkronisasi gagal, tapi jangan hentikan proses order.
+                this.logger.error(`Failed to trigger Accurate Sales Order creation for order ${createdOrder.id}`, err.stack);
+            });
+
+        // Tidak ada redirect URL karena tidak ada pembayaran.
         return { ...createdOrder, redirect_url: null };
       } else {
+        // Untuk Member: Proses pembayaran seperti biasa melalui Midtrans.
         const orderWithItems = { ...createdOrder, items: productDetailsForPayment, subtotal, taxAmount };
         const payment = await this.paymentsService.createPaymentForOrder(orderWithItems, user, shippingCost, tx);
         return { ...createdOrder, redirect_url: payment.redirect_url };
       }
+      // 👆 --- AKHIR PERUBAHAN --- 👆
     });
   }
+  
+  // (Fungsi findAll, findOne, dan updateStatus tidak ada perubahan)
 
-  /**
-   * Retrieves all orders, filtered by user role, with pagination and search.
-   */
-  // 👇 --- PERUBAHAN UTAMA HANYA DI BAGIAN INI --- 👇
   async findAll(user: UserPayload, queryDto: PaginationDto & { search?: string }) {
     const { page = 1, limit = 10, search } = queryDto;
     const skip = (Number(page) - 1) * Number(limit);
 
     const whereClause: Prisma.OrderWhereInput = {};
 
-    // Filter berdasarkan user jika bukan admin
     if (user.role !== Role.ADMIN) {
       whereClause.userId = user.id;
     }
 
-    // Logika pencarian sekarang berlaku untuk semua,
-    // tapi akan otomatis terfilter berdasarkan userId jika bukan admin.
     if (search) {
       const searchConditions: Prisma.OrderWhereInput[] = [
         { orderNumber: { contains: search, mode: 'insensitive' } },
-        // Pelanggan juga bisa mencari berdasarkan nama produk di dalam pesanannya
         { items: { some: { product: { name: { contains: search, mode: 'insensitive' } } } } }
       ];
-      // Admin bisa mencari berdasarkan nama/email pelanggan juga
       if (user.role === Role.ADMIN) {
         searchConditions.push({ user: { name: { contains: search, mode: 'insensitive' } } });
         searchConditions.push({ user: { email: { contains: search, mode: 'insensitive' } } });
@@ -151,7 +147,6 @@ export class OrdersService {
             take: Number(limit),
             include: {
                 user: { select: { id: true, name: true, email: true } },
-                // Mengembalikan data 'items' agar bisa ditampilkan di frontend pelanggan
                 items: { 
                   include: { 
                     product: { 
@@ -175,11 +170,7 @@ export class OrdersService {
         },
     };
   }
-  // 👆 --- AKHIR PERUBAHAN --- 👆
   
-  /**
-   * Retrieves a single order by its ID, including related payment and shipment data.
-   */
   async findOne(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
@@ -206,9 +197,6 @@ export class OrdersService {
     return order;
   }
   
-  /**
-   * Updates an order's status. This is the key method that triggers Accurate sync for resellers.
-   */
   async updateStatus(orderId: string, newStatus: OrderStatus) {
     const order = await this.findOne(orderId);
     

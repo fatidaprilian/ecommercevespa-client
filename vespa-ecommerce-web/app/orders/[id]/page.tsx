@@ -1,10 +1,10 @@
-// file: app/orders/[id]/page.tsx (Revisi Lengkap)
+// file: app/orders/[id]/page.tsx (Revisi Final untuk Alur Reseller)
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Copy, Info, ArrowLeft } from 'lucide-react';
+import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Copy, Info, ArrowLeft, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
@@ -12,11 +12,8 @@ import api from '@/lib/api';
 import { Order } from '@/types';
 import { useAuthStore } from '@/store/auth';
 import { getOrderById } from '@/services/orderService';
-import { getActivePaymentMethods, ManualPaymentMethod } from '@/services/paymentService';
 import { Button } from '@/components/ui/button';
 import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 
 // Helper Functions
 const formatDate = (dateString?: string) => {
@@ -94,87 +91,13 @@ function ShipmentTracking({ order }: { order: Order }) {
     );
 }
 
-// Komponen ResellerPaymentSection (Tidak ada perubahan)
-function ResellerPaymentSection({ order, onUploadSuccess }: { order: Order, onUploadSuccess: () => void }) {
-    const [isUploading, setIsUploading] = useState(false);
-    const [selectedBankId, setSelectedBankId] = useState<string>('');
-    const { data: paymentMethods, isLoading: isLoadingBanks } = useQuery<ManualPaymentMethod[]>({
-        queryKey: ['activePaymentMethods'],
-        queryFn: getActivePaymentMethods,
-    });
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        if (!selectedBankId) {
-            toast.error("Silakan pilih bank tujuan transfer Anda terlebih dahulu.");
-            return;
-        }
-        setIsUploading(true);
-        const toastId = toast.loading('Mengunggah bukti...');
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('manualPaymentMethodId', selectedBankId);
-        try {
-            await api.post(`/upload/payment-proof/${order.id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            toast.success('Bukti pembayaran berhasil diunggah!', { id: toastId });
-            onUploadSuccess();
-        } catch (error) {
-            toast.error('Gagal mengunggah file.', { id: toastId });
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    return (
-        <div className="border-t pt-6 mt-6">
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg text-left mb-6 flex items-start gap-3">
-              <Info className="h-5 w-5 mt-0.5 flex-shrink-0"/>
-              <div>
-                  <p className="font-bold">Selesaikan Pembayaran</p>
-                  <p className="text-sm">Lakukan transfer sesuai total tagihan, lalu unggah bukti pembayaran Anda di bawah ini.</p>
-              </div>
-            </div>
-            <div className="space-y-4">
-                <h3 className="font-bold text-lg text-gray-800">1. Pilih Bank Tujuan Transfer</h3>
-                {isLoadingBanks ? <Loader2 className="animate-spin" /> : (
-                    <RadioGroup onValueChange={setSelectedBankId} value={selectedBankId}>
-                        {paymentMethods?.map(method => (
-                            <Label key={method.id} htmlFor={method.id} className="border p-3 rounded-lg flex items-center justify-between text-sm cursor-pointer has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary">
-                                <div className="flex items-center gap-3">
-                                    <RadioGroupItem value={method.id} id={method.id} />
-                                    <div>
-                                        <p className="font-semibold">{method.bankName}</p>
-                                        <p className="text-xs text-gray-600">a/n {method.accountHolder}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-mono font-semibold">{method.accountNumber}</p>
-                                    <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={(e) => { e.preventDefault(); copyToClipboard(method.accountNumber, method.bankName); }}>Salin</Button>
-                                </div>
-                            </Label>
-                        ))}
-                    </RadioGroup>
-                )}
-            </div>
-            <div className="mt-6 space-y-2">
-                <h3 className="font-bold text-lg text-gray-800">2. Unggah Bukti Pembayaran</h3>
-                <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg transition-colors ${selectedBankId ? 'cursor-pointer hover:bg-gray-100' : 'cursor-not-allowed bg-gray-50'}`}>
-                    {isUploading ? <Loader2 className="w-8 h-8 text-gray-400 animate-spin"/> : <><UploadCloud className="w-10 h-10 text-gray-400 mb-2"/><span className="text-sm text-gray-500">Klik untuk memilih file</span></>}
-                    <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading || !selectedBankId} accept="image/*"/>
-                </label>
-                {!selectedBankId && <p className="text-xs text-center text-red-600 mt-1">Pilih bank tujuan di atas untuk mengaktifkan tombol upload.</p>}
-            </div>
-        </div>
-    );
-}
 
 // Komponen Utama Halaman
 export default function OrderDetailPage() {
   const params = useParams();
-  const router = useRouter(); // [BARU] Tambahkan router
+  const router = useRouter();
   const orderId = params.id as string;
   const { user } = useAuthStore();
-  const queryClient = useQueryClient();
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', orderId],
@@ -186,16 +109,30 @@ export default function OrderDetailPage() {
   if (isError || !order) return <div className="text-center py-20">Pesanan tidak ditemukan atau terjadi kesalahan.</div>;
   
   const isReseller = user?.role === 'RESELLER';
-  const isPending = order.status === 'PENDING';
-  const showResellerPaymentFlow = isReseller && isPending;
-  const proofHasBeenUploaded = !!order.payment?.proofOfPayment;
+
+  // Tentukan status teks berdasarkan peran dan status pesanan
+  const getStatusInfo = () => {
+      switch (order.status) {
+          case 'PENDING':
+              return { text: 'Menunggu Konfirmasi Admin', color: 'bg-yellow-100 text-yellow-800' };
+          case 'PROCESSING':
+              return { text: 'Pesanan Diproses', color: 'bg-orange-100 text-orange-800' };
+          case 'SHIPPED':
+              return { text: 'Dikirim', color: 'bg-blue-100 text-blue-800' };
+          case 'DELIVERED':
+          case 'COMPLETED':
+              return { text: 'Selesai', color: 'bg-green-100 text-green-800' };
+          default:
+              return { text: order.status, color: 'bg-gray-100 text-gray-800' };
+      }
+  };
+  const statusInfo = getStatusInfo();
+
 
   return (
-    // [DIUBAH] Padding atas disesuaikan karena navbar hilang
     <div className="bg-gray-100 min-h-screen pt-12 sm:pt-16 pb-20">
       <div className="container mx-auto px-4 py-8">
         
-        {/* [BARU] Header dengan Tombol Kembali dan Judul */}
         <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -209,19 +146,38 @@ export default function OrderDetailPage() {
                 <h1 className="text-3xl font-bold text-gray-800">Detail Pesanan</h1>
                 <p className="text-gray-500">Order #{order.orderNumber}</p>
             </div>
-            <span className={`px-3 py-1.5 text-sm font-bold rounded-full mt-4 sm:mt-0 ${
-                order.status === 'PROCESSING' ? 'bg-orange-100 text-orange-800' :
-                order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                order.status === 'DELIVERED' || order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                'bg-gray-100 text-gray-800'
-            }`}>
-                {order.status}
+            <span className={`px-3 py-1.5 text-sm font-bold rounded-full mt-4 sm:mt-0 ${statusInfo.color}`}>
+                {statusInfo.text}
             </span>
         </motion.div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-2 space-y-6">
+            
+            {/* --- BLOK INFORMASI UNTUK RESELLER --- */}
+            {isReseller && order.status === 'PENDING' && (
+                <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-r-lg shadow">
+                    <div className="flex">
+                        <div className="py-1"><Info className="h-6 w-6 text-blue-500 mr-4"/></div>
+                        <div>
+                            <p className="font-bold">Pesanan Anda sedang diproses.</p>
+                            <p className="text-sm">Admin akan segera membuatkan faktur penjualan untuk Anda. Mohon ditunggu.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isReseller && order.status === 'PROCESSING' && (
+                <div className="bg-green-50 border-l-4 border-green-400 text-green-800 p-4 rounded-r-lg shadow">
+                    <div className="flex">
+                        <div className="py-1"><FileText className="h-6 w-6 text-green-500 mr-4"/></div>
+                        <div>
+                            <p className="font-bold">Faktur telah dibuat.</p>
+                            <p className="text-sm">Admin telah mengonfirmasi pesanan Anda. Silakan periksa komunikasi Anda (misal: WhatsApp) untuk faktur dan lakukan pembayaran. Pesanan akan segera kami siapkan untuk pengiriman.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="font-bold text-xl mb-4 flex items-center gap-2"><Package size={20}/> Item Pesanan</h2>
               <div className="space-y-4">
@@ -258,21 +214,10 @@ export default function OrderDetailPage() {
                 <span>{formatPrice(order.totalAmount)}</span>
               </div>
               
-               {showResellerPaymentFlow && (
-                 <>
-                   {!proofHasBeenUploaded ? (
-                     <ResellerPaymentSection 
-                        order={order} 
-                        onUploadSuccess={() => queryClient.invalidateQueries({ queryKey: ['order', orderId] })}
-                     />
-                   ) : (
-                     <div className="mt-4 border-t pt-4 text-center bg-green-50 p-4 rounded-lg">
-                        <CheckCircle className="mx-auto h-10 w-10 text-green-500 mb-2"/>
-                        <p className="font-semibold text-green-700">Bukti pembayaran telah diunggah.</p>
-                        <p className="text-sm text-green-600">Admin akan segera memverifikasi pesanan Anda.</p>
-                     </div>
-                   )}
-                 </>
+              {/* Logika pembayaran manual untuk member tidak diubah */}
+               { !isReseller && order.status === 'PENDING' && order.payment?.method === 'MANUAL_TRANSFER' && (
+                 // ... Tampilkan form upload bukti bayar untuk member jika diperlukan
+                 <p className="text-center text-sm text-gray-500 mt-4">Silakan upload bukti pembayaran.</p>
                )}
             </div>
           </motion.div>
