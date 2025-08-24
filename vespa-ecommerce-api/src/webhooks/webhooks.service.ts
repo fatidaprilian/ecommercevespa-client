@@ -66,7 +66,7 @@ export class WebhooksService {
     }
   }
 
-  // 🔧 PERBAIKAN: Handler untuk Sales Invoice webhook - Pendekatan alternatif
+  // 🔧 PERBAIKAN: Handler untuk Sales Invoice webhook - Gunakan Sales Order dari detail items
   private async processSalesInvoiceWebhook(eventData: any) {
     const salesInvoiceNo = eventData.salesInvoiceNo;
     if (!salesInvoiceNo) {
@@ -84,37 +84,60 @@ export class WebhooksService {
         return;
       }
 
-      // 🔍 DEBUGGING: Log full invoice detail untuk analisis
-      this.logger.log(`🔍 Full Invoice Detail for ${salesInvoiceNo}:`, JSON.stringify(invoiceDetail, null, 2));
+      // 🔧 SOLUSI UTAMA: Cari Sales Order dari detail items
+      let salesOrderNumber: string | null = null;
+      
+      // Cek jika ada detailItem dan ambil salesOrder dari sana
+      if (invoiceDetail.detailItem && invoiceDetail.detailItem.length > 0) {
+        const firstItem = invoiceDetail.detailItem[0];
+        
+        if (firstItem.salesOrder?.number) {
+          salesOrderNumber = firstItem.salesOrder.number;
+          this.logger.log(`🎯 Found Sales Order from detailItem: ${salesOrderNumber}`);
+        } else if (firstItem.salesOrderId) {
+          this.logger.log(`🔍 Found salesOrderId: ${firstItem.salesOrderId}, but no sales order number in detailItem`);
+        }
+      }
 
-      // 🔧 PENDEKATAN ALTERNATIF 1: Cari berdasarkan customer + timing
-      const customerNo = invoiceDetail.customer?.customerNo;
-      const invoiceDate = invoiceDetail.transDate;
+      // Fallback: Cek field fromNumber (jika ada)
+      if (!salesOrderNumber) {
+        const fromNumber = invoiceDetail.fromNumber || 
+                          invoiceDetail.from_number || 
+                          invoiceDetail.salesOrderNumber ||
+                          invoiceDetail.sales_order_number;
+        
+        if (fromNumber) {
+          salesOrderNumber = fromNumber;
+          this.logger.log(`🔍 Found Sales Order from fromNumber field: ${salesOrderNumber}`);
+        }
+      }
 
-      this.logger.log(`🔍 Searching order by customer: ${customerNo} around date: ${invoiceDate}`);
-
-      if (customerNo) {
-        // Cari order dengan customer yang sama dalam timeframe yang masuk akal (misal 7 hari terakhir)
-        const recentOrders = await this.prisma.order.findMany({
-          where: {
-            user: {
-              accurateCustomerNo: customerNo
-            },
-            status: OrderStatus.PENDING,
-            createdAt: {
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 hari terakhir
-            }
-          },
-          include: { user: true },
-          orderBy: { createdAt: 'desc' }
+      if (!salesOrderNumber) {
+        this.logger.log(`Mengabaikan webhook untuk faktur langsung ${salesInvoiceNo} (tidak terhubung dengan Sales Order).`);
+        
+        // 🔍 DEBUGGING: Log relevant fields untuk analisis
+        this.logger.log(`🔍 Invoice analysis:`, {
+          hasDetailItem: !!invoiceDetail.detailItem,
+          detailItemCount: invoiceDetail.detailItem?.length || 0,
+          firstItemSalesOrder: invoiceDetail.detailItem?.[0]?.salesOrder || null,
+          firstItemSalesOrderId: invoiceDetail.detailItem?.[0]?.salesOrderId || null,
+          customerNo: invoiceDetail.customer?.customerNo,
+          amount: invoiceDetail.totalAmount
         });
+        
+        return;
+      }
 
-        this.logger.log(`🔍 Found ${recentOrders.length} recent PENDING orders for customer ${customerNo}`);
+      this.logger.log(`✅ Menemukan sumber Pesanan Penjualan: ${salesOrderNumber} untuk Faktur: ${salesInvoiceNo}`);
 
-        if (recentOrders.length === 1) {
-          // Jika hanya ada 1 order PENDING, kemungkinan besar itu yang benar
-          const order = recentOrders[0];
-          
+      // Cari order berdasarkan Sales Order Number
+      const order = await this.prisma.order.findFirst({
+        where: { accurateSalesOrderNumber: salesOrderNumber },
+        include: { user: true }
+      });
+
+      if (order) {
+        if (order.status === OrderStatus.PENDING) {
           await this.prisma.order.update({
             where: { id: order.id },
             data: {
@@ -122,50 +145,37 @@ export class WebhooksService {
               // Status tetap PENDING - belum dibayar reseller
             },
           });
-          
-          this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} linked to order ${order.id} based on customer match. Status tetap PENDING - menunggu pembayaran reseller.`);
-          return;
-        } else if (recentOrders.length > 1) {
-          this.logger.warn(`⚠️ Multiple PENDING orders found for customer ${customerNo}. Manual intervention may be needed.`);
-          // Log semua orders untuk manual check
-          recentOrders.forEach(order => {
-            this.logger.log(`   - Order ${order.id}: ${order.orderNumber} (SO: ${order.accurateSalesOrderNumber})`);
-          });
+          this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} berhasil di-link ke order ${order.id} (${order.orderNumber}). Status tetap PENDING - menunggu pembayaran reseller.`);
         } else {
-          this.logger.warn(`⚠️ No PENDING orders found for customer ${customerNo}`);
+          this.logger.log(`Pesanan ${order.id} sudah dalam status ${order.status}. Mengabaikan webhook faktur.`);
         }
-      }
-
-      // 🔧 PENDEKATAN ALTERNATIF 2: Cari berdasarkan amount matching
-      const invoiceAmount = invoiceDetail.amount || invoiceDetail.totalAmount || invoiceDetail.subTotal;
-      if (invoiceAmount) {
-        this.logger.log(`🔍 Searching order by amount: ${invoiceAmount}`);
+      } else {
+        this.logger.warn(`❌ Order tidak ditemukan untuk Sales Order: ${salesOrderNumber}`);
         
-        const ordersByAmount = await this.prisma.order.findMany({
-          where: {
-            totalAmount: parseFloat(invoiceAmount),
-            status: OrderStatus.PENDING
-          },
-          include: { user: true }
-        });
-
-        if (ordersByAmount.length === 1) {
-          const order = ordersByAmount[0];
-          
-          await this.prisma.order.update({
-            where: { id: order.id },
-            data: {
-              accurateSalesInvoiceNumber: salesInvoiceNo,
+        // 🔧 PERBAIKAN TYPE: Pastikan salesOrderNumber tidak null sebelum menggunakan replace
+        if (salesOrderNumber) {
+          // 🔍 DEBUGGING: Cari order dengan pattern mirip
+          const similarOrders = await this.prisma.order.findMany({
+            where: {
+              OR: [
+                { accurateSalesOrderNumber: { contains: salesOrderNumber.replace('SO-', '') } },
+                { orderNumber: { contains: salesOrderNumber.replace('SO-', '') } }
+              ]
             },
+            select: {
+              id: true,
+              orderNumber: true,
+              accurateSalesOrderNumber: true,
+              status: true
+            },
+            take: 5
           });
           
-          this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} linked to order ${order.id} based on amount match (${invoiceAmount}). Status tetap PENDING.`);
-          return;
+          if (similarOrders.length > 0) {
+            this.logger.log(`🔍 Found similar orders:`, similarOrders);
+          }
         }
       }
-
-      // Jika tidak ada yang cocok, log untuk manual intervention
-      this.logger.warn(`⚠️ Could not automatically link invoice ${salesInvoiceNo} to any order. Manual intervention required.`);
 
     } catch (error) {
       this.logger.error(`❌ Error processing Sales Invoice webhook: ${error.message}`, error);
