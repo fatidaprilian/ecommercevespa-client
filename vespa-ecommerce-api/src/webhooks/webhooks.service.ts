@@ -45,7 +45,6 @@ export class WebhooksService {
 
     const receiptDetail = await this.accurateService.getSalesReceiptDetailByNumber(salesReceiptNo);
     
-    // Validasi data yang diterima dari Accurate
     if (!receiptDetail?.detailInvoice?.[0]?.invoice?.number) {
       this.logger.warn(`Could not find a valid invoice number in the detail for Sales Receipt: ${salesReceiptNo}`);
       return;
@@ -55,8 +54,10 @@ export class WebhooksService {
     this.logger.log(`Found associated Sales Invoice: ${invoiceNumber} for Sales Receipt: ${salesReceiptNo}`);
 
     const invoiceDetail = await this.accurateService.getSalesInvoiceByNumber(invoiceNumber);
+    
+    // Smart Webhook Logic: Ignore if the invoice was not created from a Sales Order
     if (!invoiceDetail || !invoiceDetail.fromNumber) {
-      this.logger.warn(`Could not fetch details or no associated Sales Order for Invoice: ${invoiceNumber}`);
+      this.logger.log(`Ignoring webhook for direct invoice ${invoiceNumber} (likely a member transaction).`);
       return;
     }
 
@@ -76,7 +77,7 @@ export class WebhooksService {
             accurateSalesInvoiceNumber: invoiceNumber,
           },
         });
-        this.logger.log(`✅ SUCCESS: Order ${order.id} status updated to PROCESSING via Sales Receipt webhook.`);
+        this.logger.log(`✅ SUCCESS: Order ${order.id} status updated to PROCESSING for reseller.`);
       } else {
         this.logger.log(`Order ${order.id} is already in status ${order.status}. Ignoring webhook.`);
       }
@@ -85,6 +86,7 @@ export class WebhooksService {
     }
   }
 
+  // Biteship function remains unchanged
   async handleBiteshipTrackingUpdate(payload: any) {
     const { status, courier_waybill_id: waybill_id } = payload;
 

@@ -36,7 +36,7 @@ export class AccurateSyncService {
     ) {}
     
     /**
-     * Menambahkan job pembuatan Sales Order ke dalam antrean.
+     * Adds a job to create a Sales Order to the queue.
      */
     async addSalesOrderJobToQueue(orderId: string) {
         this.logger.log(`Adding "create-sales-order" job for Order ID: ${orderId} to the queue.`);
@@ -53,7 +53,7 @@ export class AccurateSyncService {
     }
 
     /**
-     * Logika inti untuk membuat "Pesanan Penjualan" (Sales Order) di Accurate.
+     * The core logic to create a "Sales Order" in Accurate.
      */
     async processSalesOrderCreation(orderId: string) {
         this.logger.log(`WORKER: Processing Sales Order creation for Order ID: ${orderId}`);
@@ -122,13 +122,13 @@ export class AccurateSyncService {
         }
     }
     
-    // 👇 --- CRON JOB BARU DITAMBAHKAN DI SINI --- 👇
+    // 👇 --- NEW CRON JOB ADDED HERE --- 👇
     @Cron(CronExpression.EVERY_DAY_AT_2AM)
     async scheduleWebhookRenewal() {
         this.logger.log('CRON JOB: Triggering Accurate webhook renewal.');
         await this.accurateService.renewWebhook();
     }
-    // 👆 --- AKHIR CRON JOB BARU --- 👆
+    // 👆 --- END OF NEW CRON JOB --- 👆
 
     @Cron(CronExpression.EVERY_MINUTE)
     async scheduleProductSync() {
@@ -265,7 +265,6 @@ export class AccurateSyncService {
             this.logger.log(`Local record found for user ${user.email}. Searching Accurate with customerNo: ${user.accurateCustomerNo}`);
             try {
                 let foundCustomer: AccurateCustomer | null = null;
-
                 try {
                     const searchResponse = await apiClient.get('/accurate/api/customer/list.do', {
                         params: {
