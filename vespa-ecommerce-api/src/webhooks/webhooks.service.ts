@@ -1,5 +1,3 @@
-// file: vespa-ecommerce-api/src/webhooks/webhooks.service.ts
-
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
@@ -26,6 +24,7 @@ export class WebhooksService {
     this.logger.log(`Processing Accurate webhook of type: ${eventType}`);
 
     switch (eventType) {
+      // ✅ --- PERUBAHAN UTAMA DI SINI --- ✅
       case 'SALES_RECEIPT':
         await this.processSalesReceiptWebhook(eventData);
         break;
@@ -36,6 +35,7 @@ export class WebhooksService {
     }
   }
 
+  // ✅ --- FUNGSI BARU UNTUK MEMPROSES PEMBAYARAN RESELLER --- ✅
   private async processSalesReceiptWebhook(eventData: any) {
     const salesReceiptNo = eventData.salesReceiptNo;
     if (!salesReceiptNo) {
@@ -55,7 +55,8 @@ export class WebhooksService {
 
     const invoiceDetail = await this.accurateService.getSalesInvoiceByNumber(invoiceNumber);
     
-    // Smart Webhook Logic: Ignore if the invoice was not created from a Sales Order
+    // Logika Cerdas: Abaikan jika faktur tidak berasal dari Pesanan Penjualan
+    // Ini membedakan alur reseller dari transaksi member biasa.
     if (!invoiceDetail || !invoiceDetail.fromNumber) {
       this.logger.log(`Ignoring webhook for direct invoice ${invoiceNumber} (likely a member transaction).`);
       return;
@@ -86,7 +87,7 @@ export class WebhooksService {
     }
   }
 
-  // Biteship function remains unchanged
+  // Fungsi untuk Biteship (tidak ada perubahan)
   async handleBiteshipTrackingUpdate(payload: any) {
     const { status, courier_waybill_id: waybill_id } = payload;
 

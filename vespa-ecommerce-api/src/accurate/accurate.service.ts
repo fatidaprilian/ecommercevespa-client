@@ -180,6 +180,7 @@ export class AccurateService {
         });
     }
 
+    // ✅ FUNGSI BARU 1
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Fetching FULL DETAIL for Sales Invoice: ${invoiceNumber}`);
@@ -200,6 +201,7 @@ export class AccurateService {
         }
     }
     
+    // ✅ FUNGSI BARU 2
     public async getSalesReceiptDetailByNumber(receiptNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Fetching Sales Receipt detail for number: ${receiptNumber}`);
