@@ -3,24 +3,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
-import { AccurateService } from 'src/accurate/accurate.service'; // Import AccurateService
+import { AccurateService } from 'src/accurate/accurate.service';
 
 @Injectable()
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
-  // Suntikkan AccurateService ke dalam constructor
   constructor(
     private prisma: PrismaService,
     private accurateService: AccurateService,
   ) {}
 
-  /**
-   * Handler utama untuk semua webhook yang datang dari Accurate.
-   * @param payload Data mentah dari webhook.
-   */
   async handleAccurateWebhook(payload: any) {
-    // Pastikan payload adalah objek dan memiliki tipe
     if (!payload || !payload.type || !payload.data || !payload.data[0]) {
       this.logger.warn('Received an invalid or empty Accurate webhook payload.', payload);
       return;
@@ -31,28 +25,17 @@ export class WebhooksService {
 
     this.logger.log(`Processing Accurate webhook of type: ${eventType}`);
 
-    // Logika percabangan berdasarkan tipe webhook
     switch (eventType) {
       case 'SALES_RECEIPT':
-        // Panggil fungsi khusus untuk memproses penerimaan penjualan
         await this.processSalesReceiptWebhook(eventData);
         break;
       
-      // Anda bisa menambahkan case lain di sini jika dibutuhkan di masa depan
-      // case 'SALES_INVOICE':
-      //   await this.processSalesInvoiceWebhook(eventData);
-      //   break;
-
       default:
         this.logger.log(`No specific handler for webhook type "${eventType}". Ignoring.`);
         break;
     }
   }
 
-  /**
-   * Memproses webhook "Penerimaan Penjualan" (Sales Receipt).
-   * Alur ini melacak dari SR -> SI -> SO untuk menemukan pesanan asli.
-   */
   private async processSalesReceiptWebhook(eventData: any) {
     const salesReceiptNo = eventData.salesReceiptNo;
     if (!salesReceiptNo) {
@@ -60,29 +43,92 @@ export class WebhooksService {
       return;
     }
 
-    // Langkah 1: Dapatkan detail Penerimaan Penjualan untuk menemukan Faktur
+    // Langkah 1: Dapatkan detail Sales Receipt
     const receiptDetail = await this.accurateService.getSalesReceiptDetailByNumber(salesReceiptNo);
-    if (!receiptDetail || !receiptDetail.detailInvoice || receiptDetail.detailInvoice.length === 0) {
-      this.logger.warn(`Could not fetch details or no associated invoice for Sales Receipt: ${salesReceiptNo}`);
+    
+    // DEBUG: Log struktur data yang diterima
+    this.logger.log(`=== DEBUG: Sales Receipt Detail Structure ===`);
+    this.logger.log(`Receipt Detail:`, JSON.stringify(receiptDetail, null, 2));
+    
+    if (!receiptDetail) {
+      this.logger.warn(`Could not fetch Sales Receipt detail for: ${salesReceiptNo}`);
       return;
     }
 
-    // Ambil nomor faktur pertama yang dibayarkan
-    const invoiceNumber = receiptDetail.detailInvoice[0].number;
+    // Periksa berbagai kemungkinan struktur data
+    let invoiceNumber: string | null = null;
+    
+    // Kemungkinan 1: detailInvoice array
+    if (receiptDetail.detailInvoice && Array.isArray(receiptDetail.detailInvoice) && receiptDetail.detailInvoice.length > 0) {
+      // Periksa field yang mungkin berisi nomor invoice
+      const firstInvoice = receiptDetail.detailInvoice[0];
+      invoiceNumber = firstInvoice.number || firstInvoice.invoiceNo || firstInvoice.invoiceNumber || null;
+      this.logger.log(`Found invoice via detailInvoice[0]: ${JSON.stringify(firstInvoice)}`);
+    }
+    
+    // Kemungkinan 2: detailInvoice object (bukan array)
+    else if (receiptDetail.detailInvoice && !Array.isArray(receiptDetail.detailInvoice)) {
+      const invoiceDetail = receiptDetail.detailInvoice;
+      invoiceNumber = invoiceDetail.number || invoiceDetail.invoiceNo || invoiceDetail.invoiceNumber || null;
+      this.logger.log(`Found invoice via detailInvoice object: ${JSON.stringify(invoiceDetail)}`);
+    }
+    
+    // Kemungkinan 3: field langsung di root
+    else if (receiptDetail.invoiceNumber || receiptDetail.invoiceNo || receiptDetail.refNumber) {
+      invoiceNumber = receiptDetail.invoiceNumber || receiptDetail.invoiceNo || receiptDetail.refNumber;
+      this.logger.log(`Found invoice via root fields: ${invoiceNumber}`);
+    }
+    
+    // Kemungkinan 4: field dalam detail atau items
+    else if (receiptDetail.detail && Array.isArray(receiptDetail.detail) && receiptDetail.detail.length > 0) {
+      const firstDetail = receiptDetail.detail[0];
+      invoiceNumber = firstDetail.number || firstDetail.invoiceNo || firstDetail.invoiceNumber || null;
+      this.logger.log(`Found invoice via detail[0]: ${JSON.stringify(firstDetail)}`);
+    }
+
+    if (!invoiceNumber) {
+      this.logger.warn(`No associated invoice found for Sales Receipt: ${salesReceiptNo}`);
+      this.logger.warn(`Available fields in receipt:`, Object.keys(receiptDetail));
+      return;
+    }
+
     this.logger.log(`Found associated Sales Invoice: ${invoiceNumber} for Sales Receipt: ${salesReceiptNo}`);
 
-    // Langkah 2: Dapatkan detail Faktur Penjualan untuk menemukan Pesanan
+    // Langkah 2: Dapatkan detail Sales Invoice
     const invoiceDetail = await this.accurateService.getSalesInvoiceByNumber(invoiceNumber);
-    // Di Accurate, nomor SO ada di field `fromNumber`
-    if (!invoiceDetail || !invoiceDetail.fromNumber) {
-      this.logger.warn(`Could not fetch details or no associated Sales Order for Invoice: ${invoiceNumber}`);
+    
+    if (!invoiceDetail) {
+      this.logger.warn(`Could not fetch Sales Invoice detail for: ${invoiceNumber}`);
       return;
     }
 
-    const salesOrderNumber = invoiceDetail.fromNumber;
+    // DEBUG: Log struktur invoice detail
+    this.logger.log(`=== DEBUG: Sales Invoice Detail Structure ===`);
+    this.logger.log(`Invoice Detail:`, JSON.stringify(invoiceDetail, null, 2));
+
+    // Periksa berbagai field yang mungkin berisi nomor Sales Order
+    let salesOrderNumber: string | null = null;
+    
+    // Field yang mungkin berisi nomor SO
+    const possibleFields = ['fromNumber', 'refNumber', 'orderNumber', 'salesOrderNo', 'soNumber'];
+    
+    for (const field of possibleFields) {
+      if (invoiceDetail[field]) {
+        salesOrderNumber = invoiceDetail[field];
+        this.logger.log(`Found Sales Order number via field '${field}': ${salesOrderNumber}`);
+        break;
+      }
+    }
+
+    if (!salesOrderNumber) {
+      this.logger.warn(`No associated Sales Order found for Invoice: ${invoiceNumber}`);
+      this.logger.warn(`Available fields in invoice:`, Object.keys(invoiceDetail));
+      return;
+    }
+
     this.logger.log(`Found source Sales Order: ${salesOrderNumber} for Invoice: ${invoiceNumber}`);
 
-    // Langkah 3: Cari pesanan di database kita dan perbarui statusnya
+    // Langkah 3: Update status pesanan
     const order = await this.prisma.order.findFirst({
       where: { accurateSalesOrderNumber: salesOrderNumber },
     });
@@ -93,7 +139,7 @@ export class WebhooksService {
           where: { id: order.id },
           data: {
             status: OrderStatus.PROCESSING,
-            accurateSalesInvoiceNumber: invoiceNumber, // Simpan nomor faktur untuk referensi
+            accurateSalesInvoiceNumber: invoiceNumber,
           },
         });
         this.logger.log(`✅ SUCCESS: Order ${order.id} status updated to PROCESSING via Sales Receipt webhook.`);
@@ -102,9 +148,33 @@ export class WebhooksService {
       }
     } else {
       this.logger.warn(`Webhook processed, but no matching order found for Sales Order number: ${salesOrderNumber}`);
+      
+      // Coba cari dengan pattern lain jika ada
+      const alternativeOrder = await this.prisma.order.findFirst({
+        where: { 
+          OR: [
+            { orderNumber: { contains: salesOrderNumber } },
+            { accurateSalesInvoiceNumber: invoiceNumber }
+          ]
+        },
+      });
+      
+      if (alternativeOrder) {
+        this.logger.log(`Found alternative order match: ${alternativeOrder.id}`);
+        if (alternativeOrder.status === OrderStatus.PENDING) {
+          await this.prisma.order.update({
+            where: { id: alternativeOrder.id },
+            data: {
+              status: OrderStatus.PROCESSING,
+              accurateSalesInvoiceNumber: invoiceNumber,
+              accurateSalesOrderNumber: salesOrderNumber, // Update jika kosong
+            },
+          });
+          this.logger.log(`✅ SUCCESS: Alternative order ${alternativeOrder.id} status updated to PROCESSING.`);
+        }
+      }
     }
   }
-
 
   // Fungsi untuk Biteship (tidak diubah)
   async handleBiteshipTrackingUpdate(payload: any) {
