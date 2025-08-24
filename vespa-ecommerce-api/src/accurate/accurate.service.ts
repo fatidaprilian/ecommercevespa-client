@@ -1,3 +1,5 @@
+// file: src/accurate/accurate.service.ts
+
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -180,18 +182,23 @@ export class AccurateService {
         });
     }
 
+    // 👇 --- PERBAIKAN FINAL DI SINI --- 👇
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Mencari Sales Invoice dengan NOMOR: ${invoiceNumber}`);
             const apiClient = await this.getAccurateApiClient();
-            const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
-                params: { 
-                    number: invoiceNumber 
+            // Menggunakan endpoint /list.do dengan filter, ini cara yang benar
+            const response = await apiClient.get('/accurate/api/sales-invoice/list.do', {
+                params: {
+                    'sp.pageSize': 1,
+                    'filter.number.op': 'EQUAL',
+                    'filter.number.val[0]': invoiceNumber
                 }
             });
 
-            if (response.data?.s && response.data?.d) {
-                return response.data.d;
+            if (response.data?.s && response.data?.d && response.data.d.length > 0) {
+                // Mengembalikan objek pertama dari hasil pencarian
+                return response.data.d[0];
             }
             return null;
         } catch (error) {
@@ -199,6 +206,7 @@ export class AccurateService {
             return null;
         }
     }
+    // 👆 --- AKHIR PERBAIKAN --- 👆
     
     public async getSalesReceiptDetailByNumber(receiptNumber: string): Promise<any | null> {
         try {
