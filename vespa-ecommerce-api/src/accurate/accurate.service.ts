@@ -63,9 +63,9 @@ export class AccurateService {
                     tokenType: token_type,
                 },
             });
-            this.logger.log('✅ Successfully stored Accurate OAuth tokens.');
+            this.logger.log('✅ Berhasil menyimpan token OAuth Accurate.');
         } catch (error) {
-            this.logger.error('🔴 Failed to exchange code for token', error.response?.data || error.message);
+            this.logger.error('🔴 Gagal menukar kode dengan token', error.response?.data || error.message);
             throw new Error('Gagal mendapatkan token dari Accurate.');
         }
     }
@@ -87,7 +87,7 @@ export class AccurateService {
     }
     
     private async refreshAccessToken(token: AccurateOAuth): Promise<AccurateOAuth> {
-        this.logger.log('Token is expiring, attempting to refresh...');
+        this.logger.log('Token akan kedaluwarsa, mencoba me-refresh...');
         try {
             const params = new URLSearchParams();
             params.append('grant_type', 'refresh_token');
@@ -105,18 +105,18 @@ export class AccurateService {
                 where: { id: token.id },
                 data: { accessToken: access_token, expiresAt },
             });
-            this.logger.log('✅ Access token refreshed successfully.');
+            this.logger.log('✅ Access token berhasil di-refresh.');
             return updatedToken;
         } catch (error) {
-            this.logger.error('🔴 Failed to refresh access token', error.response?.data);
+            this.logger.error('🔴 Gagal me-refresh access token', error.response?.data);
             throw new Error('Gagal me-refresh token.');
         }
     }
 
     async getDatabaseList() {
-        this.logger.log('Fetching database list from Accurate...');
+        this.logger.log('Mengambil daftar database dari Accurate...');
         const token = await this.getValidToken();
-        if (!token) throw new Error('Not authenticated with Accurate.');
+        if (!token) throw new Error('Belum terautentikasi dengan Accurate.');
         const response = await axios.get('https://account.accurate.id/api/db-list.do', {
             headers: { Authorization: `Bearer ${token.accessToken}` },
         });
@@ -124,9 +124,9 @@ export class AccurateService {
     }
 
     async openDatabase(dbId: string) {
-        this.logger.log(`Opening Accurate database with ID: ${dbId}`);
+        this.logger.log(`Membuka database Accurate dengan ID: ${dbId}`);
         const token = await this.getValidToken();
-        if (!token) throw new Error('Not authenticated with Accurate.');
+        if (!token) throw new Error('Belum terautentikasi dengan Accurate.');
         const openDbResponse = await axios.get('https://account.accurate.id/api/open-db.do', {
             params: { id: dbId },
             headers: { Authorization: `Bearer ${token.accessToken}` },
@@ -135,7 +135,7 @@ export class AccurateService {
         if (!host || !session) {
             throw new InternalServerErrorException('Gagal mendapatkan host atau session dari Accurate.');
         }
-        this.logger.log(`Successfully opened database. Host: ${host}`);
+        this.logger.log(`Berhasil membuka database. Host: ${host}`);
         const branchApiClient = axios.create({
             baseURL: host,
             headers: {
@@ -150,7 +150,7 @@ export class AccurateService {
             throw new InternalServerErrorException('Tidak ada cabang yang ditemukan di database Accurate ini.');
         }
         const firstBranchName = branchResponse.data.d[0].name;
-        this.logger.log(`Default branch found: ${firstBranchName}`);
+        this.logger.log(`Cabang default ditemukan: ${firstBranchName}`);
         await this.prisma.accurateOAuth.updateMany({
             data: { 
                 dbId, 
@@ -159,7 +159,7 @@ export class AccurateService {
                 branchName: firstBranchName
             },
         });
-        return { message: 'Database selected and default branch stored successfully' };
+        return { message: 'Database berhasil dipilih dan cabang default berhasil disimpan.' };
     }
 
     public async getAccurateApiClient() {
@@ -183,25 +183,25 @@ export class AccurateService {
     // 👇 **START OF CHANGES** 👇
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         try {
-            this.logger.log(`Fetching Sales Invoice detail for number: ${invoiceNumber}`);
+            this.logger.log(`Mengambil detail Faktur Penjualan untuk nomor: ${invoiceNumber}`);
             const apiClient = await this.getAccurateApiClient();
             
-            // Mengganti endpoint dari /list.do menjadi /detail.do untuk data yang lebih lengkap
-            const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
+            const response = await apiClient.get('/accurate/api/sales-invoice/list.do', { 
                 params: {
-                    number: invoiceNumber
+                    fields: 'id,number,fromNumber', // Meminta field 'fromNumber' secara eksplisit
+                    'filter.number.op': 'EQUAL',     // Menggunakan filter tanpa 'sp.'
+                    'filter.number.val[0]': invoiceNumber // Menggunakan format 'val[0]'
                 }
             });
 
-            // Endpoint detail.do mengembalikan objek tunggal, bukan array
-            if (response.data?.s && response.data.d) {
-                return response.data.d;
+            if (response.data?.s && response.data.d && response.data.d.length > 0) {
+                return response.data.d[0];
             }
             
-            this.logger.warn(`No Sales Invoice found with number: ${invoiceNumber} using /detail.do`);
+            this.logger.warn(`Tidak ada Faktur Penjualan ditemukan dengan nomor: ${invoiceNumber}`);
             return null;
         } catch (error) {
-            this.logger.error(`Error fetching Sales Invoice detail for ${invoiceNumber}:`, error.response?.data || error.message);
+            this.logger.error(`Error mengambil detail Faktur Penjualan untuk ${invoiceNumber}:`, error.response?.data || error.message);
             return null;
         }
     }
@@ -209,7 +209,7 @@ export class AccurateService {
     
     public async getSalesReceiptDetailByNumber(receiptNumber: string): Promise<any | null> {
         try {
-            this.logger.log(`Fetching Sales Receipt detail for number: ${receiptNumber}`);
+            this.logger.log(`Mengambil detail Penerimaan Penjualan untuk nomor: ${receiptNumber}`);
             const apiClient = await this.getAccurateApiClient();
             
             const response = await apiClient.get('/accurate/api/sales-receipt/detail.do', { 
@@ -221,13 +221,13 @@ export class AccurateService {
             }
             return null;
         } catch (error) {
-            this.logger.error(`Error fetching Sales Receipt detail for ${receiptNumber}:`, error.response?.data || error.message);
+            this.logger.error(`Error mengambil detail Penerimaan Penjualan untuk ${receiptNumber}:`, error.response?.data || error.message);
             return null;
         }
     }
 
     async getBankAccounts() {
-        this.logger.log('Fetching Cash & Bank GL Accounts from Accurate...');
+        this.logger.log('Mengambil daftar Akun Kas & Bank dari Accurate...');
         try {
             const apiClient = await this.getAccurateApiClient();
             const response = await apiClient.get('/accurate/api/glaccount/list.do', {
@@ -237,30 +237,30 @@ export class AccurateService {
                 },
             });
             if (!response.data.s || !response.data.d) {
-                this.logger.warn('No bank accounts found in Accurate or API error.');
+                this.logger.warn('Tidak ada akun bank ditemukan di Accurate atau terjadi error API.');
                 return [];
             }
             return response.data.d.sort((a, b) => a.name.localeCompare(b.name));
         } catch (error) {
-            this.logger.error('Failed to fetch bank accounts from Accurate', error.response?.data || error.message);
+            this.logger.error('Gagal mengambil daftar akun bank dari Accurate', error.response?.data || error.message);
             throw new InternalServerErrorException('Gagal mengambil daftar akun bank dari Accurate.');
         }
     }
 
     async renewWebhook(): Promise<void> {
-        this.logger.log('Attempting to renew Accurate webhook...');
+        this.logger.log('Mencoba memperbarui webhook Accurate...');
         try {
             const apiClient = await this.getAccurateApiClient();
             const response = await apiClient.post('/accurate/api/webhook-renew.do');
 
             if (response.data?.s) {
-                this.logger.log(`✅ Accurate webhook successfully renewed. Active for 7 more days.`);
+                this.logger.log(`✅ Webhook Accurate berhasil diperbarui. Aktif untuk 7 hari ke depan.`);
             } else {
-                const errorMessage = response.data?.d?.[0] || 'Unknown error during webhook renewal.';
-                this.logger.warn(`Could not renew Accurate webhook: ${errorMessage}`);
+                const errorMessage = response.data?.d?.[0] || 'Error tidak diketahui saat perpanjangan webhook.';
+                this.logger.warn(`Tidak dapat memperbarui webhook Accurate: ${errorMessage}`);
             }
         } catch (error) {
-            this.logger.error('Failed to call Accurate renew webhook API', error.response?.data || error.message);
+            this.logger.error('Gagal memanggil API perpanjangan webhook Accurate', error.response?.data || error.message);
         }
     }
 }
