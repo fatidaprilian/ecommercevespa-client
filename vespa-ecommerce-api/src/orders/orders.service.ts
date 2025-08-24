@@ -41,11 +41,11 @@ export class OrdersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Pengguna tidak ditemukan.');
 
-    return this.prisma.$transaction(async (tx) => {
+    // Langkah 1: Buat pesanan dalam satu transaksi database.
+    const createdOrder = await this.prisma.$transaction(async (tx) => {
       let subtotal = 0;
       let totalDiscount = 0;
       const orderItemsData: Prisma.OrderItemCreateManyOrderInput[] = [];
-      const productDetailsForPayment: any[] = [];
       
       const vatPercentage = await this.settingsService.getVatPercentage();
 
@@ -65,14 +65,13 @@ export class OrdersService {
         }
 
         orderItemsData.push({ productId: item.productId, quantity: item.quantity, price: finalPrice });
-        productDetailsForPayment.push({ product, quantity: item.quantity, price: finalPrice, productId: product.id });
       }
 
       const taxableAmount = subtotal - totalDiscount;
       const taxAmount = (taxableAmount * vatPercentage) / 100;
       const totalAmount = taxableAmount + taxAmount + shippingCost;
       
-      const createdOrder = await tx.order.create({
+      const order = await tx.order.create({
         data: {
           user: { connect: { id: userId } },
           subtotal,
@@ -87,33 +86,35 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           items: { create: orderItemsData },
         },
+        // Ambil data yang dibutuhkan untuk langkah selanjutnya
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+        },
       });
       
-      const cart = await this.prisma.cart.findUnique({ where: { userId } });
+      const cart = await tx.cart.findUnique({ where: { userId } });
       if (cart) {
         const productIdsInOrder = items.map(i => i.productId);
         await tx.cartItem.deleteMany({ where: { cartId: cart.id, productId: { in: productIdsInOrder } } });
       }
-
-      // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
-      if (user.role === Role.RESELLER) {
-        // Untuk Reseller: Langsung buat Sales Order di Accurate tanpa membuat record pembayaran.
-        this.accurateSyncService.createSalesOrder(createdOrder.id)
-            .catch(err => {
-                // Log error jika sinkronisasi gagal, tapi jangan hentikan proses order.
-                this.logger.error(`Failed to trigger Accurate Sales Order creation for order ${createdOrder.id}`, err.stack);
-            });
-
-        // Tidak ada redirect URL karena tidak ada pembayaran.
-        return { ...createdOrder, redirect_url: null };
-      } else {
-        // Untuk Member: Proses pembayaran seperti biasa melalui Midtrans.
-        const orderWithItems = { ...createdOrder, items: productDetailsForPayment, subtotal, taxAmount };
-        const payment = await this.paymentsService.createPaymentForOrder(orderWithItems, user, shippingCost, tx);
-        return { ...createdOrder, redirect_url: payment.redirect_url };
-      }
-      // 👆 --- AKHIR PERUBAHAN --- 👆
+      
+      return order;
     });
+
+    // Langkah 2: Lakukan aksi SETELAH transaksi database selesai.
+    if (user.role === Role.RESELLER) {
+      // Untuk Reseller: Tambahkan job ke antrean untuk sinkronisasi Accurate.
+      await this.accurateSyncService.addSalesOrderJobToQueue(createdOrder.id);
+      return { ...createdOrder, redirect_url: null };
+    } else {
+      // Untuk Member: Proses pembayaran seperti biasa (alur tidak berubah).
+      const payment = await this.paymentsService.createPaymentForOrder(createdOrder, user, shippingCost);
+      return { ...createdOrder, redirect_url: payment.redirect_url };
+    }
   }
   
   // (Fungsi findAll, findOne, dan updateStatus tidak ada perubahan)

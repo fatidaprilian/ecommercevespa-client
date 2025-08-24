@@ -35,6 +35,95 @@ export class AccurateSyncService {
         @InjectQueue('accurate-sync-queue') private readonly syncQueue: Queue,
     ) {}
 
+    /**
+     * Menambahkan job pembuatan Sales Order ke dalam antrean.
+     * Dipanggil oleh OrdersService setelah pesanan berhasil dibuat.
+     */
+    async addSalesOrderJobToQueue(orderId: string) {
+        this.logger.log(`Adding "create-sales-order" job for Order ID: ${orderId} to the queue.`);
+        await this.syncQueue.add(
+            'create-sales-order', 
+            { orderId }, 
+            { 
+                removeOnComplete: true, 
+                removeOnFail: 10,
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 10000 }
+            }
+        );
+    }
+
+    /**
+     * Logika inti untuk membuat "Pesanan Penjualan" (Sales Order) di Accurate.
+     * Fungsi ini dipanggil oleh BullMQ Processor dari antrean.
+     */
+    async processSalesOrderCreation(orderId: string) {
+        this.logger.log(`WORKER: Processing Sales Order creation for Order ID: ${orderId}`);
+
+        const order = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: { user: true, items: { include: { product: true } } },
+        });
+
+        if (!order) {
+            throw new Error(`Order with ID ${orderId} not found during job processing.`);
+        }
+
+        try {
+            const dbInfo = await this.prisma.accurateOAuth.findFirst();
+            if (!dbInfo || !dbInfo.branchName) {
+                throw new InternalServerErrorException('Branch name not found in Accurate configuration.');
+            }
+
+            const accurateCustomer = await this.findOrCreateCustomer(order.user);
+            if (!accurateCustomer || !accurateCustomer.customerNo) {
+                throw new InternalServerErrorException(`Failed to get or create a valid customer in Accurate for user ID: ${order.user.id}`);
+            }
+
+            const apiClient = await this.accurateService.getAccurateApiClient();
+            
+            const detailItem = order.items.map(item => ({
+                itemNo: item.product.sku,
+                quantity: item.quantity,
+                unitPrice: item.price,
+            }));
+            
+            if (order.shippingCost > 0) {
+                detailItem.push({ itemNo: 'SHIPPING', quantity: 1, unitPrice: order.shippingCost });
+            }
+
+            const salesOrderPayload = {
+                customerNo: accurateCustomer.customerNo,
+                transDate: formatDateToAccurate(new Date(order.createdAt)),
+                detailItem: detailItem,
+                branchName: dbInfo.branchName,
+                number: `SO-${order.orderNumber}`
+            };
+
+            const response = await apiClient.post('/accurate/api/sales-order/save.do', salesOrderPayload);
+
+            if (!response.data?.s) {
+                const errorMessage = response.data?.d?.[0] || 'Failed to create Sales Order in Accurate.';
+                throw new Error(errorMessage);
+            }
+            
+            const salesOrderNumber = response.data.r.number as string;
+
+            await this.prisma.order.update({
+                where: { id: orderId },
+                data: { accurateSalesOrderNumber: salesOrderNumber },
+            });
+
+            this.logger.log(`✅✅✅ WORKER SUCCESS: Sales Order ${salesOrderNumber} created in Accurate for order ${order.orderNumber}.`);
+            return response.data.r;
+
+        } catch (error) {
+            const errorMessage = error.response?.data?.d?.[0] || error.message;
+            this.logger.error(`[FATAL WORKER] Sales Order creation for Order ID: ${orderId} failed. Reason: ${errorMessage}`, error.stack);
+            throw new Error(`Failed to process sale in Accurate: ${errorMessage}`);
+        }
+    }
+
     @Cron(CronExpression.EVERY_MINUTE)
     async scheduleProductSync() {
         this.logger.log('CRON JOB: Adding "sync-products" job to the queue.');
@@ -69,82 +158,6 @@ export class AccurateSyncService {
         }
     }
     
-    /**
-     * Membuat "Pesanan Penjualan" (Sales Order) di Accurate.
-     * Digunakan khusus untuk alur pesanan Reseller.
-     */
-    async createSalesOrder(orderId: string) {
-        this.logger.log(`Creating Sales Order in Accurate for Order ID: ${orderId}`);
-
-        const order = await this.prisma.order.findUnique({
-            where: { id: orderId },
-            include: { user: true, items: { include: { product: true } } },
-        });
-
-        if (!order) {
-            throw new Error(`Order with ID ${orderId} not found.`);
-        }
-
-        try {
-            const dbInfo = await this.prisma.accurateOAuth.findFirst();
-            if (!dbInfo || !dbInfo.branchName) {
-                throw new InternalServerErrorException('Branch name not found in Accurate configuration.');
-            }
-
-            const accurateCustomer = await this.findOrCreateCustomer(order.user);
-            if (!accurateCustomer || !accurateCustomer.customerNo) {
-                throw new InternalServerErrorException(`Failed to get or create a valid customer in Accurate for user ID: ${order.user.id}`);
-            }
-
-            const apiClient = await this.accurateService.getAccurateApiClient();
-            
-            const detailItem = order.items.map(item => ({
-                itemNo: item.product.sku,
-                quantity: item.quantity,
-                unitPrice: item.price,
-            }));
-            
-            if (order.shippingCost > 0) {
-                detailItem.push({
-                    itemNo: 'SHIPPING',
-                    quantity: 1,
-                    unitPrice: order.shippingCost,
-                });
-            }
-
-            const salesOrderPayload = {
-                customerNo: accurateCustomer.customerNo,
-                transDate: formatDateToAccurate(new Date(order.createdAt)),
-                detailItem: detailItem,
-                branchName: dbInfo.branchName,
-                number: `SO-${order.orderNumber}`
-            };
-
-            const response = await apiClient.post('/accurate/api/sales-order/save.do', salesOrderPayload);
-
-            if (!response.data?.s) {
-                const errorMessage = response.data?.d?.[0] || 'Failed to create Sales Order in Accurate.';
-                throw new Error(errorMessage);
-            }
-            
-            const salesOrderNumber = response.data.r.number as string;
-
-            await this.prisma.order.update({
-                where: { id: orderId },
-                data: { accurateSalesOrderNumber: salesOrderNumber },
-            });
-
-            this.logger.log(`✅✅✅ SUCCESS: Sales Order ${salesOrderNumber} created in Accurate and linked to order ${order.orderNumber}.`);
-            return response.data.r;
-
-        } catch (error) {
-            const errorMessage = error.response?.data?.d?.[0] || error.message;
-            this.logger.error(`[FATAL] Sales Order creation for Order ID: ${orderId} failed. Reason: ${errorMessage}`, error.stack);
-            throw new Error(`Failed to process sale in Accurate: ${errorMessage}`);
-        }
-    }
-
-
     async createSalesInvoiceAndReceipt(orderId: string, accurateBankNo: string, accurateBankName: string) {
         this.logger.log(`Starting sales process for Order ID: ${orderId} -> Bank: ${accurateBankName} (Account No: ${accurateBankNo})`);
         
@@ -246,7 +259,6 @@ export class AccurateSyncService {
             this.logger.log(`Local record found for user ${user.email}. Searching Accurate with customerNo: ${user.accurateCustomerNo}`);
             try {
                 let foundCustomer: AccurateCustomer | null = null;
-
                 try {
                     const searchResponse = await apiClient.get('/accurate/api/customer/list.do', {
                         params: {
