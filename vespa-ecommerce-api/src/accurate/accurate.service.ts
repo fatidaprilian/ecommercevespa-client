@@ -181,60 +181,23 @@ export class AccurateService {
     }
 
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
-        const MAX_RETRIES = 3;
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                this.logger.log(`[Attempt ${attempt}/${MAX_RETRIES}] Mencari Sales Invoice dengan NOMOR: ${invoiceNumber}`);
-                const apiClient = await this.getAccurateApiClient();
-                const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
-                    params: { 
-                        number: invoiceNumber 
-                    }
-                });
+        try {
+            this.logger.log(`Mencari Sales Invoice dengan NOMOR: ${invoiceNumber}`);
+            const apiClient = await this.getAccurateApiClient();
+            const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
+                params: { 
+                    number: invoiceNumber 
+                }
+            });
 
-                // DEBUG: Log raw response
-                this.logger.log(`=== RAW API RESPONSE for Sales Invoice ${invoiceNumber} ===`);
-                this.logger.log(`Response Status: ${response.status}`);
-                this.logger.log(`Response Data:`, JSON.stringify(response.data, null, 2));
-
-                if (response.data?.s && response.data?.d) {
-                    const invoiceData = response.data.d;
-                    
-                    // DEBUG: Log struktur detail
-                    this.logger.log(`=== INVOICE DETAIL ANALYSIS ===`);
-                    this.logger.log(`Invoice ID: ${invoiceData.id}`);
-                    this.logger.log(`Invoice Number: ${invoiceData.number}`);
-                    this.logger.log(`Available top-level fields:`, Object.keys(invoiceData));
-                    
-                    // Log field yang mungkin berisi Sales Order reference
-                    const possibleSOFields = ['fromNumber', 'refNumber', 'orderNumber', 'salesOrderNo', 'soNumber', 'reference'];
-                    possibleSOFields.forEach(field => {
-                        if (invoiceData[field]) {
-                            this.logger.log(`Found SO reference field '${field}': ${invoiceData[field]}`);
-                        }
-                    });
-                    
-                    return invoiceData;
-                }
-                
-                this.logger.warn(`API returned unsuccessful response for invoice ${invoiceNumber}:`, response.data);
-                return null;
-            } catch (error) {
-                const axiosError = error as AxiosError;
-                if (axiosError.code === 'EAI_AGAIN' && attempt < MAX_RETRIES) {
-                    this.logger.warn(`Network error (EAI_AGAIN) saat mencari invoice. Mencoba lagi dalam 2 detik...`);
-                    await delay(2000);
-                    continue;
-                }
-                
-                this.logger.error(`Error saat getSalesInvoiceByNumber: ${error.message}`, axiosError.response?.data);
-                if (error.response?.data) {
-                    this.logger.error(`Full error response:`, JSON.stringify(error.response.data, null, 2));
-                }
-                return null;
+            if (response.data?.s && response.data?.d) {
+                return response.data.d;
             }
+            return null;
+        } catch (error) {
+            this.logger.error(`Error saat getSalesInvoiceByNumber: ${error.message}`, error.response?.data);
+            return null;
         }
-        return null;
     }
     
     public async getSalesReceiptDetailByNumber(receiptNumber: string): Promise<any | null> {
@@ -246,57 +209,12 @@ export class AccurateService {
                 params: { number: receiptNumber }
             });
 
-            // DEBUG: Log raw response
-            this.logger.log(`=== RAW API RESPONSE for Sales Receipt ${receiptNumber} ===`);
-            this.logger.log(`Response Status: ${response.status}`);
-            this.logger.log(`Response Data:`, JSON.stringify(response.data, null, 2));
-
             if (response.data?.s && response.data?.d) {
-                const receiptData = response.data.d;
-                
-                // DEBUG: Log struktur detail
-                this.logger.log(`=== RECEIPT DETAIL ANALYSIS ===`);
-                this.logger.log(`Receipt ID: ${receiptData.id}`);
-                this.logger.log(`Receipt Number: ${receiptData.number}`);
-                this.logger.log(`Available top-level fields:`, Object.keys(receiptData));
-                
-                // Periksa semua field yang mungkin berisi detail invoice
-                if (receiptData.detailInvoice) {
-                    this.logger.log(`detailInvoice type: ${Array.isArray(receiptData.detailInvoice) ? 'array' : typeof receiptData.detailInvoice}`);
-                    if (Array.isArray(receiptData.detailInvoice)) {
-                        this.logger.log(`detailInvoice length: ${receiptData.detailInvoice.length}`);
-                        receiptData.detailInvoice.forEach((invoice, index) => {
-                            this.logger.log(`detailInvoice[${index}]:`, JSON.stringify(invoice, null, 2));
-                        });
-                    } else {
-                        this.logger.log(`detailInvoice (object):`, JSON.stringify(receiptData.detailInvoice, null, 2));
-                    }
-                }
-                
-                if (receiptData.detail) {
-                    this.logger.log(`detail type: ${Array.isArray(receiptData.detail) ? 'array' : typeof receiptData.detail}`);
-                    if (Array.isArray(receiptData.detail)) {
-                        this.logger.log(`detail length: ${receiptData.detail.length}`);
-                        receiptData.detail.forEach((item, index) => {
-                            this.logger.log(`detail[${index}]:`, JSON.stringify(item, null, 2));
-                        });
-                    }
-                }
-                
-                if (receiptData.items) {
-                    this.logger.log(`items found:`, JSON.stringify(receiptData.items, null, 2));
-                }
-                
-                return receiptData;
+                return response.data.d;
             }
-            
-            this.logger.warn(`API returned unsuccessful response for receipt ${receiptNumber}:`, response.data);
             return null;
         } catch (error) {
             this.logger.error(`Error fetching Sales Receipt detail for ${receiptNumber}:`, error.response?.data || error.message);
-            if (error.response?.data) {
-                this.logger.error(`Full error response:`, JSON.stringify(error.response.data, null, 2));
-            }
             return null;
         }
     }
