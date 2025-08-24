@@ -66,7 +66,7 @@ export class WebhooksService {
     }
   }
 
-  // 🔧 PERBAIKAN: Handler untuk Sales Invoice webhook dengan debugging lebih detail
+  // 🔧 PERBAIKAN: Handler untuk Sales Invoice webhook - Pendekatan alternatif
   private async processSalesInvoiceWebhook(eventData: any) {
     const salesInvoiceNo = eventData.salesInvoiceNo;
     if (!salesInvoiceNo) {
@@ -79,47 +79,42 @@ export class WebhooksService {
     try {
       const invoiceDetail = await this.accurateService.getSalesInvoiceByNumber(salesInvoiceNo);
 
-      // 🔍 DEBUGGING: Log detail invoice untuk analisis
-      this.logger.log(`🔍 Invoice Detail for ${salesInvoiceNo}:`, JSON.stringify(invoiceDetail, null, 2));
-
       if (!invoiceDetail) {
         this.logger.warn(`❌ Tidak dapat mengambil detail invoice: ${salesInvoiceNo}`);
         return;
       }
 
-      // 🔍 DEBUGGING: Cek berbagai kemungkinan field untuk fromNumber
-      const fromNumber = invoiceDetail.fromNumber || 
-                        invoiceDetail.from_number || 
-                        invoiceDetail.salesOrderNumber ||
-                        invoiceDetail.sales_order_number ||
-                        invoiceDetail.sourceNumber ||
-                        invoiceDetail.source_number;
+      // 🔍 DEBUGGING: Log full invoice detail untuk analisis
+      this.logger.log(`🔍 Full Invoice Detail for ${salesInvoiceNo}:`, JSON.stringify(invoiceDetail, null, 2));
 
-      this.logger.log(`🔍 Checking fromNumber variants:`, {
-        fromNumber: invoiceDetail.fromNumber,
-        from_number: invoiceDetail.from_number,
-        salesOrderNumber: invoiceDetail.salesOrderNumber,
-        sales_order_number: invoiceDetail.sales_order_number,
-        sourceNumber: invoiceDetail.sourceNumber,
-        source_number: invoiceDetail.source_number,
-        finalFromNumber: fromNumber
-      });
+      // 🔧 PENDEKATAN ALTERNATIF 1: Cari berdasarkan customer + timing
+      const customerNo = invoiceDetail.customer?.customerNo;
+      const invoiceDate = invoiceDetail.transDate;
 
-      if (!fromNumber) {
-        this.logger.log(`Mengabaikan webhook untuk faktur langsung ${salesInvoiceNo} (kemungkinan transaksi member langsung atau tidak terhubung dengan Sales Order).`);
-        return;
-      }
+      this.logger.log(`🔍 Searching order by customer: ${customerNo} around date: ${invoiceDate}`);
 
-      const salesOrderNumber = fromNumber;
-      this.logger.log(`Menemukan sumber Pesanan Penjualan: ${salesOrderNumber} untuk Faktur: ${salesInvoiceNo}`);
+      if (customerNo) {
+        // Cari order dengan customer yang sama dalam timeframe yang masuk akal (misal 7 hari terakhir)
+        const recentOrders = await this.prisma.order.findMany({
+          where: {
+            user: {
+              accurateCustomerNo: customerNo
+            },
+            status: OrderStatus.PENDING,
+            createdAt: {
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 hari terakhir
+            }
+          },
+          include: { user: true },
+          orderBy: { createdAt: 'desc' }
+        });
 
-      const order = await this.prisma.order.findFirst({
-        where: { accurateSalesOrderNumber: salesOrderNumber },
-        include: { user: true }
-      });
+        this.logger.log(`🔍 Found ${recentOrders.length} recent PENDING orders for customer ${customerNo}`);
 
-      if (order) {
-        if (order.status === OrderStatus.PENDING) {
+        if (recentOrders.length === 1) {
+          // Jika hanya ada 1 order PENDING, kemungkinan besar itu yang benar
+          const order = recentOrders[0];
+          
           await this.prisma.order.update({
             where: { id: order.id },
             data: {
@@ -127,33 +122,51 @@ export class WebhooksService {
               // Status tetap PENDING - belum dibayar reseller
             },
           });
-          this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} berhasil dibuat untuk order ${order.id}. Status tetap PENDING - menunggu pembayaran reseller.`);
+          
+          this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} linked to order ${order.id} based on customer match. Status tetap PENDING - menunggu pembayaran reseller.`);
+          return;
+        } else if (recentOrders.length > 1) {
+          this.logger.warn(`⚠️ Multiple PENDING orders found for customer ${customerNo}. Manual intervention may be needed.`);
+          // Log semua orders untuk manual check
+          recentOrders.forEach(order => {
+            this.logger.log(`   - Order ${order.id}: ${order.orderNumber} (SO: ${order.accurateSalesOrderNumber})`);
+          });
         } else {
-          this.logger.log(`Pesanan ${order.id} sudah dalam status ${order.status}. Mengabaikan webhook faktur.`);
-        }
-      } else {
-        this.logger.warn(`Webhook invoice diproses, tetapi pesanan yang cocok untuk nomor Pesanan Penjualan: ${salesOrderNumber} tidak ditemukan`);
-        
-        // 🔍 DEBUGGING: Cari semua order dengan pattern yang mirip
-        const similarOrders = await this.prisma.order.findMany({
-          where: {
-            OR: [
-              { accurateSalesOrderNumber: { contains: salesOrderNumber } },
-              { orderNumber: { contains: salesOrderNumber } }
-            ]
-          },
-          select: {
-            id: true,
-            orderNumber: true,
-            accurateSalesOrderNumber: true,
-            status: true
-          }
-        });
-        
-        if (similarOrders.length > 0) {
-          this.logger.log(`🔍 Found similar orders:`, similarOrders);
+          this.logger.warn(`⚠️ No PENDING orders found for customer ${customerNo}`);
         }
       }
+
+      // 🔧 PENDEKATAN ALTERNATIF 2: Cari berdasarkan amount matching
+      const invoiceAmount = invoiceDetail.amount || invoiceDetail.totalAmount || invoiceDetail.subTotal;
+      if (invoiceAmount) {
+        this.logger.log(`🔍 Searching order by amount: ${invoiceAmount}`);
+        
+        const ordersByAmount = await this.prisma.order.findMany({
+          where: {
+            totalAmount: parseFloat(invoiceAmount),
+            status: OrderStatus.PENDING
+          },
+          include: { user: true }
+        });
+
+        if (ordersByAmount.length === 1) {
+          const order = ordersByAmount[0];
+          
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: {
+              accurateSalesInvoiceNumber: salesInvoiceNo,
+            },
+          });
+          
+          this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} linked to order ${order.id} based on amount match (${invoiceAmount}). Status tetap PENDING.`);
+          return;
+        }
+      }
+
+      // Jika tidak ada yang cocok, log untuk manual intervention
+      this.logger.warn(`⚠️ Could not automatically link invoice ${salesInvoiceNo} to any order. Manual intervention required.`);
+
     } catch (error) {
       this.logger.error(`❌ Error processing Sales Invoice webhook: ${error.message}`, error);
     }
@@ -178,18 +191,11 @@ export class WebhooksService {
       const invoiceNumber = receiptDetail.detailInvoice[0].invoice.number;
       this.logger.log(`Menemukan Faktur Penjualan terkait: ${invoiceNumber} untuk Penerimaan Penjualan: ${salesReceiptNo}`);
 
-      const invoiceDetail = await this.accurateService.getSalesInvoiceByNumber(invoiceNumber);
-      
-      if (!invoiceDetail || !invoiceDetail.fromNumber) {
-        this.logger.log(`Mengabaikan webhook penerimaan untuk faktur langsung ${invoiceNumber} (kemungkinan transaksi member).`);
-        return;
-      }
-
-      const salesOrderNumber = invoiceDetail.fromNumber;
-      this.logger.log(`Menemukan sumber Pesanan Penjualan: ${salesOrderNumber} untuk Faktur: ${invoiceNumber}`);
-
+      // 🔧 PERBAIKAN: Cari order berdasarkan invoice number yang sudah di-link sebelumnya
       const order = await this.prisma.order.findFirst({
-        where: { accurateSalesOrderNumber: salesOrderNumber },
+        where: { 
+          accurateSalesInvoiceNumber: invoiceNumber 
+        },
         include: { user: true }
       });
 
@@ -207,7 +213,7 @@ export class WebhooksService {
           this.logger.log(`Status pesanan ${order.id} adalah ${order.status}. Mengabaikan webhook penerimaan.`);
         }
       } else {
-        this.logger.warn(`Webhook penerimaan diproses, tetapi pesanan yang cocok untuk nomor Pesanan Penjualan: ${salesOrderNumber} tidak ditemukan.`);
+        this.logger.warn(`Webhook penerimaan diproses, tetapi pesanan yang cocok untuk invoice: ${invoiceNumber} tidak ditemukan.`);
       }
     } catch (error) {
       this.logger.error(`❌ Error processing Sales Receipt webhook: ${error.message}`, error);
