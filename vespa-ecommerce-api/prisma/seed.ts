@@ -11,29 +11,26 @@ async function main() {
   console.log('Start seeding ...');
 
   // 1. Enkripsi password untuk admin
-  //    Penting: Jangan pernah menyimpan password sebagai plain text!
   const saltRounds = 10;
   const password = 'password'; // Ganti dengan password yang lebih aman jika perlu
   const hashedPassword = await bcrypt.hash(password, saltRounds);
 
   // 2. Buat user admin
-  //    Menggunakan `upsert` untuk menghindari duplikasi jika script dijalankan berkali-kali.
-  //    Jika user dengan email ini sudah ada, data akan di-update. Jika tidak, akan dibuat.
   const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@example.com' }, // Kunci unik untuk mencari user
+    where: { email: 'admin@vespa.com' }, // Kunci unik untuk mencari user
     update: {}, // Biarkan kosong jika tidak ada yang perlu di-update
     create: {
-      email: 'admin@example.com',
+      email: 'admin@vespa.com',
       name: 'Super Admin',
       password: hashedPassword,
-      role: Role.ADMIN, // Menggunakan enum `Role` dari schema
+      role: Role.ADMIN,
+      // Tambahkan baris ini untuk memverifikasi email
+      emailVerified: new Date(),
     },
   });
 
   console.log(`Created admin user: ${adminUser.email}`);
   console.log(`Login with password: ${password}`); // Hanya untuk development
-
-  // Anda bisa menambahkan data lain di sini, contoh: Kategori, Brand, dll.
 
   console.log('Seeding finished.');
 }
