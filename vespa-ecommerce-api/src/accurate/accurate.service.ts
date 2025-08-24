@@ -182,29 +182,39 @@ export class AccurateService {
         });
     }
 
-    // 👇 --- PERBAIKAN FINAL DI SINI --- 👇
+    // 👇 --- PERBAIKAN FINAL DAN TANGGUH DI SINI --- 👇
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
-        try {
-            this.logger.log(`Mencari Sales Invoice dengan NOMOR: ${invoiceNumber}`);
-            const apiClient = await this.getAccurateApiClient();
-            // Menggunakan endpoint /list.do dengan filter, ini cara yang benar
-            const response = await apiClient.get('/accurate/api/sales-invoice/list.do', {
-                params: {
-                    'sp.pageSize': 1,
-                    'filter.number.op': 'EQUAL',
-                    'filter.number.val[0]': invoiceNumber
-                }
-            });
+        const MAX_RETRIES = 3;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                this.logger.log(`[Attempt ${attempt}/${MAX_RETRIES}] Mencari Sales Invoice dengan NOMOR: ${invoiceNumber}`);
+                const apiClient = await this.getAccurateApiClient();
+                const response = await apiClient.get('/accurate/api/sales-invoice/list.do', {
+                    params: {
+                        'sp.pageSize': 1,
+                        'filter.number.op': 'EQUAL',
+                        'filter.number.val[0]': invoiceNumber
+                    }
+                });
 
-            if (response.data?.s && response.data?.d && response.data.d.length > 0) {
-                // Mengembalikan objek pertama dari hasil pencarian
-                return response.data.d[0];
+                if (response.data?.s && response.data?.d?.length > 0) {
+                    this.logger.log(`Successfully found invoice on attempt ${attempt}.`);
+                    return response.data.d[0];
+                }
+
+                this.logger.warn(`Invoice ${invoiceNumber} not found on attempt ${attempt}.`);
+                if (attempt < MAX_RETRIES) {
+                    await delay(1000); // Tunggu 1 detik sebelum mencoba lagi
+                }
+            } catch (error) {
+                this.logger.error(`Error pada attempt ${attempt} saat getSalesInvoiceByNumber: ${error.message}`, error.response?.data);
+                if (attempt < MAX_RETRIES) {
+                    await delay(1000);
+                }
             }
-            return null;
-        } catch (error) {
-            this.logger.error(`Error saat getSalesInvoiceByNumber: ${error.message}`, error.response?.data);
-            return null;
         }
+        this.logger.error(`Failed to find invoice ${invoiceNumber} after ${MAX_RETRIES} attempts.`);
+        return null;
     }
     // 👆 --- AKHIR PERBAIKAN --- 👆
     
