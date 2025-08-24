@@ -154,14 +154,14 @@ export default function OrderDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-2 space-y-6">
             
-            {/* --- BLOK INFORMASI UNTUK RESELLER --- */}
+            {/* --- BLOK INFORMASI UNTUK RESELLER (REVISI) --- */}
             {isReseller && order.status === 'PENDING' && (
                 <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-r-lg shadow">
                     <div className="flex">
                         <div className="py-1"><Info className="h-6 w-6 text-blue-500 mr-4"/></div>
                         <div>
-                            <p className="font-bold">Pesanan Anda sedang diproses.</p>
-                            <p className="text-sm">Admin akan segera membuatkan faktur penjualan untuk Anda. Mohon ditunggu.</p>
+                            <p className="font-bold">Menunggu Pembayaran Faktur</p>
+                            <p className="text-sm">Admin telah mengonfirmasi pesanan Anda. Silakan periksa komunikasi Anda (misal: WhatsApp) untuk faktur dan lakukan pembayaran.</p>
                         </div>
                     </div>
                 </div>
@@ -171,8 +171,8 @@ export default function OrderDetailPage() {
                     <div className="flex">
                         <div className="py-1"><FileText className="h-6 w-6 text-green-500 mr-4"/></div>
                         <div>
-                            <p className="font-bold">Faktur telah dibuat.</p>
-                            <p className="text-sm">Admin telah mengonfirmasi pesanan Anda. Silakan periksa komunikasi Anda (misal: WhatsApp) untuk faktur dan lakukan pembayaran. Pesanan akan segera kami siapkan untuk pengiriman.</p>
+                            <p className="font-bold">Pembayaran Diterima</p>
+                            <p className="text-sm">Terima kasih! Pembayaran Anda telah kami konfirmasi. Pesanan Anda kini sedang kami siapkan untuk pengiriman.</p>
                         </div>
                     </div>
                 </div>
