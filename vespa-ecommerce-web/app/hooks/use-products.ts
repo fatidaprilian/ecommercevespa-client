@@ -14,7 +14,8 @@ export interface ProductQueryParams {
   search?: string;
 }
 
-const getProducts = async (params: ProductQueryParams): Promise<PaginatedProducts> => {
+// Tambahkan 'export' di sini
+export const getProducts = async (params: ProductQueryParams): Promise<PaginatedProducts> => {
   // Logika diubah untuk menangani array brandId
   const searchParams = new URLSearchParams();
   

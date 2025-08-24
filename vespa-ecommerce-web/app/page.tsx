@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { useProducts } from "@/hooks/use-products";
+import { useProducts, getProducts } from "@/hooks/use-products"; // Perubahan di sini
 import { useCategories } from "@/hooks/use-categories";
 import { useBrands } from "@/hooks/use-brands";
 import { Product, Category, Brand } from "@/types";
@@ -266,7 +266,8 @@ export default function HomePage() {
     if (isAuthenticated) {
         queryClient.prefetchQuery({
             queryKey: ['products', { sortBy: 'createdAt', sortOrder: 'desc', limit: 4 }],
-            queryFn: () => useProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 4 }, true),
+            // Perubahan di sini
+            queryFn: () => getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 4 }),
         });
     }
   }, [isAuthenticated, queryClient]);
