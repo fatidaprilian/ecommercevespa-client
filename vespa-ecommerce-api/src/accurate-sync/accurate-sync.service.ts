@@ -35,7 +35,7 @@ export class AccurateSyncService {
         @InjectQueue('accurate-sync-queue') private readonly syncQueue: Queue,
     ) {}
 
-    @Cron(CronExpression.EVERY_30_SECONDS)
+    @Cron(CronExpression.EVERY_MINUTE)
     async scheduleProductSync() {
         this.logger.log('CRON JOB: Adding "sync-products" job to the queue.');
         await this.syncQueue.add('sync-products', {}, { removeOnComplete: true, removeOnFail: 10 });
