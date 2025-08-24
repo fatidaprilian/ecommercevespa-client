@@ -68,7 +68,7 @@ export class WebhooksService {
     }
 
     // Ambil nomor faktur pertama yang dibayarkan
-    const invoiceNumber = receiptDetail.detailInvoice[0].invoiceNumber;
+    const invoiceNumber = receiptDetail.detailInvoice[0].number;
     this.logger.log(`Found associated Sales Invoice: ${invoiceNumber} for Sales Receipt: ${salesReceiptNo}`);
 
     // Langkah 2: Dapatkan detail Faktur Penjualan untuk menemukan Pesanan
