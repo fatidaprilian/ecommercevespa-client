@@ -28,13 +28,12 @@ export class AccurateService {
         this.tokenUrl = this.configService.get<string>('ACCURATE_TOKEN_URL') || '';
     }
 
-    // ... (Semua fungsi dari getAuthorizationUrl hingga getAccurateApiClient TIDAK BERUBAH)
     getAuthorizationUrl(): string {
         const params = new URLSearchParams({
             client_id: this.clientId,
             response_type: 'code',
             redirect_uri: this.redirectUri,
-            scope: 'item_view item_save sales_invoice_view sales_invoice_save customer_view customer_save branch_view sales_receipt_save glaccount_view sales_order_save',
+            scope: 'item_view item_save sales_invoice_view sales_invoice_save customer_view customer_save branch_view sales_receipt_view sales_receipt_save glaccount_view sales_order_save sales_order_view',
         });
         return `${this.authUrl}?${params.toString()}`;
     }
@@ -181,31 +180,20 @@ export class AccurateService {
         });
     }
 
-    // =======================================================
-    // FUNGSI POLLING FINAL: MENCARI BERDASARKAN NOMOR
-    // =======================================================
-    /**
-     * Mencari Sales Invoice berdasarkan NOMOR STRING-nya.
-     * Ini cara yang paling andal untuk polling sebelum membuat Sales Receipt.
-     * @param invoiceNumber Nomor string dari Sales Invoice (cth: "SI.2025.08.00020").
-     * @returns Data invoice jika ditemukan, null jika tidak.
-     */
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         const MAX_RETRIES = 3;
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 this.logger.log(`[Attempt ${attempt}/${MAX_RETRIES}] Mencari Sales Invoice dengan NOMOR: ${invoiceNumber}`);
                 const apiClient = await this.getAccurateApiClient();
-                const response = await apiClient.get('/accurate/api/sales-invoice/list.do', { 
+                const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
                     params: { 
-                        'sp.pageSize': 1, // Kita hanya butuh 1 hasil
-                        'filter.number.op': 'EQUAL', 
-                        'filter.number.val[0]': invoiceNumber 
+                        number: invoiceNumber 
                     }
                 });
 
-                if (response.data?.s && response.data?.d && response.data.d.length > 0) {
-                    return response.data.d[0];
+                if (response.data?.s && response.data?.d) {
+                    return response.data.d;
                 }
                 
                 return null;
@@ -218,10 +206,28 @@ export class AccurateService {
                 }
                 
                 this.logger.error(`Error saat getSalesInvoiceByNumber: ${error.message}`, axiosError.response?.data);
-                throw new Error(`Gagal menghubungi API Accurate untuk mencari faktur nomor: ${invoiceNumber}.`);
+                return null;
             }
         }
         return null;
+    }
+    
+    public async getSalesReceiptDetailByNumber(receiptNumber: string): Promise<any | null> {
+        try {
+            this.logger.log(`Fetching Sales Receipt detail for number: ${receiptNumber}`);
+            const apiClient = await this.getAccurateApiClient();
+            const response = await apiClient.get('/accurate/api/sales-receipt/detail.do', { 
+                params: { number: receiptNumber }
+            });
+
+            if (response.data?.s && response.data?.d) {
+                return response.data.d;
+            }
+            return null;
+        } catch (error) {
+            this.logger.error(`Error fetching Sales Receipt detail for ${receiptNumber}:`, error.response?.data || error.message);
+            return null;
+        }
     }
 
     async getBankAccounts() {
@@ -242,6 +248,23 @@ export class AccurateService {
         } catch (error) {
             this.logger.error('Failed to fetch bank accounts from Accurate', error.response?.data || error.message);
             throw new InternalServerErrorException('Gagal mengambil daftar akun bank dari Accurate.');
+        }
+    }
+
+    async renewWebhook(): Promise<void> {
+        this.logger.log('Attempting to renew Accurate webhook...');
+        try {
+            const apiClient = await this.getAccurateApiClient();
+            const response = await apiClient.post('/accurate/api/webhook-renew.do');
+
+            if (response.data?.s) {
+                this.logger.log(`✅ Accurate webhook successfully renewed. Active for 7 more days.`);
+            } else {
+                const errorMessage = response.data?.d?.[0] || 'Unknown error during webhook renewal.';
+                this.logger.warn(`Could not renew Accurate webhook: ${errorMessage}`);
+            }
+        } catch (error) {
+            this.logger.error('Failed to call Accurate renew webhook API', error.response?.data || error.message);
         }
     }
 }

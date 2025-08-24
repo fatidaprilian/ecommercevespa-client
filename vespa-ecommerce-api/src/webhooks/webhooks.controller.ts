@@ -1,31 +1,29 @@
 // file: vespa-ecommerce-api/src/webhooks/webhooks.controller.ts
 
-import { Controller, Post, Body, HttpCode, HttpStatus, Header, Logger } from '@nestjs/common'; // Impor Logger
+import { Controller, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { WebhooksService } from './webhooks.service';
 
 @Controller('webhooks')
 export class WebhooksController {
-  // 👇 Tambahkan Logger untuk debugging
   private readonly logger = new Logger(WebhooksController.name);
 
   constructor(private readonly webhooksService: WebhooksService) {}
 
-  // 👇 --- ENDPOINT BARU UNTUK ACCURATE --- 👇
   @Public()
   @Post('accurate')
   @HttpCode(HttpStatus.OK)
   handleAccurateWebhook(@Body() payload: any) {
     this.logger.log('--- ACCURATE WEBHOOK RECEIVED ---');
-    this.logger.log(JSON.stringify(payload, null, 2));
+    // Payload dari Accurate bisa berupa array, kita ambil elemen pertama
+    const webhookData = Array.isArray(payload) ? payload[0] : payload;
+    this.logger.log(JSON.stringify(webhookData, null, 2));
     
-    // Asumsi webhook ini untuk event "Save Sales Invoice"
-    this.webhooksService.handleAccurateSalesInvoiceCreated(payload);
+    // Panggil handler utama di service
+    this.webhooksService.handleAccurateWebhook(webhookData);
     
     return { message: 'Accurate webhook received successfully' };
   }
-  // 👆 --- AKHIR ENDPOINT BARU --- 👆
-
 
   // Endpoint untuk Biteship (tidak diubah)
   @Public()

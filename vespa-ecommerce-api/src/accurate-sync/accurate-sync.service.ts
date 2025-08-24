@@ -34,10 +34,9 @@ export class AccurateSyncService {
         private readonly accurateService: AccurateService,
         @InjectQueue('accurate-sync-queue') private readonly syncQueue: Queue,
     ) {}
-
+    
     /**
      * Menambahkan job pembuatan Sales Order ke dalam antrean.
-     * Dipanggil oleh OrdersService setelah pesanan berhasil dibuat.
      */
     async addSalesOrderJobToQueue(orderId: string) {
         this.logger.log(`Adding "create-sales-order" job for Order ID: ${orderId} to the queue.`);
@@ -55,7 +54,6 @@ export class AccurateSyncService {
 
     /**
      * Logika inti untuk membuat "Pesanan Penjualan" (Sales Order) di Accurate.
-     * Fungsi ini dipanggil oleh BullMQ Processor dari antrean.
      */
     async processSalesOrderCreation(orderId: string) {
         this.logger.log(`WORKER: Processing Sales Order creation for Order ID: ${orderId}`);
@@ -123,6 +121,14 @@ export class AccurateSyncService {
             throw new Error(`Failed to process sale in Accurate: ${errorMessage}`);
         }
     }
+    
+    // 👇 --- CRON JOB BARU DITAMBAHKAN DI SINI --- 👇
+    @Cron(CronExpression.EVERY_DAY_AT_2AM)
+    async scheduleWebhookRenewal() {
+        this.logger.log('CRON JOB: Triggering Accurate webhook renewal.');
+        await this.accurateService.renewWebhook();
+    }
+    // 👆 --- AKHIR CRON JOB BARU --- 👆
 
     @Cron(CronExpression.EVERY_MINUTE)
     async scheduleProductSync() {
@@ -259,6 +265,7 @@ export class AccurateSyncService {
             this.logger.log(`Local record found for user ${user.email}. Searching Accurate with customerNo: ${user.accurateCustomerNo}`);
             try {
                 let foundCustomer: AccurateCustomer | null = null;
+
                 try {
                     const searchResponse = await apiClient.get('/accurate/api/customer/list.do', {
                         params: {
