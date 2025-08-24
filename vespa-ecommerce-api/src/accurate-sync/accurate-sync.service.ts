@@ -54,6 +54,7 @@ export class AccurateSyncService {
 
     /**
      * The core logic to create a "Sales Order" in Accurate.
+     * 🔥 UPDATED: Sekarang cek role user - hanya reseller yang boleh langsung buat Sales Order
      */
     async processSalesOrderCreation(orderId: string) {
         this.logger.log(`WORKER: Processing Sales Order creation for Order ID: ${orderId}`);
@@ -65,6 +66,12 @@ export class AccurateSyncService {
 
         if (!order) {
             throw new Error(`Order with ID ${orderId} not found during job processing.`);
+        }
+
+        // 🔥 TAMBAHAN: Cek role user - hanya reseller yang boleh langsung buat Sales Order
+        if (order.user.role !== 'RESELLER') {
+            this.logger.log(`SKIPPED: Sales Order creation for Order ID: ${orderId} - User ${order.user.email} is not a RESELLER (role: ${order.user.role})`);
+            return { skipped: true, reason: 'User is not a reseller' };
         }
 
         try {
@@ -107,12 +114,16 @@ export class AccurateSyncService {
             
             const salesOrderNumber = response.data.r.number as string;
 
+            // 🔥 PERBAIKAN: Status tetap PENDING, nanti berubah saat Sales Invoice dibuat
             await this.prisma.order.update({
                 where: { id: orderId },
-                data: { accurateSalesOrderNumber: salesOrderNumber },
+                data: { 
+                    accurateSalesOrderNumber: salesOrderNumber 
+                    // status tetap PENDING sampai admin buat Sales Invoice
+                },
             });
 
-            this.logger.log(`✅✅✅ WORKER SUCCESS: Sales Order ${salesOrderNumber} created in Accurate for order ${order.orderNumber}.`);
+            this.logger.log(`✅✅✅ WORKER SUCCESS: Sales Order ${salesOrderNumber} created in Accurate for order ${order.orderNumber}. Status remains PENDING until invoice is created.`);
             return response.data.r;
 
         } catch (error) {
@@ -164,6 +175,10 @@ export class AccurateSyncService {
         }
     }
     
+    /**
+     * Method untuk member yang bayar dulu - tetap sama seperti sebelumnya
+     * Ini dipakai untuk alur member biasa (bukan reseller)
+     */
     async createSalesInvoiceAndReceipt(orderId: string, accurateBankNo: string, accurateBankName: string) {
         this.logger.log(`Starting sales process for Order ID: ${orderId} -> Bank: ${accurateBankName} (Account No: ${accurateBankNo})`);
         

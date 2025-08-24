@@ -1,7 +1,7 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { URLSearchParams } from 'url';
 import { AccurateOAuth } from '@prisma/client';
 
@@ -178,26 +178,25 @@ export class AccurateService {
         });
     }
     
-    // 👇 **PERBAIKAN FINAL ADA DI SINI** 👇
+    // 👇 **PERUBAHAN FINAL ADA DI SINI** 👇
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Mengambil detail Faktur Penjualan untuk nomor: ${invoiceNumber}`);
             const apiClient = await this.getAccurateApiClient();
             
-            // Menggunakan endpoint /list.do dengan format filter yang sudah diperbaiki
-            const response = await apiClient.get('/accurate/api/sales-invoice/list.do', { 
+            // Menggunakan endpoint /detail.do yang lebih andal untuk mendapatkan data lengkap
+            const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
                 params: {
-                    fields: 'id,number,fromNumber', // Meminta field 'fromNumber' secara eksplisit
-                    'filter.number.op': 'EQUAL',     // Menggunakan filter tanpa 'sp.'
-                    'filter.number.val[0]': invoiceNumber // Menggunakan format 'val[0]' yang benar
+                    number: invoiceNumber
                 }
             });
 
-            if (response.data?.s && response.data.d && response.data.d.length > 0) {
-                return response.data.d[0];
+            if (response.data?.s && response.data.d) {
+                // Endpoint /detail.do langsung mengembalikan objek, bukan array
+                return response.data.d;
             }
             
-            this.logger.warn(`Tidak ada Faktur Penjualan ditemukan dengan nomor: ${invoiceNumber}`);
+            this.logger.warn(`Tidak ada Faktur Penjualan ditemukan dengan nomor: ${invoiceNumber} menggunakan /detail.do`);
             return null;
         } catch (error) {
             this.logger.error(`Error mengambil detail Faktur Penjualan untuk ${invoiceNumber}:`, error.response?.data || error.message);

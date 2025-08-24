@@ -1,3 +1,5 @@
+// file: vespa-ecommerce-api/src/webhooks/webhooks.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
@@ -32,9 +34,39 @@ export class WebhooksService {
         await this.processSalesReceiptWebhook(eventData);
         break;
       
+      case 'SALES_ORDER': // 🔥 TAMBAHAN handler untuk Sales Order
+        await this.processSalesOrderWebhook(eventData);
+        break;
+      
       default:
         this.logger.log(`Tidak ada handler spesifik untuk tipe webhook "${eventType}". Diabaikan.`);
         break;
+    }
+  }
+
+  // 🔥 HANDLER BARU untuk Sales Order webhook
+  private async processSalesOrderWebhook(eventData: any) {
+    const { salesOrderNo, salesOrderId, action } = eventData;
+    
+    this.logger.log(`Processing Sales Order webhook: ${salesOrderNo} (ID: ${salesOrderId}) - Action: ${action}`);
+
+    try {
+      const order = await this.prisma.order.findFirst({
+        where: {
+          accurateSalesOrderNumber: salesOrderNo
+        },
+        include: { user: true }
+      });
+
+      if (order) {
+        // Untuk reseller, Sales Order webhook hanya confirm bahwa SO berhasil dibuat
+        // Status tetap PENDING sampai Sales Invoice dibuat
+        this.logger.log(`✅ Sales Order ${salesOrderNo} confirmed for order ${order.orderNumber}. Status remains PENDING until invoice is created.`);
+      } else {
+        this.logger.warn(`⚠️ Order not found for Sales Order: ${salesOrderNo}`);
+      }
+    } catch (error) {
+      this.logger.error(`❌ Error processing Sales Order webhook: ${error.message}`);
     }
   }
 
@@ -45,6 +77,7 @@ export class WebhooksService {
       return;
     }
 
+    this.logger.log(`Mengambil detail Faktur Penjualan untuk nomor: ${salesInvoiceNo}`);
     const invoiceDetail = await this.accurateService.getSalesInvoiceByNumber(salesInvoiceNo);
 
     if (!invoiceDetail || !invoiceDetail.fromNumber) {
@@ -57,14 +90,16 @@ export class WebhooksService {
 
     const order = await this.prisma.order.findFirst({
       where: { accurateSalesOrderNumber: salesOrderNumber },
+      include: { user: true }
     });
 
     if (order) {
+      // 🔥 PERBAIKAN: Sales Invoice artinya admin sudah proses manual, order jadi PROCESSING
       if (order.status === OrderStatus.PENDING) {
         await this.prisma.order.update({
           where: { id: order.id },
           data: {
-            status: OrderStatus.PROCESSING,
+            status: OrderStatus.PROCESSING, // 🔥 Invoice dibuat = Admin sudah proses = PROCESSING
             accurateSalesInvoiceNumber: salesInvoiceNo,
           },
         });
@@ -76,7 +111,7 @@ export class WebhooksService {
       this.logger.warn(`Webhook diproses, tetapi pesanan yang cocok untuk nomor Pesanan Penjualan: ${salesOrderNumber} tidak ditemukan`);
     }
   }
-  
+
   private async processSalesReceiptWebhook(eventData: any) {
     const salesReceiptNo = eventData.salesReceiptNo;
     if (!salesReceiptNo) {
@@ -106,11 +141,20 @@ export class WebhooksService {
 
     const order = await this.prisma.order.findFirst({
       where: { accurateSalesOrderNumber: salesOrderNumber },
+      include: { user: true }
     });
 
     if (order) {
+      // 🔥 PERBAIKAN: Sales Receipt artinya reseller sudah bayar, order bisa diproses ke SHIPPED
       if (order.status === OrderStatus.PROCESSING) {
-        this.logger.log(`✅ BERHASIL: Pembayaran untuk pesanan ${order.id} telah dikonfirmasi. Status tidak diubah oleh webhook ini, pengiriman akan diproses manual.`);
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: OrderStatus.SHIPPED, // 🔥 Receipt = Reseller sudah bayar = Siap kirim
+            accurateSalesReceiptId: eventData.salesReceiptId,
+          },
+        });
+        this.logger.log(`✅ BERHASIL: Pembayaran untuk pesanan ${order.id} telah dikonfirmasi. Status diubah ke SHIPPED, siap untuk dikirim.`);
       } else {
         this.logger.log(`Status pesanan ${order.id} adalah ${order.status}. Mengabaikan webhook penerimaan.`);
       }
