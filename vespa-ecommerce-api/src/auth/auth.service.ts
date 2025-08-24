@@ -6,7 +6,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
-  Logger, // <-- Tambahkan Logger
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
@@ -16,16 +16,14 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { EmailService } from 'src/email/email.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { User } from '@prisma/client';
+import { User, Role } from '@prisma/client'; // <-- Perubahan: Impor 'Role'
 import { EmailVerificationDto } from './dto/email-verification.dto';
-// --- Impor DTO baru untuk Lupa Password ---
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ValidateResetTokenDto } from './dto/validate-reset-token.dto';
 
 @Injectable()
 export class AuthService {
-  // --- Tambahkan Logger ---
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
@@ -39,7 +37,9 @@ export class AuthService {
     const user = await this.usersService.findByEmail(loginDto.email);
 
     if (user && (await bcrypt.compare(loginDto.password, user.password))) {
-      if (!user.emailVerified) {
+      // Perubahan Utama: Jika email belum terverifikasi DAN peran BUKAN admin,
+      // maka lemparkan error. Admin bisa login tanpa verifikasi.
+      if (!user.emailVerified && user.role !== Role.ADMIN) {
         await this.resendVerificationEmail(user.email);
         throw new UnauthorizedException(
           'Email Anda belum terverifikasi. Kami telah mengirim ulang email verifikasi.',
@@ -173,8 +173,6 @@ export class AuthService {
 
     return this.login(updatedUser);
   }
-
-  // --- 👇 METHOD BARU UNTUK LUPA PASSWORD 👇 ---
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     const { email } = forgotPasswordDto;

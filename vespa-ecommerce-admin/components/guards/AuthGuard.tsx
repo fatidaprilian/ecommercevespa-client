@@ -1,9 +1,10 @@
-// pages/components/guards/AuthGuard.tsx
+// file: components/guards/AuthGuard.tsx
 
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Loader2 } from 'lucide-react';
+import api from '@/lib/api'; // Gunakan instance axios yang sudah dikonfigurasi
+import { User, Role } from '@/services/userService'; // Impor tipe data User dan Role
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -11,27 +12,32 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    const verifyUser = async () => {
+    const verifyAdmin = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        await axios.get(`${apiUrl}/users/profile`, {
-          withCredentials: true,
-        });
-        setIsAuthenticated(true);
+        // 1. Panggil endpoint profile untuk mendapatkan data pengguna
+        const { data: userProfile } = await api.get<User>('/users/profile');
+
+        // 2. Periksa apakah peran pengguna adalah ADMIN
+        if (userProfile && userProfile.role === Role.ADMIN) {
+          setIsAuthorized(true); // Hanya jika admin, berikan otorisasi
+        } else {
+          // Jika bukan admin, paksa redirect ke halaman login
+          throw new Error('Access Denied');
+        }
       } catch (error) {
+        // Jika terjadi error (token tidak valid, bukan admin, dll), redirect
         router.replace('/auth/login');
       } finally {
         setIsVerifying(false);
       }
     };
 
-    verifyUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // <-- PERUBAHAN UTAMA: Hapus 'router' dari dependency array
+    verifyAdmin();
+  }, [router]); // Kembalikan router ke dependency array
 
   // Selama proses verifikasi, tampilkan layar loading
   if (isVerifying) {
@@ -42,11 +48,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // Jika sudah terverifikasi dan otentik, tampilkan konten halaman
-  if (isAuthenticated) {
+  // Jika sudah terverifikasi dan diotorisasi sebagai admin, tampilkan konten
+  if (isAuthorized) {
     return <>{children}</>;
   }
 
-  // Jika tidak otentik, jangan tampilkan apa-apa (karena sudah di-redirect)
+  // Jika tidak, jangan render apa pun karena sudah di-redirect
   return null;
 }
