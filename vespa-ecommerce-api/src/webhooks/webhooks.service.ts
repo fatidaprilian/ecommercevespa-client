@@ -24,11 +24,9 @@ export class WebhooksService {
     this.logger.log(`Memproses webhook Accurate dengan tipe: ${eventType}`);
 
     switch (eventType) {
-      // 👇 --- AWAL PERUBAHAN --- 👇
       case 'SALES_INVOICE':
         await this.processSalesInvoiceWebhook(eventData);
         break;
-      // 👆 --- AKHIR PERUBAHAN --- 👆
         
       case 'SALES_RECEIPT':
         await this.processSalesReceiptWebhook(eventData);
@@ -40,12 +38,6 @@ export class WebhooksService {
     }
   }
 
-  // 👇 --- AWAL PERUBAHAN: FUNGSI BARU DITAMBAHKAN --- 👇
-  /**
-   * Memproses webhook Faktur Penjualan (Sales Invoice) dari Accurate.
-   * Ini terpicu ketika admin membuat faktur dari Pesanan Penjualan (Sales Order).
-   * Fungsi ini akan mengubah status pesanan menjadi PROCESSING untuk memberitahu reseller.
-   */
   private async processSalesInvoiceWebhook(eventData: any) {
     const salesInvoiceNo = eventData.salesInvoiceNo;
     if (!salesInvoiceNo) {
@@ -53,10 +45,8 @@ export class WebhooksService {
       return;
     }
 
-    // Ambil detail faktur untuk menemukan nomor Pesanan Penjualan (SO) asalnya.
     const invoiceDetail = await this.accurateService.getSalesInvoiceByNumber(salesInvoiceNo);
 
-    // Pemeriksaan ini sangat penting: kita hanya memproses faktur yang berasal dari SO (alur reseller).
     if (!invoiceDetail || !invoiceDetail.fromNumber) {
       this.logger.log(`Mengabaikan webhook untuk faktur langsung ${salesInvoiceNo} (bukan dari Pesanan Penjualan).`);
       return;
@@ -70,13 +60,12 @@ export class WebhooksService {
     });
 
     if (order) {
-      // Hanya perbarui jika statusnya masih PENDING.
       if (order.status === OrderStatus.PENDING) {
         await this.prisma.order.update({
           where: { id: order.id },
           data: {
-            status: OrderStatus.PROCESSING, // Ubah status menjadi PROCESSING
-            accurateSalesInvoiceNumber: salesInvoiceNo, // Simpan nomor faktur
+            status: OrderStatus.PROCESSING,
+            accurateSalesInvoiceNumber: salesInvoiceNo,
           },
         });
         this.logger.log(`✅ BERHASIL: Status pesanan ${order.id} diubah menjadi PROCESSING setelah faktur untuk reseller dibuat.`);
@@ -87,12 +76,7 @@ export class WebhooksService {
       this.logger.warn(`Webhook diproses, tetapi pesanan yang cocok untuk nomor Pesanan Penjualan: ${salesOrderNumber} tidak ditemukan`);
     }
   }
-  // 👆 --- AKHIR PERUBAHAN --- 👆
-
-  /**
-   * Memproses webhook Penerimaan Penjualan (Sales Receipt) dari Accurate.
-   * Ini terpicu ketika admin mencatat pembayaran untuk sebuah faktur.
-   */
+  
   private async processSalesReceiptWebhook(eventData: any) {
     const salesReceiptNo = eventData.salesReceiptNo;
     if (!salesReceiptNo) {
@@ -112,7 +96,6 @@ export class WebhooksService {
 
     const invoiceDetail = await this.accurateService.getSalesInvoiceByNumber(invoiceNumber);
     
-    // Abaikan jika faktur tidak berasal dari Pesanan Penjualan (alur member).
     if (!invoiceDetail || !invoiceDetail.fromNumber) {
       this.logger.log(`Mengabaikan webhook penerimaan untuk faktur langsung ${invoiceNumber} (kemungkinan transaksi member).`);
       return;
@@ -126,19 +109,16 @@ export class WebhooksService {
     });
 
     if (order) {
-      // Logika ini bisa dikembangkan, misalnya mengubah status dari PROCESSING menjadi PAID
       if (order.status === OrderStatus.PROCESSING) {
-        // Contoh: await this.prisma.order.update({ where: { id: order.id }, data: { status: OrderStatus.PAID }});
-        this.logger.log(`✅ BERHASIL: Pembayaran untuk pesanan ${order.id} telah dikonfirmasi. Aksi lebih lanjut bisa ditambahkan di sini.`);
+        this.logger.log(`✅ BERHASIL: Pembayaran untuk pesanan ${order.id} telah dikonfirmasi. Status tidak diubah oleh webhook ini, pengiriman akan diproses manual.`);
       } else {
-        this.logger.log(`Status pesanan ${order.id} adalah ${order.status}. Mengabaikan webhook penerimaan untuk saat ini.`);
+        this.logger.log(`Status pesanan ${order.id} adalah ${order.status}. Mengabaikan webhook penerimaan.`);
       }
     } else {
       this.logger.warn(`Webhook penerimaan diproses, tetapi pesanan yang cocok untuk nomor Pesanan Penjualan: ${salesOrderNumber} tidak ditemukan.`);
     }
   }
 
-  // Fungsi untuk Biteship (tidak ada perubahan)
   async handleBiteshipTrackingUpdate(payload: any) {
     const { status, courier_waybill_id: waybill_id } = payload;
 

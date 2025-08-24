@@ -1,11 +1,9 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { URLSearchParams } from 'url';
 import { AccurateOAuth } from '@prisma/client';
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 @Injectable()
 export class AccurateService {
@@ -180,17 +178,18 @@ export class AccurateService {
         });
     }
     
-    // 👇 **START OF CHANGES** 👇
+    // 👇 **PERBAIKAN FINAL ADA DI SINI** 👇
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Mengambil detail Faktur Penjualan untuk nomor: ${invoiceNumber}`);
             const apiClient = await this.getAccurateApiClient();
             
+            // Menggunakan endpoint /list.do dengan format filter yang sudah diperbaiki
             const response = await apiClient.get('/accurate/api/sales-invoice/list.do', { 
                 params: {
                     fields: 'id,number,fromNumber', // Meminta field 'fromNumber' secara eksplisit
                     'filter.number.op': 'EQUAL',     // Menggunakan filter tanpa 'sp.'
-                    'filter.number.val[0]': invoiceNumber // Menggunakan format 'val[0]'
+                    'filter.number.val[0]': invoiceNumber // Menggunakan format 'val[0]' yang benar
                 }
             });
 
@@ -205,7 +204,6 @@ export class AccurateService {
             return null;
         }
     }
-    // 👆 **END OF CHANGES** 👆
     
     public async getSalesReceiptDetailByNumber(receiptNumber: string): Promise<any | null> {
         try {
