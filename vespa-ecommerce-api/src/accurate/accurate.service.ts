@@ -180,35 +180,32 @@ export class AccurateService {
         });
     }
     
-    // ✅ --- FUNGSI INI YANG DIPERBAIKI --- ✅
+    // 👇 **START OF CHANGES** 👇
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Fetching Sales Invoice detail for number: ${invoiceNumber}`);
             const apiClient = await this.getAccurateApiClient();
             
-            // Menggunakan endpoint /list.do dengan filter agar lebih robust
-            const response = await apiClient.get('/accurate/api/sales-invoice/list.do', { 
+            // Mengganti endpoint dari /list.do menjadi /detail.do untuk data yang lebih lengkap
+            const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
                 params: {
-                    // Secara eksplisit meminta field yang kita butuhkan
-                    fields: 'id,number,fromNumber',
-                    // Filter berdasarkan nomor faktur yang sama persis
-                    'sp.filter.number.op': 'EQUAL',
-                    'sp.filter.number.val': invoiceNumber
+                    number: invoiceNumber
                 }
             });
 
-            // Hasilnya adalah array, jadi kita ambil elemen pertama
-            if (response.data?.s && response.data.d && response.data.d.length > 0) {
-                return response.data.d[0];
+            // Endpoint detail.do mengembalikan objek tunggal, bukan array
+            if (response.data?.s && response.data.d) {
+                return response.data.d;
             }
             
-            this.logger.warn(`No Sales Invoice found with number: ${invoiceNumber} using /list.do`);
+            this.logger.warn(`No Sales Invoice found with number: ${invoiceNumber} using /detail.do`);
             return null;
         } catch (error) {
             this.logger.error(`Error fetching Sales Invoice detail for ${invoiceNumber}:`, error.response?.data || error.message);
             return null;
         }
     }
+    // 👆 **END OF CHANGES** 👆
     
     public async getSalesReceiptDetailByNumber(receiptNumber: string): Promise<any | null> {
         try {
