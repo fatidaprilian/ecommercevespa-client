@@ -8,7 +8,7 @@ import {
   Param,
   Delete,
   UseGuards,
-  Query, // 1. Impor Query
+  Query,
 } from '@nestjs/common';
 import { BrandsService } from './brands.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
@@ -18,7 +18,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { Public } from 'src/auth/decorators/public.decorator';
-import { PaginationDto } from 'src/common/dto/pagination.dto'; // 2. Impor DTO Paginasi
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('brands')
@@ -33,7 +33,6 @@ export class BrandsController {
 
   @Public()
   @Get()
-  // 3. Terima query dan teruskan ke service
   findAll(@Query() paginationDto: PaginationDto & { search?: string }) {
     return this.brandsService.findAll(paginationDto);
   }

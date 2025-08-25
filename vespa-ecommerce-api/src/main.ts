@@ -7,16 +7,13 @@ import { ValidationPipe } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 
 async function bootstrap() {
-  // ===================== KODE DEBUGGING DITAMBAHKAN DI SINI =====================
   console.log('--- [DEBUG] Memeriksa nilai environment variable dari main.ts ---');
   console.log('Nilai ACCURATE_CLIENT_ID yang terbaca:', process.env.ACCURATE_CLIENT_ID);
   console.log('------------------------------------------------------------------');
-  // ============================================================================
 
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // Konfigurasi Cloudinary
   cloudinary.config({
     cloud_name: configService.get('CLOUDINARY_CLOUD_NAME'),
     api_key: configService.get('CLOUDINARY_API_KEY'),

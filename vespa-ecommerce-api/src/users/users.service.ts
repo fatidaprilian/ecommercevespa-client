@@ -33,7 +33,6 @@ export class UsersService {
    * Mengubah role seorang pengguna.
    */
   async updateRole(userId: string, newRole: Role) {
-    // Memanggil findById internal yang sudah menangani NotFoundException
     await this.findById(userId);
     return this.prisma.user.update({
       where: { id: userId },
@@ -46,7 +45,7 @@ export class UsersService {
    * Menghapus seorang pengguna.
    */
   async remove(userId: string) {
-    await this.findById(userId); // Pastikan user ada
+    await this.findById(userId);
     return this.prisma.user.delete({
       where: { id: userId },
     });
@@ -66,7 +65,6 @@ export class UsersService {
       data: { email, password: hashedPassword, name, role },
     });
     
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...result } = user;
     return result;
   }
@@ -82,7 +80,6 @@ export class UsersService {
     if (!user) {
         throw new NotFoundException(`User dengan ID ${id} tidak ditemukan.`);
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...result } = user;
     return result;
   }

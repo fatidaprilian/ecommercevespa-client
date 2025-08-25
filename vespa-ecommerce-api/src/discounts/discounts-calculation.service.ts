@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Product, User } from '@prisma/client';
 
-// Tipe data untuk hasil kalkulasi
 export interface CalculatedPrice {
   originalPrice: number;
   discountPercentage: number;
@@ -28,7 +27,6 @@ export class DiscountsCalculationService {
     let discountPercentage = 0;
     let appliedRule: 'PRODUCT' | 'CATEGORY' | 'DEFAULT' | 'NONE' = 'NONE';
 
-    // Prioritas #1: Cek diskon spesifik per PRODUK
     const productDiscount = await this.prisma.userProductDiscount.findUnique({
       where: { userId_productId: { userId: user.id, productId: product.id } },
     });
@@ -37,7 +35,6 @@ export class DiscountsCalculationService {
       discountPercentage = productDiscount.discountPercentage;
       appliedRule = 'PRODUCT';
     } else if (product.categoryId) {
-      // Prioritas #2: Jika tidak ada, cek diskon per KATEGORI
       const categoryDiscount = await this.prisma.userCategoryDiscount.findUnique({
         where: { userId_categoryId: { userId: user.id, categoryId: product.categoryId } },
       });
@@ -46,17 +43,14 @@ export class DiscountsCalculationService {
         discountPercentage = categoryDiscount.discountPercentage;
         appliedRule = 'CATEGORY';
       } else {
-        // Prioritas #3: Jika tidak ada, gunakan diskon DASAR milik user
         discountPercentage = user.defaultDiscountPercentage;
         appliedRule = discountPercentage > 0 ? 'DEFAULT' : 'NONE';
       }
     } else {
-        // Fallback jika produk tidak punya kategori, langsung gunakan diskon dasar
         discountPercentage = user.defaultDiscountPercentage;
         appliedRule = discountPercentage > 0 ? 'DEFAULT' : 'NONE';
     }
 
-    // Hitung harga final
     const finalPrice = originalPrice - (originalPrice * (discountPercentage / 100));
 
     return {

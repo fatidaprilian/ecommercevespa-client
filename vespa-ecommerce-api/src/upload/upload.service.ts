@@ -21,7 +21,7 @@ export class UploadService {
     try {
       const fileStr = bufferToDataURI(file.buffer, file.mimetype);
       const result = await cloudinary.uploader.upload(fileStr, {
-        folder: 'vespa_parts', // Folder umum untuk gambar produk
+        folder: 'vespa_parts',
       });
 
       return {
@@ -34,18 +34,15 @@ export class UploadService {
       throw new BadRequestException(`Upload ke Cloudinary gagal: ${error.message}`);
     }
   }
-
-  // --- REVISI UTAMA DI SINI ---
   async uploadProofOfPayment(
     orderId: string,
     file: Express.Multer.File,
-    manualPaymentMethodId: string, // 1. Terima parameter ID bank
+    manualPaymentMethodId: string,
   ) {
     if (!file) {
       throw new BadRequestException('File bukti pembayaran tidak ditemukan.');
     }
 
-    // Cari record payment yang terhubung dengan orderId
     const payment = await this.prisma.payment.findUnique({
         where: { orderId },
     });
@@ -57,15 +54,14 @@ export class UploadService {
     try {
       const fileStr = bufferToDataURI(file.buffer, file.mimetype);
       const result = await cloudinary.uploader.upload(fileStr, {
-        folder: 'proof_of_payments', // Folder khusus untuk bukti bayar
+        folder: 'proof_of_payments',
       });
 
-      // 2. Update record payment dengan URL gambar DAN ID bank yang dipilih reseller
       return this.prisma.payment.update({
           where: { id: payment.id },
           data: {
             proofOfPayment: result.secure_url,
-            manualPaymentMethodId: manualPaymentMethodId, // 3. Simpan ID bank ke database
+            manualPaymentMethodId: manualPaymentMethodId,
           }
       });
 

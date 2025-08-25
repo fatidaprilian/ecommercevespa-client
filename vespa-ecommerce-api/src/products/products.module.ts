@@ -3,10 +3,10 @@
 import { Module } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
-import { DiscountsModule } from 'src/discounts/discounts.module'; // <-- Tambah import
+import { DiscountsModule } from 'src/discounts/discounts.module';
 
 @Module({
-  imports: [DiscountsModule], // <-- Daftarkan di sini
+  imports: [DiscountsModule],
   controllers: [ProductsController],
   providers: [ProductsService],
 })

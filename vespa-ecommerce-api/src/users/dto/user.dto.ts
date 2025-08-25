@@ -1,10 +1,10 @@
-import { Role } from '@prisma/client'; // <-- Ganti UserRole menjadi Role
+import { Role } from '@prisma/client';
 
 export class UserDto {
   id: string;
   email: string;
   name?: string;
-  role: Role; // <-- Ganti UserRole menjadi Role
+  role: Role;
   createdAt: Date;
   updatedAt: Date;
 }

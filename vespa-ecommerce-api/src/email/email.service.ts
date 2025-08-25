@@ -16,11 +16,10 @@ export class EmailService {
     this.senderName = this.configService.getOrThrow<string>('EMAIL_SENDER_NAME');
     this.senderEmail = this.configService.getOrThrow<string>('EMAIL_SENDER_ADDRESS');
 
-    // Konfigurasi transporter untuk Gmail
     this.transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
-      secure: true, // true for 465, false for other ports
+      secure: true,
       auth: {
         user: this.configService.getOrThrow<string>('GMAIL_USER'),
         pass: this.configService.getOrThrow<string>('GMAIL_APP_PASSWORD'),

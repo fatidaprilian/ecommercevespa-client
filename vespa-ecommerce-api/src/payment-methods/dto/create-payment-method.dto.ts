@@ -22,10 +22,9 @@ export class CreatePaymentMethodDto {
   accurateBankName: string;
 
   @IsInt()
-  @IsOptional() // Dibuat opsional untuk kompatibilitas
+  @IsOptional()
   accurateBankId?: number;
 
-  // ✅ TAMBAHKAN INI
   @IsString()
   @IsNotEmpty()
   accurateBankNo: string;

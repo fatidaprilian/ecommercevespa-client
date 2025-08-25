@@ -42,7 +42,6 @@ export class WebhooksService {
     }
   }
 
-  // Handler untuk Sales Order webhook (Tidak ada perubahan)
   private async processSalesOrderWebhook(eventData: any) {
     const { salesOrderNo, salesOrderId, action } = eventData;
     
@@ -66,7 +65,6 @@ export class WebhooksService {
     }
   }
 
-  // Handler untuk Sales Invoice webhook (Logika Diperbaiki di sini)
   private async processSalesInvoiceWebhook(eventData: any) {
     const salesInvoiceNo = eventData.salesInvoiceNo;
     if (!salesInvoiceNo) {
@@ -120,24 +118,18 @@ export class WebhooksService {
       });
 
       if (order) {
-        // --- 👇 AWAL DARI PERBAIKAN LOGIKA UTAMA 👇 ---
-        // Jika status pesanan masih PENDING, berarti ini adalah konfirmasi pembayaran.
         if (order.status === OrderStatus.PENDING) {
           await this.prisma.order.update({
             where: { id: order.id },
             data: {
               accurateSalesInvoiceNumber: salesInvoiceNo,
-              // Langsung ubah status menjadi PROCESSING karena invoice lunas adalah pemicunya.
               status: OrderStatus.PROCESSING,
             },
           });
-          // Ubah pesan log untuk merefleksikan perubahan status
           this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} (LUNAS) di-link ke order ${order.id} (${order.orderNumber}). Status diubah ke PROCESSING.`);
         } else {
-          // Jika status sudah bukan PENDING (misal sudah PROCESSING atau SHIPPED), abaikan webhook ini untuk mencegah downgrade status.
           this.logger.log(`Pesanan ${order.id} sudah dalam status ${order.status}. Mengabaikan webhook faktur.`);
         }
-        // --- 👆 AKHIR DARI PERBAIKAN LOGIKA UTAMA 👆 ---
       } else {
         this.logger.warn(`❌ Order tidak ditemukan untuk Sales Order: ${salesOrderNumber}`);
       }
@@ -147,7 +139,6 @@ export class WebhooksService {
     }
   }
 
-  // Handler untuk Sales Receipt webhook (Logika untuk MEMBER, tidak diubah)
   private async processSalesReceiptWebhook(eventData: any) {
     const salesReceiptNo = eventData.salesReceiptNo;
     if (!salesReceiptNo) {
@@ -194,7 +185,6 @@ export class WebhooksService {
     }
   }
 
-  // Handler untuk Biteship (Tidak ada perubahan)
   async handleBiteshipTrackingUpdate(payload: any) {
     const { status, courier_waybill_id: waybill_id } = payload;
 

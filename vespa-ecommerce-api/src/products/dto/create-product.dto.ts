@@ -44,7 +44,6 @@ export class CreateProductDto {
   @IsOptional()
   images?: ProductImageDto[];
 
-  // --- PENAMBAHAN DI SINI ---
   @IsInt({ message: 'Berat harus berupa angka bulat (gram).' })
   @Min(1, { message: 'Berat minimal adalah 1 gram.' })
   @IsOptional()

@@ -13,7 +13,6 @@ export class PaymentMethodsService {
   async create(createPaymentMethodDto: CreatePaymentMethodDto) {
     const { bankName, accountNumber, accountHolder, logoUrl, accurateBankName } = createPaymentMethodDto;
 
-    // Membuat kunci unik yang konsisten untuk pemetaan.
     // Contoh: "manual_bca_1234567890"
     const key = `manual_${bankName.toLowerCase().replace(/ /g, '_')}_${accountNumber}`;
 
@@ -23,20 +22,18 @@ export class PaymentMethodsService {
         accountHolder,
         accountNumber,
         logoUrl,
-        accurateBankName, // Menyimpan nama akun bank di Accurate
-        paymentMethodKey: key, // Menyimpan kunci unik yang baru dibuat
+        accurateBankName,
+        paymentMethodKey: key,
       },
     });
   }
 
-  // Menampilkan semua metode pembayaran untuk admin
   findAll() {
     return this.prisma.manualPaymentMethod.findMany({
       orderBy: { bankName: 'asc' },
     });
   }
 
-  // Menampilkan hanya yang aktif (untuk customer di frontend)
   findAllActive() {
     return this.prisma.manualPaymentMethod.findMany({
       where: { isActive: true },
@@ -44,7 +41,6 @@ export class PaymentMethodsService {
     });
   }
 
-  // Menemukan satu metode pembayaran
   async findOne(id: string) {
     const method = await this.prisma.manualPaymentMethod.findUnique({
       where: { id },
@@ -60,12 +56,11 @@ export class PaymentMethodsService {
    * Jika bankName atau accountNumber berubah, kita juga perbarui paymentMethodKey.
    */
   async update(id: string, updatePaymentMethodDto: UpdatePaymentMethodDto) {
-    await this.findOne(id); // Pastikan data ada sebelum update
+    await this.findOne(id);
 
     const { bankName, accountNumber, ...rest } = updatePaymentMethodDto;
     const dataToUpdate: any = { ...rest };
 
-    // Jika nama bank atau nomor rekening diubah, buat ulang kuncinya
     if (bankName || accountNumber) {
       const currentMethod = await this.findOne(id);
       const newBankName = bankName || currentMethod.bankName;
@@ -82,9 +77,8 @@ export class PaymentMethodsService {
     });
   }
 
-  // Menghapus metode pembayaran
   async remove(id: string) {
-    await this.findOne(id); // Pastikan data ada sebelum dihapus
+    await this.findOne(id);
     return this.prisma.manualPaymentMethod.delete({
       where: { id },
     });

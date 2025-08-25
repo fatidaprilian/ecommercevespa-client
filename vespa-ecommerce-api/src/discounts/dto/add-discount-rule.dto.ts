@@ -9,7 +9,7 @@ export class AddDiscountRuleDto {
 
   @IsString()
   @IsNotEmpty()
-  ruleId: string; // Ini bisa berupa productId atau categoryId
+  ruleId: string;
 
   @IsNumber()
   @Min(0)

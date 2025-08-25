@@ -71,7 +71,7 @@ export function ProductCard({ product }: ProductCardProps) {
                              className="rounded-full h-9 w-9 text-gray-700 hover:bg-gray-200"
                              onClick={handleAddToCart}
                              aria-label="Tambah ke keranjang"
-                             disabled={product.stock === 0} // Tambahkan disable jika stok habis
+                             disabled={product.stock === 0}
                          >
                              <ShoppingCart className="h-5 w-5" />
                          </Button>

@@ -16,7 +16,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      // Ambil message dari error asli, atau gunakan default
       message: typeof errorResponse === 'string' ? errorResponse : (errorResponse as any).message,
     });
   }

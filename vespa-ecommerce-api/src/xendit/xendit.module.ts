@@ -5,8 +5,8 @@ import { XenditService } from './xendit.service';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [ConfigModule], // Impor ConfigModule agar bisa dipakai di service
+  imports: [ConfigModule],
   providers: [XenditService],
-  exports: [XenditService], // Export service agar bisa dipakai modul lain (seperti OrdersModule)
+  exports: [XenditService],
 })
-export class XenditModule {} // <-- TAMBAHKAN 'export'
+export class XenditModule {}

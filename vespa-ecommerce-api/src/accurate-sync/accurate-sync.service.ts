@@ -8,7 +8,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccurateService } from '../accurate/accurate.service';
 import { Order, User } from '@prisma/client';
 
-// Type definitions for Accurate API responses
 interface AccurateCustomer {
     id: number;
     name: string;
@@ -54,7 +53,7 @@ export class AccurateSyncService {
 
     /**
      * The core logic to create a "Sales Order" in Accurate.
-     * 🔥 UPDATED: Sekarang cek role user - hanya reseller yang boleh langsung buat Sales Order
+     * This function will be called by the BullMQ worker.
      */
     async processSalesOrderCreation(orderId: string) {
         this.logger.log(`WORKER: Processing Sales Order creation for Order ID: ${orderId}`);
@@ -68,7 +67,6 @@ export class AccurateSyncService {
             throw new Error(`Order with ID ${orderId} not found during job processing.`);
         }
 
-        // 🔥 TAMBAHAN: Cek role user - hanya reseller yang boleh langsung buat Sales Order
         if (order.user.role !== 'RESELLER') {
             this.logger.log(`SKIPPED: Sales Order creation for Order ID: ${orderId} - User ${order.user.email} is not a RESELLER (role: ${order.user.role})`);
             return { skipped: true, reason: 'User is not a reseller' };
@@ -114,12 +112,10 @@ export class AccurateSyncService {
             
             const salesOrderNumber = response.data.r.number as string;
 
-            // 🔥 PERBAIKAN: Status tetap PENDING, nanti berubah saat Sales Invoice dibuat
             await this.prisma.order.update({
                 where: { id: orderId },
                 data: { 
                     accurateSalesOrderNumber: salesOrderNumber 
-                    // status tetap PENDING sampai admin buat Sales Invoice
                 },
             });
 
@@ -133,13 +129,11 @@ export class AccurateSyncService {
         }
     }
     
-    // 👇 --- NEW CRON JOB ADDED HERE --- 👇
     @Cron(CronExpression.EVERY_DAY_AT_2AM)
     async scheduleWebhookRenewal() {
         this.logger.log('CRON JOB: Triggering Accurate webhook renewal.');
         await this.accurateService.renewWebhook();
     }
-    // 👆 --- END OF NEW CRON JOB --- 👆
 
     @Cron(CronExpression.EVERY_MINUTE)
     async scheduleProductSync() {

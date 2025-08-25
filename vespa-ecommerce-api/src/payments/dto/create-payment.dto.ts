@@ -17,7 +17,6 @@ export class CreatePaymentMethodDto {
   @IsOptional()
   logoUrl?: string;
 
-  // 👇 TAMBAHKAN FIELD INI
   @IsString()
   @IsNotEmpty()
   accurateBankName: string;

@@ -10,7 +10,7 @@ export class DashboardService {
 
   async getStats() {
     const totalProducts = await this.prisma.product.count();
-    const totalOrdersCount = await this.prisma.order.count(); // Diubah dari newOrdersCount
+    const totalOrdersCount = await this.prisma.order.count();
     const totalUsers = await this.prisma.user.count({
       where: {
         role: {
@@ -50,7 +50,7 @@ export class DashboardService {
 
     return {
       totalProducts,
-      totalOrdersCount, // Mengirim total pesanan
+      totalOrdersCount,
       totalUsers,
       monthlyRevenue: monthlyRevenue._sum.totalAmount || 0,
       recentOrders,

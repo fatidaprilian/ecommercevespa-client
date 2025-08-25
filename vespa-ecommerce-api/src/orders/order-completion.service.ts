@@ -11,17 +11,17 @@ export class OrderCompletionService {
   private readonly logger = new Logger(OrderCompletionService.name);
   constructor(private prisma: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM) // Jalankan setiap jam 1 pagi
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async handleCompleteOrders() {
     this.logger.log('Running cron job to complete old delivered orders...');
 
-    const threeDaysAgo = subDays(new Date(), 3); // Ambil tanggal 3 hari yang lalu
+    const threeDaysAgo = subDays(new Date(), 3);
 
     const ordersToComplete = await this.prisma.order.findMany({
       where: {
         status: OrderStatus.DELIVERED,
         updatedAt: {
-          lt: threeDaysAgo, // Cari pesanan yang statusnya diupdate sebelum 3 hari yang lalu
+          lt: threeDaysAgo,
         },
       },
     });

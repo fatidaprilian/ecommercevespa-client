@@ -15,17 +15,14 @@ export class WebhooksController {
   @HttpCode(HttpStatus.OK)
   handleAccurateWebhook(@Body() payload: any) {
     this.logger.log('--- ACCURATE WEBHOOK RECEIVED ---');
-    // Payload dari Accurate bisa berupa array, kita ambil elemen pertama
     const webhookData = Array.isArray(payload) ? payload[0] : payload;
     this.logger.log(JSON.stringify(webhookData, null, 2));
     
-    // Panggil handler utama di service
     this.webhooksService.handleAccurateWebhook(webhookData);
     
     return { message: 'Accurate webhook received successfully' };
   }
 
-  // Endpoint untuk Biteship (tidak diubah)
   @Public()
   @Post('biteship')
   @HttpCode(HttpStatus.OK)

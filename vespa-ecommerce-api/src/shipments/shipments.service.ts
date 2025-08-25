@@ -38,8 +38,6 @@ export class ShipmentsService {
         { company: courierCompany, type: courierType }
     );
 
-    // FIX UTAMA: Pastikan kita menyimpan waybill_id, bukan id order Biteship.
-    // biteship-go terkadang mengembalikan waybill_id, biteship-node mengembalikan tracking_id
     const trackingNumber = bookingResult.courier.waybill_id || bookingResult.courier.tracking_id;
 
     if (!trackingNumber) {
@@ -50,7 +48,7 @@ export class ShipmentsService {
       data: {
         orderId: order.id,
         courier: bookingResult.courier.company.toUpperCase(),
-        trackingNumber: trackingNumber, // Menyimpan nomor resi yang benar
+        trackingNumber: trackingNumber,
         shippingCost: bookingResult.price,
       },
     });

@@ -19,7 +19,6 @@ export class ShipmentsController {
     @Param('orderId') orderId: string,
     @Body() createShipmentDto: CreateShipmentDto,
   ) {
-    // Panggil service dengan data baru
     return this.shipmentsService.createShipment(
       orderId,
       createShipmentDto.courier_company,

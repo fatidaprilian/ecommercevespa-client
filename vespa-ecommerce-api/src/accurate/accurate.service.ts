@@ -178,13 +178,11 @@ export class AccurateService {
         });
     }
     
-    // 👇 **PERUBAHAN FINAL ADA DI SINI** 👇
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Mengambil detail Faktur Penjualan untuk nomor: ${invoiceNumber}`);
             const apiClient = await this.getAccurateApiClient();
             
-            // Menggunakan endpoint /detail.do yang lebih andal untuk mendapatkan data lengkap
             const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
                 params: {
                     number: invoiceNumber
@@ -192,7 +190,7 @@ export class AccurateService {
             });
 
             if (response.data?.s && response.data.d) {
-                // Endpoint /detail.do langsung mengembalikan objek, bukan array
+
                 return response.data.d;
             }
             

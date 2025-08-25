@@ -2,14 +2,12 @@
 
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { Public } from 'src/auth/decorators/public.decorator'; // <-- Pastikan ini diimpor
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  // --- PERBAIKAN UTAMA DI SINI ---
-  // Tambahkan decorator @Public() agar endpoint ini tidak memerlukan JWT
   @Public() 
   @Post('midtrans-webhook')
   @HttpCode(HttpStatus.OK)

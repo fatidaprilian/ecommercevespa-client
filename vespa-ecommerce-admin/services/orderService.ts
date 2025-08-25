@@ -49,7 +49,7 @@ export interface Order {
   shipment: Shipment | null;
   payment?: {
       proofOfPayment?: string | null;
-      manualPaymentMethod?: { // Tambahkan ini untuk detail bank
+      manualPaymentMethod?: { 
         bankName: string;
         accountNumber: string;
       } | null;
@@ -76,7 +76,7 @@ export const getOrders = async ({ page, search }: { page: number; search: string
   const { data } = await api.get('/orders', {
     params: {
       page,
-      limit: 10, // Menampilkan 10 pesanan per halaman
+      limit: 10, 
       search: search || undefined,
     },
   });

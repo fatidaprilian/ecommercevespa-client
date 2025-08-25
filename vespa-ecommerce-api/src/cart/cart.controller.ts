@@ -10,7 +10,6 @@ import {
   Delete,
   Req,
   UseGuards,
-  // ParseUUIDPipe has been removed to support Prisma's CUIDs
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { AddItemDto } from './dto/add-item.dto';
@@ -36,7 +35,7 @@ export class CartController {
   @Patch('items/:itemId')
   updateItem(
     @Req() req: AuthenticatedRequest,
-    @Param('itemId') itemId: string, // FIX: Removed ParseUUIDPipe
+    @Param('itemId') itemId: string,
     @Body() updateItemDto: UpdateItemDto,
   ) {
     return this.cartService.updateItemQuantity(req.user.id, itemId, updateItemDto);
@@ -45,7 +44,7 @@ export class CartController {
   @Delete('items/:itemId')
   removeItem(
     @Req() req: AuthenticatedRequest,
-    @Param('itemId') itemId: string, // FIX: Removed ParseUUIDPipe
+    @Param('itemId') itemId: string,
   ) {
     return this.cartService.removeItem(req.user.id, itemId);
   }

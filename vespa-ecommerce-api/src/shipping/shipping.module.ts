@@ -3,10 +3,10 @@
 import { Module } from '@nestjs/common';
 import { ShippingService } from './shipping.service';
 import { ShippingController } from './shipping.controller';
-import { SettingsModule } from 'src/settings/settings.module'; // <-- 1. IMPORT SettingsModule
+import { SettingsModule } from 'src/settings/settings.module';
 
 @Module({
-  imports: [SettingsModule], // <-- 2. DAFTARKAN DI SINI
+  imports: [SettingsModule],
   providers: [ShippingService],
   controllers: [ShippingController],
   exports: [ShippingService],

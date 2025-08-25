@@ -53,7 +53,6 @@ export class XenditService {
    */
   validateCallbackToken(tokenFromHeader: string | undefined): void {
     if (tokenFromHeader !== this.xenditWebhookToken) {
-      // Lempar error jika token tidak cocok.
       throw new UnauthorizedException('Token webhook tidak valid.');
     }
   }

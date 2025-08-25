@@ -7,6 +7,6 @@ import { SettingsController } from './settings.controller';
 @Module({
   controllers: [SettingsController],
   providers: [SettingsService],
-  exports: [SettingsService], // Ekspor agar bisa dipakai service lain
+  exports: [SettingsService],
 })
 export class SettingsModule {}

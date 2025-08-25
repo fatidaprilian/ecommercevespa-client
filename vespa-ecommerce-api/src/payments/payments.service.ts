@@ -17,29 +17,24 @@ export class PaymentsService {
   ) {}
 
   async createPaymentForOrder(
-    order: Order & { items: any[], subtotal: number, taxAmount: number }, // Ensure subtotal and taxAmount are typed
+    order: Order & { items: any[], subtotal: number, taxAmount: number },
     user: User,
     shippingCost: number,
     prismaClient: Prisma.TransactionClient = this.prisma,
   ) {
-    // --- START OF FIX ---
-    // DO NOT recalculate anything here.
-    // The `order.totalAmount` from OrdersService is the final, correct amount.
     const finalAmount = order.totalAmount;
 
-    // Pass the correct, pre-calculated tax amount to Midtrans.
     const midtransTransaction = await this.midtransService.createSnapTransaction(
         order, 
         user, 
         shippingCost, 
         order.taxAmount 
     );
-    // --- END OF FIX ---
 
     await prismaClient.payment.create({
       data: {
         order: { connect: { id: order.id } },
-        amount: finalAmount, // Use the final amount
+        amount: finalAmount,
         method: 'MIDTRANS_SNAP',
         status: PaymentStatus.PENDING,
         transactionId: midtransTransaction.token,

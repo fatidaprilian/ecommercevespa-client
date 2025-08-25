@@ -33,11 +33,9 @@ export class CreateOrderDto {
   @IsNotEmpty()
   destinationPostalCode: string;
 
-  // 👇 **PERBAIKAN UTAMA DI SINI** 👇
   @IsString()
   @IsNotEmpty()
-  destinationAreaId: string; // Tambahkan properti ini
-  // 👆 **END OF CHANGES** 👆
+  destinationAreaId: string;
 
   @IsNumber()
   @IsNotEmpty()

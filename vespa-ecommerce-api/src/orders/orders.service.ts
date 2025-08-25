@@ -41,7 +41,6 @@ export class OrdersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Pengguna tidak ditemukan.');
 
-    // Langkah 1: Buat pesanan dalam satu transaksi database.
     const createdOrder = await this.prisma.$transaction(async (tx) => {
       let subtotal = 0;
       let totalDiscount = 0;
@@ -86,7 +85,6 @@ export class OrdersService {
           status: OrderStatus.PENDING,
           items: { create: orderItemsData },
         },
-        // Ambil data yang dibutuhkan untuk langkah selanjutnya
         include: {
           items: {
             include: {
@@ -105,19 +103,15 @@ export class OrdersService {
       return order;
     });
 
-    // Langkah 2: Lakukan aksi SETELAH transaksi database selesai.
     if (user.role === Role.RESELLER) {
-      // Untuk Reseller: Tambahkan job ke antrean untuk sinkronisasi Accurate.
       await this.accurateSyncService.addSalesOrderJobToQueue(createdOrder.id);
       return { ...createdOrder, redirect_url: null };
     } else {
-      // Untuk Member: Proses pembayaran seperti biasa (alur tidak berubah).
       const payment = await this.paymentsService.createPaymentForOrder(createdOrder, user, shippingCost);
       return { ...createdOrder, redirect_url: payment.redirect_url };
     }
   }
   
-  // (Fungsi findAll, findOne, dan updateStatus tidak ada perubahan)
 
   async findAll(user: UserPayload, queryDto: PaginationDto & { search?: string }) {
     const { page = 1, limit = 10, search } = queryDto;

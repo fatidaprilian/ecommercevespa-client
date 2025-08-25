@@ -5,13 +5,13 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { MidtransModule } from 'src/midtrans/midtrans.module';
 import { ShipmentsModule } from 'src/shipments/shipments.module';
-import { AccurateSyncModule } from 'src/accurate-sync/accurate-sync.module'; // <-- 1. IMPORT
+import { AccurateSyncModule } from 'src/accurate-sync/accurate-sync.module';
 
 @Module({
   imports: [
     MidtransModule, 
     ShipmentsModule,
-    AccurateSyncModule // <-- 2. DAFTARKAN DI SINI
+    AccurateSyncModule
   ], 
   controllers: [PaymentsController],
   providers: [PaymentsService],

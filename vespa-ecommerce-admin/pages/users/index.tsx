@@ -108,7 +108,7 @@ export default function UsersPage() {
                         placeholder="Cari berdasarkan nama atau email..."
                         className="pl-9"
                         value={searchTerm}
-                        onChange={(e) => {setSearchTerm(e.target.value); setPage(1);}} // Reset ke halaman 1 saat mencari
+                        onChange={(e) => {setSearchTerm(e.target.value); setPage(1);}} 
                     />
                 </div>
             </div>

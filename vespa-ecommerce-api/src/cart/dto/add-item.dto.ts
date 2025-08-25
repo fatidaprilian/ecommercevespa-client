@@ -9,6 +9,6 @@ export class AddItemDto {
 
   @IsNumber()
   @IsNotEmpty()
-  @Min(1) // Kuantitas minimal adalah 1
+  @Min(1)
   quantity: number;
 }

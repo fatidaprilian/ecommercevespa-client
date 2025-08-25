@@ -7,7 +7,7 @@ import {
   UseGuards,
   UseInterceptors,
   Param,
-  Body, // 1. Impor decorator Body
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -16,7 +16,7 @@ import { Role } from '@prisma/client';
 import { Express } from 'express';
 import { UploadService } from './upload.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { UploadProofDto } from './dto/upload-proof.dto'; // 2. Impor DTO yang akan kita buat
+import { UploadProofDto } from './dto/upload-proof.dto';
 
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,16 +30,14 @@ export class UploadController {
     return this.uploadService.uploadImageToCloudinary(file);
   }
 
-  // --- PERBAIKAN UTAMA DI SINI ---
   @Post('payment-proof/:orderId')
-  @Roles(Role.RESELLER) // Hanya RESELLER yang bisa mengakses endpoint ini
+  @Roles(Role.RESELLER)
   @UseInterceptors(FileInterceptor('file'))
   async uploadProofOfPayment(
     @Param('orderId') orderId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body() uploadProofDto: UploadProofDto, // 3. Terima data tambahan dari body request
+    @Body() uploadProofDto: UploadProofDto,
   ) {
-    // 4. Teruskan semua data (file dan ID bank) ke service
     return this.uploadService.uploadProofOfPayment(
       orderId,
       file,

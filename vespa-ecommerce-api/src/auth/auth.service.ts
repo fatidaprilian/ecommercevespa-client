@@ -120,7 +120,7 @@ export class AuthService {
       throw new BadRequestException('Email sudah terverifikasi.');
 
     const verificationToken = crypto.randomInt(100000, 999999).toString();
-    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
+    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     await this.prisma.user.update({
       where: { email },
@@ -207,7 +207,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         passwordResetToken: token,
-        passwordResetTokenExpires: { gt: new Date() }, // Cari token yang belum expired
+        passwordResetTokenExpires: { gt: new Date() },
       },
     });
 

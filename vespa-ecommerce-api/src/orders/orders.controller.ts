@@ -1,6 +1,6 @@
 // file: vespa-ecommerce-api/src/orders/orders.controller.ts
 
-import { Controller, Get, Post, Body, Param, UseGuards, Req, Patch, Query } from '@nestjs/common'; // 1. Impor Query
+import { Controller, Get, Post, Body, Param, UseGuards, Req, Patch, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
@@ -9,7 +9,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { Role } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
-import { PaginationDto } from 'src/common/dto/pagination.dto'; // 2. Impor DTO Paginasi
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Controller('orders')
 @UseGuards(AuthGuard('jwt'))
@@ -22,16 +22,13 @@ export class OrdersController {
     return this.ordersService.create(userId, createOrderDto);
   }
 
-  // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
   @Get()
   findAll(
     @Req() req: AuthenticatedRequest,
-    @Query() paginationDto: PaginationDto & { search?: string } // 3. Terima query
+    @Query() paginationDto: PaginationDto & { search?: string }
   ) {
-    // 4. Teruskan semua data (user dan query) ke service
     return this.ordersService.findAll(req.user, paginationDto);
   }
-  // 👆 --- AKHIR PERUBAHAN --- 👆
   
   @Get(':id')
   findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {

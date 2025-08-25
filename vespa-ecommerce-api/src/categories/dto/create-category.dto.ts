@@ -7,9 +7,7 @@ export class CreateCategoryDto {
   @MinLength(3, { message: 'Nama kategori minimal 3 karakter.' })
   name: string;
 
-  // 👇 **START OF CHANGES** 👇
   @IsUrl({}, { message: 'URL gambar tidak valid.' })
   @IsOptional()
   imageUrl?: string;
-  // 👆 **END OF CHANGES** 👆
 }

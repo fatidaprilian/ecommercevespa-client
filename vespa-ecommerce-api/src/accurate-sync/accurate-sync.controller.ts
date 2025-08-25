@@ -17,7 +17,7 @@ export class AccurateSyncController {
      * Hanya bisa diakses oleh ADMIN.
      */
     @Post('products')
-    @UseGuards(AuthGuard('jwt'), RolesGuard) // Terapkan AuthGuard dan RolesGuard
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles(Role.ADMIN)
     async triggerProductSync() {
         return this.accurateSyncService.syncProductsFromAccurate();

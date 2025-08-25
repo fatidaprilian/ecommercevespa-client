@@ -12,6 +12,6 @@ export class PaginationDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100) // Batasi limit maksimum untuk mencegah query yang berlebihan
+  @Max(100)
   limit?: number = 10;
 }

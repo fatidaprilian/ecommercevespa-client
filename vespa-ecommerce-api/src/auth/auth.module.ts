@@ -9,13 +9,13 @@ import { UsersModule } from 'src/users/users.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LocalStrategy } from './strategies/local.strategy';
-import { EmailModule } from 'src/email/email.module'; // <-- WAJIB DI-IMPORT
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
-    EmailModule, // <-- WAJIB DIDAFTARKAN DI SINI
+    EmailModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -1,7 +1,6 @@
 import api from '@/lib/api';
 import { Order } from '@/types';
 
-// Tambahkan tipe data untuk respons paginasi
 export interface PaginatedOrders {
   data: Order[];
   meta: {

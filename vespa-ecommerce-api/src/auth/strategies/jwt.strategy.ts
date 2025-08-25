@@ -7,12 +7,11 @@ import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UserPayload } from '../interfaces/jwt.payload'; 
 
-// Definisikan tipe data untuk payload JWT mentah
 export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
-  name: string; // 'name' sudah ada di sini
+  name: string;
 }
 
 const cookieExtractor = (req: Request): string | null => {
@@ -47,12 +46,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @returns Objek user yang akan dilampirkan ke `req.user`.
    */
   async validate(payload: JwtPayload): Promise<UserPayload> {
-    // 'name' dari payload token sekarang ikut dikembalikan
     return { 
       id: payload.sub, 
       email: payload.email, 
       role: payload.role,
-      name: payload.name, // Baris ini sudah benar
+      name: payload.name,
     };
   }
 }

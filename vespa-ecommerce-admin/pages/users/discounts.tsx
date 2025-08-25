@@ -7,6 +7,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { ArrowLeft, PlusCircle, Trash2, Percent, Search, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useDebounce } from 'use-debounce';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -15,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { getUserById } from '@/services/userService';
-import { getCategories, Category, PaginatedCategories } from '@/services/categoryService'; // Import PaginatedCategories
+import { getCategories, Category, PaginatedCategories } from '@/services/categoryService';
 import { searchProducts, Product } from '@/services/productService';
 import api from '@/lib/api';
 
@@ -337,13 +338,63 @@ function SetDiscountDialog({ isOpen, onClose, itemName, onSubmit }: { isOpen: bo
 
 function CategoryPicker({ onSelect }: { onSelect: (category: Category) => void }) {
     const [isOpen, setIsOpen] = useState(false);
-    const { data: categoriesResponse } = useQuery<PaginatedCategories, Error>({ 
-        queryKey: ['categories'], 
-        queryFn: () => getCategories({ page: 1, search: '' })
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
+
+    const { data: categoriesResponse, isLoading } = useQuery<PaginatedCategories, Error>({
+        queryKey: ['categories', 1, debouncedSearchTerm],
+        queryFn: () => getCategories({ page: 1, search: debouncedSearchTerm, limit: 20 }),
     });
     const categories = categoriesResponse?.data;
-    
-    return(<Dialog open={isOpen} onOpenChange={setIsOpen}><DialogTrigger asChild><Button type="button" variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4"/> Tambah</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Pilih Kategori</DialogTitle></DialogHeader><div className="max-h-80 overflow-y-auto">{categories?.map(cat => (<div key={cat.id} onClick={() => { onSelect(cat); setIsOpen(false); }} className="p-2 rounded-md hover:bg-accent cursor-pointer">{cat.name}</div>))}</div></DialogContent></Dialog>);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button type="button" variant="outline" size="sm">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Tambah
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Pilih Kategori</DialogTitle>
+                </DialogHeader>
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Cari nama kategori..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                    {isLoading && (
+                        <div className="p-4 text-center text-sm text-muted-foreground flex items-center justify-center">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Mencari...
+                        </div>
+                    )}
+                    {!isLoading && !categories?.length && (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                            Kategori tidak ditemukan.
+                        </div>
+                    )}
+                    {categories?.map(cat => (
+                        <div
+                            key={cat.id}
+                            onClick={() => {
+                                onSelect(cat);
+                                setIsOpen(false);
+                                setSearchTerm('');
+                            }}
+                            className="p-2 rounded-md hover:bg-accent cursor-pointer"
+                        >
+                            {cat.name}
+                        </div>
+                    ))}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 function ProductPicker({ onSelect }: { onSelect: (product: Product) => void }) {

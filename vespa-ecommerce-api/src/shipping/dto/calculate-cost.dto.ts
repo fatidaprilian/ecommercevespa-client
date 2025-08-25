@@ -13,7 +13,6 @@ class ItemDto {
 export class CalculateCostDto {
     @IsString() @IsNotEmpty() destination_area_id: string;
 
-    // ✅ TAMBAHKAN FIELD INI
     @IsString() @IsNotEmpty() destination_postal_code: string;
 
     @IsArray()

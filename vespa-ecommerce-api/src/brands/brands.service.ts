@@ -3,8 +3,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
-import { Prisma } from '@prisma/client'; // 1. Impor Prisma
-import { PaginationDto } from 'src/common/dto/pagination.dto'; // 2. Impor DTO Paginasi
+import { Prisma } from '@prisma/client';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class BrandsService {
@@ -14,7 +14,6 @@ export class BrandsService {
     return this.prisma.brand.create({ data: createBrandDto });
   }
 
-  // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
   async findAll(queryDto: PaginationDto & { search?: string }) {
     const { page = 1, limit = 10, search } = queryDto;
     const skip = (Number(page) - 1) * Number(limit);
@@ -47,7 +46,6 @@ export class BrandsService {
       },
     };
   }
-  // 👆 --- AKHIR PERUBAHAN --- 👆
 
   async findOne(id: string) {
     const brand = await this.prisma.brand.findUnique({ where: { id } });

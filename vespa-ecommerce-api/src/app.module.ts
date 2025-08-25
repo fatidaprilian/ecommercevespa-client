@@ -5,7 +5,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-// Impor semua modul fitur Anda
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -74,9 +73,9 @@ import { EmailModule } from './email/email.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         connection: {
-          host: configService.get('REDIS_HOST')!, // <-- Tambahkan '!'
-          port: parseInt(configService.get('REDIS_PORT')!, 10), // <-- Tambahkan '!' di sini
-          password: configService.get('REDIS_PASSWORD'), // Password bisa opsional
+          host: configService.get('REDIS_HOST')!, 
+          port: parseInt(configService.get('REDIS_PORT')!, 10), 
+          password: configService.get('REDIS_PASSWORD'), 
         },
       }),
     }),

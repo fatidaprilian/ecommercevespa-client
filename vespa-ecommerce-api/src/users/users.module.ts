@@ -4,7 +4,7 @@ import { UsersController } from './users.controller';
 
 @Module({
   controllers: [UsersController],
-  providers: [UsersService], // PrismaService dihapus dari sini
+  providers: [UsersService],
   exports: [UsersService],
 })
 export class UsersModule {}

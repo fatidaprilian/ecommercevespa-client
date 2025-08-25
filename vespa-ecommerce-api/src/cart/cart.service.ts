@@ -64,15 +64,12 @@ export class CartService {
       });
     }
 
-    // ✅ PERBAIKAN UTAMA: Proses item untuk SEMUA pengguna
     const processedItems = await Promise.all(
       cart.items.map(async (item) => {
         let priceInfo;
         if (user.role === Role.RESELLER) {
-          // Logika untuk Reseller (sudah benar)
           priceInfo = await this.discountsCalcService.calculatePrice(user, item.product);
         } else {
-          // Logika fallback untuk pengguna biasa (MEMBER/ADMIN)
           priceInfo = {
             originalPrice: item.product.price,
             discountPercentage: 0,
@@ -81,9 +78,7 @@ export class CartService {
           };
         }
         
-        // Ganti harga di produk dengan harga final
         item.product.price = priceInfo.finalPrice;
-        // Selalu sisipkan detail priceInfo
         (item.product as any).priceInfo = priceInfo;
         return item;
       })

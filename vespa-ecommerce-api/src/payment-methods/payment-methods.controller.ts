@@ -14,7 +14,6 @@ import { Public } from 'src/auth/decorators/public.decorator';
 export class PaymentMethodsController {
   constructor(private readonly paymentMethodsService: PaymentMethodsService) {}
 
-  // Endpoint untuk Admin - Membuat
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
@@ -22,7 +21,6 @@ export class PaymentMethodsController {
     return this.paymentMethodsService.create(createPaymentMethodDto);
   }
 
-  // Endpoint untuk Admin - Melihat semua (aktif & non-aktif)
   @Get('all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
@@ -30,14 +28,12 @@ export class PaymentMethodsController {
     return this.paymentMethodsService.findAll();
   }
 
-  // Endpoint Publik - Pelanggan hanya bisa melihat metode yang aktif
   @Public()
   @Get()
   findAllActive() {
     return this.paymentMethodsService.findAllActive();
   }
 
-  // Endpoint untuk Admin - Melihat detail
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
@@ -45,7 +41,6 @@ export class PaymentMethodsController {
     return this.paymentMethodsService.findOne(id);
   }
 
-  // Endpoint untuk Admin - Memperbarui
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
@@ -53,7 +48,6 @@ export class PaymentMethodsController {
     return this.paymentMethodsService.update(id, updatePaymentMethodDto);
   }
 
-  // Endpoint untuk Admin - Menghapus
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

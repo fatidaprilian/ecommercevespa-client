@@ -9,7 +9,7 @@ import {
   Param,
   Delete,
   UseGuards,
-  Query, // 1. Import decorator @Query
+  Query,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -18,7 +18,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
-import { QueryCategoryDto } from './dto/query-category.dto'; // 2. Import DTO untuk query
+import { QueryCategoryDto } from './dto/query-category.dto';
 
 @Controller('categories')
 export class CategoriesController {
@@ -32,7 +32,6 @@ export class CategoriesController {
   }
 
   @Get()
-  // 3. Gunakan @Query() untuk menangkap parameter dari URL
   findAll(@Query() queryDto: QueryCategoryDto) {
     return this.categoriesService.findAll(queryDto);
   }

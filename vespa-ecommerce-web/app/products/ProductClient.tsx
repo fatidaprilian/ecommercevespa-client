@@ -44,7 +44,6 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlacehold
     );
 };
 
-// --- AWAL PERUBAHAN: Menyesuaikan Card agar mengisi kontainer ---
 const ViewAllCard = ({ categoryId }: { categoryId: string }) => (
     <div className="flex items-center justify-center w-full h-full">
         <Link href={`/products?categoryId=${categoryId}`} className="group w-full h-full flex items-center justify-center">
@@ -61,7 +60,6 @@ const ViewAllCard = ({ categoryId }: { categoryId: string }) => (
         </Link>
     </div>
 );
-// --- AKHIR PERUBAHAN ---
 
 function FilterPopup({ onApplyFilters, currentFilters }: {
   onApplyFilters: (filters: { categoryId?: string[], brandId?: string[] }) => void;

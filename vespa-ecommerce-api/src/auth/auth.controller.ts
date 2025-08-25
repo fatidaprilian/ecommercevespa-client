@@ -18,7 +18,6 @@ import { Public } from 'src/auth/decorators/public.decorator';
 import { AuthGuard } from '@nestjs/passport';
 import { EmailVerificationDto } from './dto/email-verification.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-// --- Impor DTO baru untuk Lupa Password ---
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ValidateResetTokenDto } from './dto/validate-reset-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -81,7 +80,6 @@ export class AuthController {
     return this.authService.resendVerificationEmail(resendDto.email);
   }
 
-  // --- 👇 ENDPOINT BARU UNTUK LUPA PASSWORD 👇 ---
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)

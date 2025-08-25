@@ -6,7 +6,6 @@ import { Order, User } from '@prisma/client';
 import * as midtransClient from 'midtrans-client';
 import * as crypto from 'crypto';
 
-// Update type to include necessary fields from the Order object
 type OrderWithItems = Order & {
   items: { product: { name: string }; price: number; quantity: number; productId: string }[];
   subtotal: number;
@@ -28,27 +27,21 @@ export class MidtransService {
 
   async createSnapTransaction(order: OrderWithItems, user: User, shippingCost: number, taxAmount: number) {
     
-    // --- AWAL PERBAIKAN ---
-    // HAPUS perhitungan ulang. Gunakan `order.totalAmount` yang sudah final.
     const finalGrossAmount = Math.round(order.totalAmount);
 
-    // Buat item_details yang lebih akurat
     const itemDetails = [
-      // Subtotal (harga asli semua barang)
       {
         id: 'SUBTOTAL',
         price: Math.round(order.subtotal),
         quantity: 1,
         name: 'Subtotal Belanja',
       },
-      // Pajak
       {
         id: 'TAX',
         price: Math.round(order.taxAmount),
         quantity: 1,
         name: 'Pajak',
       },
-      // Biaya Pengiriman
       {
         id: 'SHIPPING',
         price: Math.round(order.shippingCost),
@@ -57,27 +50,24 @@ export class MidtransService {
       },
     ];
 
-    // Jika ada diskon, tambahkan sebagai item dengan nilai negatif
     if (order.discountAmount > 0) {
       itemDetails.push({
         id: 'DISCOUNT',
-        price: -Math.round(order.discountAmount), // Nilai negatif
+        price: -Math.round(order.discountAmount),
         quantity: 1,
         name: 'Diskon',
       });
     }
-    // --- AKHIR PERBAIKAN ---
 
     const parameter = {
       transaction_details: {
         order_id: order.id,
-        gross_amount: finalGrossAmount, // Gunakan total final
+        gross_amount: finalGrossAmount,
       },
       customer_details: {
         first_name: user.name || 'Pelanggan',
         email: user.email,
       },
-      // Ganti item_details dengan yang lebih akurat
       item_details: itemDetails,
       callbacks: {
         finish: `${this.configService.get('FRONTEND_URL')}/orders/${order.id}`,

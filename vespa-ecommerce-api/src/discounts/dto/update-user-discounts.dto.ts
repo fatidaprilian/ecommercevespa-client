@@ -11,7 +11,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-// DTO untuk Aturan #2: Diskon per Kategori
 class UserCategoryDiscountDto {
   @IsString()
   @IsNotEmpty()
@@ -22,7 +21,6 @@ class UserCategoryDiscountDto {
   discountPercentage: number;
 }
 
-// DTO untuk Aturan #1: Diskon per Produk
 class UserProductDiscountDto {
   @IsString()
   @IsNotEmpty()
@@ -34,7 +32,6 @@ class UserProductDiscountDto {
 }
 
 export class UpdateUserDiscountsDto {
-  // DTO untuk Aturan #3: Diskon Dasar
   @IsNumber()
   @IsOptional()
   @Min(0)

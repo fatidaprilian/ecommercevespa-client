@@ -29,7 +29,6 @@ export class UsersController {
     return this.usersService.updateProfile(req.user.id, updateProfileDto);
   }
   
-  // Endpoint lain (untuk Admin)
   @Get()
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
@@ -37,7 +36,6 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  // [BARU] Endpoint untuk mengambil satu user berdasarkan ID (untuk admin)
   @Get(':id')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)

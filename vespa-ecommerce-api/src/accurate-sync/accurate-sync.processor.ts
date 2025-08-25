@@ -5,7 +5,7 @@ import { Job } from 'bullmq';
 import { AccurateSyncService } from './accurate-sync.service';
 import { Logger } from '@nestjs/common';
 
-@Processor('accurate-sync-queue') // Mendengarkan antrean dengan nama ini
+@Processor('accurate-sync-queue') 
 export class AccurateSyncProcessor extends WorkerHost {
     private readonly logger = new Logger(AccurateSyncProcessor.name);
 
@@ -15,7 +15,6 @@ export class AccurateSyncProcessor extends WorkerHost {
         super();
     }
 
-    // Fungsi ini akan otomatis dipanggil ketika ada job baru dari antrean
     async process(job: Job<any, any, string>): Promise<any> {
         this.logger.log(`Processing job: ${job.name} - ID: ${job.id}`);
         
@@ -26,7 +25,6 @@ export class AccurateSyncProcessor extends WorkerHost {
                     this.logger.log(`Job ${job.name} completed successfully.`);
                     return result;
                 
-                // 👇 --- PENAMBAHAN CASE BARU DI SINI --- 👇
                 case 'create-sales-order':
                     if (!job.data.orderId) {
                         throw new Error('Job "create-sales-order" is missing orderId.');
@@ -34,7 +32,6 @@ export class AccurateSyncProcessor extends WorkerHost {
                     const soResult = await this.accurateSyncService.processSalesOrderCreation(job.data.orderId);
                     this.logger.log(`Job ${job.name} for Order ID ${job.data.orderId} completed successfully.`);
                     return soResult;
-                // 👆 --- AKHIR PENAMBAHAN --- 👆
 
                 default:
                     this.logger.warn(`No processor found for job name: ${job.name}`);
@@ -42,7 +39,7 @@ export class AccurateSyncProcessor extends WorkerHost {
             }
         } catch (error) {
             this.logger.error(`Job ${job.name} (ID: ${job.id}) failed.`, error.stack);
-            throw error; // Melempar error agar BullMQ bisa mencoba lagi (retry)
+            throw error;
         }
     }
 }

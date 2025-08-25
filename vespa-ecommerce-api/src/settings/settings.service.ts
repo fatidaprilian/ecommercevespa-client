@@ -53,12 +53,11 @@ export class SettingsService {
         create: { key: setting.key, value: setting.value },
       }),
     );
-    // Menjalankan semua operasi update dalam satu transaksi database
     return this.prisma.$transaction(transactions);
   }
 
   // ======================================================
-  // METODE BARU UNTUK PENGATURAN PPN (VAT)
+  // METODE UNTUK PENGATURAN PPN (VAT)
   // ======================================================
 
   /**
@@ -71,12 +70,10 @@ export class SettingsService {
       where: { key: 'PPN' },
     });
 
-    // Jika PPN belum di-set di database, kembalikan nilai default yang aman.
     if (!vatSetting || !vatSetting.value) {
       return 11;
     }
     
-    // Konversi nilai dari string ke angka sebelum dikembalikan.
     return parseFloat(vatSetting.value);
   }
 
