@@ -1,4 +1,3 @@
-// file: app/checkout/page.tsx
 'use client';
 
 import { useCartStore } from '@/store/cart';
@@ -13,7 +12,7 @@ import { OrderSummary } from './_components/OrderSummary';
 import { Address } from '@/services/addressService';
 import { ShippingRate } from '@/services/shippingService';
 import { Button } from '@/components/ui/button';
-import { getVatPercentage } from '@/services/settingsService'; // <-- 1. IMPORT FUNGSI PPN
+import { getVatPercentage } from '@/services/settingsService';
 
 export default function CheckoutPage() {
     const { cart, selectedItems } = useCartStore();
@@ -22,12 +21,11 @@ export default function CheckoutPage() {
 
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     const [selectedShippingOption, setSelectedShippingOption] = useState<ShippingRate | null>(null);
-    const [vatPercentage, setVatPercentage] = useState(0); // <-- 2. BUAT STATE UNTUK PPN
+    const [vatPercentage, setVatPercentage] = useState(0);
 
     const selectedCartItems = cart?.items?.filter(item => selectedItems.has(item.id)) || [];
 
     useEffect(() => {
-        // Ambil data PPN dari API saat komponen dimuat
         const fetchVat = async () => {
             const vat = await getVatPercentage();
             setVatPercentage(vat);
@@ -46,12 +44,10 @@ export default function CheckoutPage() {
         return () => clearTimeout(checkAuth);
     }, [isAuthenticated, selectedCartItems.length, router]);
 
-    // Gunakan useMemo untuk menghitung ulang nilai hanya jika ada perubahan
     const { subtotal, taxAmount, shippingCost, totalAmount } = useMemo(() => {
         const currentSubtotal = selectedCartItems.reduce(
             (total, item) => total + Number(item.product.price) * item.quantity, 0
         );
-        // <-- 3. HITUNG PPN SECARA DINAMIS
         const currentTaxAmount = (currentSubtotal * vatPercentage) / 100;
         const currentShippingCost = selectedShippingOption?.price || 0;
         const currentTotalAmount = currentSubtotal + currentTaxAmount + currentShippingCost;
@@ -97,9 +93,6 @@ export default function CheckoutPage() {
                     </motion.h1>
                 </div>
 
-                {/* ================================================================== */}
-                {/* === PERBAIKAN DI SINI: Menambahkan div pembungkus === */}
-                {/* ================================================================== */}
                 <div className="max-w-4xl mx-auto lg:max-w-none">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                         
@@ -122,7 +115,6 @@ export default function CheckoutPage() {
                             transition={{ delay: 0.2 }}
                             className="lg:col-span-1"
                         >
-                            {/* 4. KIRIM PROPS BARU KE ORDERSUMMARY */}
                             <OrderSummary 
                                 subtotal={subtotal}
                                 taxAmount={taxAmount}

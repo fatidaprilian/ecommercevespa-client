@@ -1,5 +1,3 @@
-// file: app/types/index.ts
-
 export type ProductImage = {
   id: string;
   url: string;
@@ -13,7 +11,7 @@ export type Category = {
 export type Brand = {
   id: string;
   name: string;
-  logoUrl?: string; // Pastikan ini opsional
+  logoUrl?: string; 
 };
 
 export type PriceInfo = {
@@ -30,7 +28,7 @@ export type Product = {
   description: string | null;
   price: number;
   stock: number;
-  weight?: number; // Tambahkan weight
+  weight?: number; 
   images: ProductImage[];
   category: Category;
   brand: Brand | null;
@@ -54,9 +52,9 @@ export type OrderItem = {
 export type Payment = {
     id: string;
     status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
-    method: 'MIDTRANS_SNAP' | 'MANUAL_TRANSFER'; // Perjelas method
-    transactionId?: string; // Token Midtrans, opsional
-    proofOfPayment?: string; // URL bukti bayar, opsional
+    method: 'MIDTRANS_SNAP' | 'MANUAL_TRANSFER'; 
+    transactionId?: string; 
+    proofOfPayment?: string; 
 }
 
 export type Shipment = {
@@ -69,12 +67,9 @@ export type Shipment = {
 export type Order = {
     id: string;
     orderNumber: string;
-    // --- AWAL PERBAIKAN ---
-    // Menambahkan field rincian biaya yang sebelumnya hilang
     subtotal: number;
     discountAmount: number;
     taxAmount: number;
-    // --- AKHIR PERBAIKAN ---
     totalAmount: number;
     shippingCost: number;
     courier: string;

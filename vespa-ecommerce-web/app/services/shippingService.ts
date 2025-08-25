@@ -1,15 +1,11 @@
-// file: app/services/shippingService.ts
-
 import api from '@/lib/api';
 
-// Tipe data yang dibutuhkan untuk form alamat
 export interface AreaData {
   id: string;
   label: string;
   postalCode: string;
 }
 
-// Tipe data untuk hasil kalkulasi ongkos kirim
 export interface ShippingRate {
   courier_name: string;
   courier_service_name: string;
@@ -17,7 +13,6 @@ export interface ShippingRate {
   estimation: string;
 }
 
-// Tipe data untuk hasil tracking, sesuai respons Biteship
 export interface TrackingHistory {
   note: string;
   updated_at: string;
@@ -44,9 +39,6 @@ export interface TrackingDetails {
   status: string;
 }
 
-/**
- * Mencari data area/kecamatan dari Biteship.
- */
 export const searchAreas = async (query: string): Promise<AreaData[]> => {
     if (query.length < 3) return [];
     const { data } = await api.get('/shipping/areas', { params: { q: query } });
@@ -83,9 +75,6 @@ export const searchAreas = async (query: string): Promise<AreaData[]> => {
     return Array.from(uniqueAreas.values());
 };
 
-/**
- * Menghitung estimasi ongkos kirim dari Biteship.
- */
 export const calculateCost = async (payload: {
   destination_area_id: string;
   destination_postal_code: string;

@@ -1,12 +1,7 @@
-// file: vespa-ecommerce-admin/services/productService.ts
 
-import api from '@/lib/api'; // Menggunakan instance axios yang sudah dikonfigurasi
+import api from '@/lib/api'; 
 
-// ====================================================================
-// Tipe Data (Types)
-// ====================================================================
 
-// Tipe data untuk satu produk, harus cocok dengan data yang dikirim API
 export interface Product {
   id: string;
   name: string;
@@ -22,7 +17,6 @@ export interface Product {
   updatedAt: string;
 }
 
-// Tipe data untuk struktur respons paginasi dari API
 export interface PaginatedProducts {
   data: Product[];
   meta: {
@@ -33,7 +27,6 @@ export interface PaginatedProducts {
   };
 }
 
-// Tipe data untuk payload saat membuat/memperbarui produk
 export interface ProductData {
   name: string;
   price: number;
@@ -46,9 +39,7 @@ export interface ProductData {
   sku?: string;
 }
 
-// ====================================================================
-// Fungsi-fungsi Service
-// ====================================================================
+
 
 /**
  * Mengirim data produk baru ke API backend.
@@ -82,8 +73,8 @@ export const getProducts = async ({ page, search }: { page: number; search: stri
   const { data } = await api.get<PaginatedProducts>('/products', {
     params: {
       page,
-      limit: 10, // Menampilkan 10 item per halaman
-      search: search || undefined, // Kirim parameter search jika ada isinya
+      limit: 10, 
+      search: search || undefined, 
     },
   });
   return data;

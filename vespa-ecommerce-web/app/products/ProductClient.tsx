@@ -4,12 +4,13 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ProductCard } from '@/components/molecules/ProductCard';
 import { useProducts, ProductQueryParams } from '@/hooks/use-products';
 import { useCategories } from '@/hooks/use-categories';
 import { useBrands } from '@/hooks/use-brands';
 import { Product, Category, Brand } from '@/types';
-import { SlidersHorizontal, ServerCrash, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { SlidersHorizontal, ServerCrash, ChevronLeft, ChevronRight, Search, X, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -42,6 +43,25 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlacehold
         </div>
     );
 };
+
+// --- AWAL PERUBAHAN: Menyesuaikan Card agar mengisi kontainer ---
+const ViewAllCard = ({ categoryId }: { categoryId: string }) => (
+    <div className="flex items-center justify-center w-full h-full">
+        <Link href={`/products?categoryId=${categoryId}`} className="group w-full h-full flex items-center justify-center">
+            {/* Kartu sekarang menggunakan w-full dan h-full agar responsif terhadap parent */}
+            <Card className="w-full h-full flex flex-col items-center justify-center bg-gray-50 hover:bg-white hover:shadow-lg transition-all duration-300">
+                <div className="text-center flex flex-col items-center justify-center">
+                    <div className="flex items-center justify-center w-16 h-16 bg-gray-200 group-hover:bg-primary rounded-full mb-4 transition-colors">
+                        <ArrowRight className="w-8 h-8 text-gray-600 group-hover:text-white transition-colors" />
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-800">Lihat Semua</h3>
+                    <p className="text-sm text-gray-500">di kategori ini</p>
+                </div>
+            </Card>
+        </Link>
+    </div>
+);
+// --- AKHIR PERUBAHAN ---
 
 function FilterPopup({ onApplyFilters, currentFilters }: {
   onApplyFilters: (filters: { categoryId?: string[], brandId?: string[] }) => void;
@@ -109,7 +129,7 @@ function FilterPopup({ onApplyFilters, currentFilters }: {
     }
   }, [isOpen, currentFilters]);
 
-  const activeFilterCount = currentFilters.categoryId.length + currentFilters.brandId.length;
+  const activeFilterCount = (currentFilters.categoryId?.length || 0) + (currentFilters.brandId?.length || 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -191,9 +211,9 @@ export default function ProductClient() {
   const { data: brandsResponse } = useBrands();
   const allBrands = brandsResponse?.data;
 
-  // State untuk paginasi kategori di mode jelajah
   const [categoryPage, setCategoryPage] = useState(1);
   const CATEGORIES_PER_PAGE = 4;
+  const PRODUCTS_PER_CATEGORY_ROW = 4;
 
   const buildQueryParams = (params: URLSearchParams): ProductQueryParams => ({
     page: Number(params.get('page')) || 1,
@@ -207,18 +227,14 @@ export default function ProductClient() {
 
   const [queryParams, setQueryParams] = useState<ProductQueryParams>(() => buildQueryParams(searchParams));
 
-  // Menentukan apakah filter sedang aktif
   const isFilterActive = (queryParams.categoryId?.length || 0) > 0 || 
                          (queryParams.brandId?.length || 0) > 0 || 
                          !!queryParams.search;
 
-  // Mengubah query ke API berdasarkan mode (jelajah vs filter)
   const apiQuery = useMemo(() => {
     if (isFilterActive) {
-      // Mode filter: gunakan parameter paginasi standar
       return queryParams;
     }
-    // Mode jelajah: ambil banyak produk sekaligus untuk dikelompokkan
     return { limit: 100, page: 1, sortBy: 'createdAt', sortOrder: 'desc' };
   }, [queryParams, isFilterActive]);
 
@@ -237,7 +253,6 @@ export default function ProductClient() {
   const updateUrlParams = (newParams: Partial<ProductQueryParams>) => {
     const currentParams = new URLSearchParams(searchParams.toString());
     
-    // Hapus parameter array agar tidak terduplikasi
     currentParams.delete('brandId');
     currentParams.delete('categoryId');
 
@@ -250,7 +265,6 @@ export default function ProductClient() {
         currentParams.delete(key);
       }
     });
-    // Selalu reset ke halaman pertama saat filter berubah
     currentParams.set('page', '1'); 
     router.push(`/products?${currentParams.toString()}`);
   };
@@ -260,13 +274,7 @@ export default function ProductClient() {
   };
 
   const handleClearFilters = () => {
-    updateUrlParams({ 
-        ...queryParams, 
-        categoryId: [], 
-        brandId: [], 
-        search: undefined, 
-        page: 1 
-    });
+    router.push('/products');
   };
 
   const handleSortChange = (value: string) => {
@@ -278,7 +286,6 @@ export default function ProductClient() {
     updateUrlParams({ ...queryParams, page });
   };
   
-  // Memo untuk mendapatkan nama kategori dan merek yang dipilih
   const selectedCategories = useMemo(
     () => allCategories?.filter(c => queryParams.categoryId?.includes(c.id)) || [],
     [allCategories, queryParams.categoryId]
@@ -289,18 +296,26 @@ export default function ProductClient() {
     [allBrands, queryParams.brandId]
   );
   
-  // Mengelompokkan produk berdasarkan kategori (untuk mode jelajah)
   const productsByCategory = useMemo(() => {
     if (isFilterActive || !products) return [];
-    const grouped = products.reduce((acc, product) => {
-      const categoryName = product.category?.name || 'Lainnya';
-      if (!acc[categoryName]) {
-        acc[categoryName] = [];
-      }
-      acc[categoryName].push(product);
-      return acc;
-    }, {} as Record<string, Product[]>);
-    return Object.entries(grouped);
+    
+    const categoryMap = new Map<string, { name: string; products: Product[] }>();
+
+    products.forEach(product => {
+        const categoryId = product.category?.id || 'lainnya';
+        const categoryName = product.category?.name || 'Lainnya';
+
+        if (!categoryMap.has(categoryId)) {
+            categoryMap.set(categoryId, { name: categoryName, products: [] });
+        }
+        categoryMap.get(categoryId)!.products.push(product);
+    });
+    
+    return Array.from(categoryMap.entries()).map(([id, data]) => ({
+        id,
+        name: data.name,
+        products: data.products,
+    }));
   }, [products, isFilterActive]);
 
   const totalCategoryPages = Math.ceil(productsByCategory.length / CATEGORIES_PER_PAGE);
@@ -364,22 +379,27 @@ export default function ProductClient() {
                 </div>
               ) : products && products.length > 0 ? (
                 isFilterActive ? (
-                  // Tampilan Grid untuk Hasil Filter
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {products.map((product: Product) => ( <ProductCard key={product.id} product={product} /> ))}
                   </div>
                 ) : (
-                  // Tampilan Jelajah per Kategori
                   <div className="space-y-16">
-                    {paginatedCategories.map(([categoryName, categoryProducts]) => (
+                    {paginatedCategories.map(({ id: categoryId, name: categoryName, products: categoryProducts }) => (
                       <div key={categoryName}>
                         <h2 className="text-3xl font-bold text-[#1E2022] mb-6 font-playfair border-b pb-3">{categoryName}</h2>
                         <div className="flex overflow-x-auto gap-6 pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                          {categoryProducts.map((product: Product) => (
+                          {categoryProducts.slice(0, PRODUCTS_PER_CATEGORY_ROW).map((product: Product) => (
                             <div key={product.id} className="flex-none w-[280px]">
                               <ProductCard product={product} />
                             </div>
                           ))}
+                          {/* --- AWAL PERUBAHAN: Membungkus ViewAllCard agar lebarnya sama --- */}
+                          {categoryId !== 'lainnya' && categoryProducts.length > PRODUCTS_PER_CATEGORY_ROW && (
+                            <div className="flex-none w-[280px]">
+                                <ViewAllCard categoryId={categoryId} />
+                            </div>
+                          )}
+                          {/* --- AKHIR PERUBAHAN --- */}
                         </div>
                       </div>
                     ))}
@@ -395,7 +415,6 @@ export default function ProductClient() {
           </AnimatePresence>
         </div>
 
-        {/* Logika Paginasi Cerdas */}
         {isFilterActive && meta && meta.lastPage > 1 ? (
             <PaginationControls
               currentPage={meta?.page || 1}

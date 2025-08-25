@@ -21,15 +21,15 @@ module.exports = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        background: "#F0F5F9",      // Warna paling terang untuk latar
-        foreground: "#1E2022",      // Warna paling gelap untuk teks
+        background: "#F0F5F9",      
+        foreground: "#1E2022",      
         primary: {
-          DEFAULT: "#52616B",      // Warna utama untuk tombol/aksen
-          foreground: "#F0F5F9",   // Warna teks di atas tombol primary
+          DEFAULT: "#52616B",     
+          foreground: "#F0F5F9",   
         },
         secondary: {
-          DEFAULT: "#C9D6DF",      // Warna sekunder
-          foreground: "#1E2022",   // Teks di atas warna sekunder
+          DEFAULT: "#C9D6DF",     
+          foreground: "#1E2022",   
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",

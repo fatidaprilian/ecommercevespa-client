@@ -1,4 +1,3 @@
-// file: app/cart/page.tsx (Revisi Lengkap)
 'use client';
 
 import Link from 'next/link';
@@ -10,7 +9,6 @@ import toast from 'react-hot-toast';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
 
-// Komponen UI
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -94,8 +92,6 @@ export default function CartPage() {
             Keranjang Belanja
         </motion.h1>
         <div className="flex flex-col lg:flex-row gap-8 items-start">
-          
-          {/* [DIUBAH] Daftar Item dibungkus dengan Card */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="w-full lg:w-2/3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -152,7 +148,6 @@ export default function CartPage() {
             </Card>
           </motion.div>
 
-          {/* [DIUBAH] Ringkasan Pesanan */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full lg:w-1/3">
             <Card className="sticky top-28">
                 <CardHeader>

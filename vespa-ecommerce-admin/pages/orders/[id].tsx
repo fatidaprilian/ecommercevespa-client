@@ -1,5 +1,3 @@
-// file: pages/orders/[id].tsx (Revisi Lengkap & Final)
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -13,7 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import api from '@/lib/api';
 import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
 
-// --- Helper Functions ---
 const formatDate = (dateString: string) => new Date(dateString).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 const copyToClipboard = (text: string, label: string) => {
@@ -21,7 +18,6 @@ const copyToClipboard = (text: string, label: string) => {
     toast.success(`${label} disalin!`);
 };
 
-// --- Service Functions ---
 const updateOrderStatus = async ({ orderId, status }: { orderId: string; status: OrderStatus }) => {
     const { data } = await api.patch(`/orders/${orderId}/status`, { status });
     return data;
@@ -32,9 +28,6 @@ const createShipment = async ({ orderId, courier_company, courier_type }: { orde
     return data;
 };
 
-// ====================================================================
-// KOMPONEN-KOMPONEN KECIL HASIL REFACTORING
-// ====================================================================
 
 function ShipmentTracking({ order }: { order: Order }) {
     if (!order.shipment?.trackingNumber || !order.courier) {
@@ -216,9 +209,6 @@ function OrderItems({ order }: { order: Order }) {
     );
 }
 
-// ====================================================================
-// KOMPONEN UTAMA HALAMAN
-// ====================================================================
 
 export default function OrderDetailPage() {
   const router = useRouter();

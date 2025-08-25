@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 
 import { searchAreas, LocationData } from '@/services/shippingService';
-// Import fungsi baru untuk PPN
 import {
   getAllSettings,
   updateMultipleSettings,
@@ -29,35 +28,25 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
-// ====================================================================
-// KOMPONEN BARU: PENGATURAN PPN (VAT)
-// ====================================================================
 const VatSettings = () => {
-  // State untuk menyimpan nilai input dari form
   const [vatValue, setVatValue] = useState('');
   const queryClient = useQueryClient();
 
-  // Query untuk mengambil data PPN dari server
   const { data: vatData, isLoading: isLoadingVat } = useQuery({
     queryKey: ['vatSetting'],
     queryFn: getVatSetting,
   });
 
-  // ✅ PERBAIKAN 1: Gunakan useEffect untuk menyinkronkan data dari server ke state form
-  // Ini lebih deklaratif dan akan berjalan setiap kali data dari server (vatData) berubah.
   useEffect(() => {
-    // ✅ PERBAIKAN 2: Cek tipe data untuk memastikan nilai 0 tetap dianggap valid.
     if (vatData && typeof vatData.value === 'number') {
       setVatValue(vatData.value.toString());
     }
-  }, [vatData]); // <-- Dependency array ini penting!
+  }, [vatData]);
 
-  // Mutasi untuk memperbarui data PPN
   const mutation = useMutation({
     mutationFn: (newValue: number) => updateVatSetting(newValue),
     onSuccess: () => {
       toast.success('Pengaturan PPN berhasil disimpan!');
-      // Invalidate query agar data terbaru diambil kembali
       queryClient.invalidateQueries({ queryKey: ['vatSetting'] });
     },
     onError: (error: any) => {
@@ -112,10 +101,6 @@ const VatSettings = () => {
   );
 };
 
-
-// ====================================================================
-// KOMPONEN: ACCURATE INTEGRATION (TIDAK DIUBAH)
-// ====================================================================
 const AccurateIntegration = () => {
     const [status, setStatus] = useState<{ connected: boolean; dbSelected: boolean }>({ connected: false, dbSelected: false });
     const [isLoading, setIsLoading] = useState(true);
@@ -257,9 +242,6 @@ const AccurateIntegration = () => {
     );
 };
 
-// ====================================================================
-// KOMPONEN YANG SUDAH ADA (TIDAK DIUBAH)
-// ====================================================================
 type WarehouseAddressFormValues = {
     WAREHOUSE_PIC_NAME: string;
     WAREHOUSE_PHONE: string;
@@ -406,9 +388,6 @@ function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, 
 }
 
 
-// ====================================================================
-// KOMPONEN UTAMA HALAMAN SETTINGS
-// ====================================================================
 export default function SettingsPage() {
     const queryClient = useQueryClient();
     const [originSearchQuery, setOriginSearchQuery] = useState('');
@@ -478,7 +457,6 @@ export default function SettingsPage() {
             <div className="space-y-6">
                 <AccurateIntegration />
                 
-                {/* KOMPONEN PPN DITAMBAHKAN DI SINI */}
                 <VatSettings />
 
                 <Card>

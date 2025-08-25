@@ -1,4 +1,3 @@
-// file: pages/users/edit.tsx
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,11 +7,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { ArrowLeft } from 'lucide-react';
-
-// --- PERBAIKAN UTAMA DI SINI ---
-// Impor 'Role' dari service, bukan dari @prisma/client
 import { getUserById, updateUserRole, Role } from '@/services/userService';
-// --------------------------------
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';

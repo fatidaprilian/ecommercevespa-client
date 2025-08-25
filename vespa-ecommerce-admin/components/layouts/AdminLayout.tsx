@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { logoutUser } from '@/services/userService';
 
-// Helper untuk menggabungkan class CSS dengan lebih mudah
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
 }
@@ -28,12 +27,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = router.pathname;
 
-  // Fungsi handler untuk logout
   const handleLogout = async () => {
     try {
       await logoutUser();
       toast.success('Anda berhasil logout.');
-      // Arahkan kembali ke halaman login setelah berhasil
       router.push('/auth/login');
     } catch (error) {
       toast.error('Gagal logout, silakan coba lagi.');
@@ -67,7 +64,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground',
-                // Cek path agar menu aktif yang dipilih lebih akurat
                 (pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))) && 'bg-secondary text-secondary-foreground',
               )}
             >
@@ -78,7 +74,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
       </aside>
 
-      {/* Main Content */}
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-end border-b bg-card px-6">
           <DropdownMenu>

@@ -1,6 +1,4 @@
-# docker-compose.yml (untuk development lokal) - REVISI
 services:
-  # Layanan Backend API
   api:
     build:
       context: ./vespa-ecommerce-api
@@ -14,12 +12,9 @@ services:
     depends_on:
       - db
       - redis
-    # Variabel env untuk API tetap dibaca dari .env di dalam foldernya
-    # Ini menjaga agar setiap service punya konfigurasi .env sendiri
     env_file:
       - ./vespa-ecommerce-api/.env
 
-  # Layanan Frontend Customer
   web:
     build:
       context: ./vespa-ecommerce-web
@@ -32,28 +27,22 @@ services:
     env_file:
       - ./vespa-ecommerce-web/.env.local
 
-  # Layanan Admin Panel
-  # Layanan Admin Panel (Next.js + Shadcn/ui)
   admin:
     build:
       context: ./vespa-ecommerce-admin
       dockerfile: Dockerfile
-    # 'command' DIHAPUS, karena sudah diatur di dalam Dockerfile
     ports:
-      - "3003:3003" # Port sudah benar sesuai permintaan Anda
+      - "3003:3003" 
     volumes:
-      # Sinkronkan kode, tapi buat pengecualian untuk node_modules dan .next
       - ./vespa-ecommerce-admin:/app
       - /app/node_modules
       - /app/.next
     env_file:
-      - ./vespa-ecommerce-admin/.env.local # Next.js menggunakan .env.local
+      - ./vespa-ecommerce-admin/.env.local 
 
-  # Layanan Database
   db:
     image: postgres:15-alpine
     environment:
-      # Variabel ini sekarang diambil dari file .env di root
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -62,7 +51,6 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
-  # Layanan Redis
   redis:
     image: redis:alpine 
     command: redis-server --requirepass ${REDIS_PASSWORD}

@@ -1,7 +1,5 @@
-// file: vespa-ecommerce-admin/pages/services/orderService.ts
 import api from '@/lib/api';
 
-// Enum ini membantu menjaga konsistensi status di frontend
 export enum OrderStatus {
   PENDING = 'PENDING',
   PAID = 'PAID',
@@ -58,9 +56,7 @@ export interface Order {
   } | null;
 }
 
-// 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
 
-// 1. Definisikan tipe data untuk respons paginasi
 export interface PaginatedOrders {
   data: Order[];
   meta: {
@@ -86,7 +82,7 @@ export const getOrders = async ({ page, search }: { page: number; search: string
   });
   return data;
 };
-// 👆 --- AKHIR PERUBAHAN --- 👆
+
 
 
 export const getOrderById = async (orderId: string): Promise<Order> => {

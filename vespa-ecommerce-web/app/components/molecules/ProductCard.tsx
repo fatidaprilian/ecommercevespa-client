@@ -1,5 +1,3 @@
-// file: app/components/molecules/ProductCard.tsx (Revisi Final)
-
 'use client';
 
 import Link from 'next/link';
@@ -36,7 +34,6 @@ export function ProductCard({ product }: ProductCardProps) {
 
     return (
         <Card className="group w-full h-full overflow-hidden rounded-lg shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col border-gray-200 p-0">
-            {/* [DIUBAH] Menghapus `border-b` dari CardHeader */}
             <CardHeader className="p-0 relative">
                 <Link href={`/products/${product.id}`} aria-label={product.name} className="block">
                     <div className="aspect-square w-full overflow-hidden">
@@ -48,6 +45,17 @@ export function ProductCard({ product }: ProductCardProps) {
                         />
                     </div>
                 </Link>
+
+                {/* --- AWAL PERUBAHAN --- */}
+                {/* Tambahkan overlay ini jika stok habis */}
+                {product.stock === 0 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
+                        <span className="text-white font-bold text-xl bg-red-600 px-4 py-2 rounded-md">
+                            STOK HABIS
+                        </span>
+                    </div>
+                )}
+                {/* --- AKHIR PERUBAHAN --- */}
 
                 {product.category && (
                     <Badge variant="secondary" className="absolute top-3 left-3 pointer-events-none bg-white/80 backdrop-blur-sm">
@@ -63,6 +71,7 @@ export function ProductCard({ product }: ProductCardProps) {
                              className="rounded-full h-9 w-9 text-gray-700 hover:bg-gray-200"
                              onClick={handleAddToCart}
                              aria-label="Tambah ke keranjang"
+                             disabled={product.stock === 0} // Tambahkan disable jika stok habis
                          >
                              <ShoppingCart className="h-5 w-5" />
                          </Button>

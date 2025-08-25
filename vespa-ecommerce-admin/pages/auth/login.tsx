@@ -1,5 +1,3 @@
-// pages/auth/login.tsx
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -26,7 +24,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-// Skema validasi untuk form
 const formSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid." }),
   password: z.string().min(1, { message: "Password tidak boleh kosong." }),
@@ -65,7 +62,6 @@ export default function LoginPage() {
   }
 
   return (
-    // Menggunakan warna `background` untuk latar belakang halaman
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader>
@@ -104,7 +100,6 @@ export default function LoginPage() {
                 )}
               />
               {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-              {/* Tombol akan menggunakan warna `primary` secara otomatis */}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {isLoading ? "Memproses..." : "Login"}

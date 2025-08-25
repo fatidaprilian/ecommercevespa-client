@@ -1,5 +1,3 @@
-// file: pages/users/discounts.tsx
-
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,9 +19,6 @@ import { getCategories, Category, PaginatedCategories } from '@/services/categor
 import { searchProducts, Product } from '@/services/productService';
 import api from '@/lib/api';
 
-// ==================================
-// Skema & Tipe Data
-// ==================================
 const defaultDiscountSchema = z.object({
   defaultDiscountPercentage: z.coerce.number().min(0, "Diskon tidak boleh negatif.").max(100, "Diskon maksimal 100."),
 });
@@ -34,9 +29,6 @@ const setDiscountSchema = z.object({
 });
 type SetDiscountFormValues = z.infer<typeof setDiscountSchema>;
 
-// ==================================
-// Fungsi-fungsi Service
-// ==================================
 const getDiscounts = async (userId: string, page: number, limit: number) => {
   const { data } = await api.get(`/discounts/user/${userId}`, { params: { page, limit } });
   return data;
@@ -51,9 +43,6 @@ const removeDiscountRule = (userId: string, ruleId: string) => {
     return api.delete(`/discounts/user/${userId}/rules/${ruleId}`);
 };
 
-// ==================================
-// Komponen UI Tambahan
-// ==================================
 const DiscountPageSkeleton = () => (
     <div className="space-y-6 animate-pulse">
         <div className="h-9 w-48 bg-gray-200 rounded-md"></div>
@@ -65,9 +54,6 @@ const DiscountPageSkeleton = () => (
     </div>
 );
 
-// ==================================
-// Komponen Halaman Utama
-// ==================================
 export default function ManageDiscountsPage() {
     const router = useRouter();
     const { id } = router.query;
@@ -100,10 +86,6 @@ export default function ManageDiscountsPage() {
         </div>
     );
 }
-
-// ===================================================
-// Komponen-komponen Terpisah untuk Setiap Bagian
-// ===================================================
 
 function DefaultDiscountForm({ userId }: { userId: string }) {
     const queryClient = useQueryClient();
@@ -299,7 +281,6 @@ function ProductDiscountSection({ userId }: { userId: string }) {
     );
 }
 
-// Komponen Dialog Kustom untuk Mengatur Diskon
 function SetDiscountDialog({ isOpen, onClose, itemName, onSubmit }: { isOpen: boolean, onClose: () => void, itemName: string, onSubmit: (discount: number) => void }) {
     const form = useForm<SetDiscountFormValues>({
         resolver: zodResolver(setDiscountSchema),
@@ -354,19 +335,13 @@ function SetDiscountDialog({ isOpen, onClose, itemName, onSubmit }: { isOpen: bo
     );
 }
 
-// Komponen Picker
 function CategoryPicker({ onSelect }: { onSelect: (category: Category) => void }) {
     const [isOpen, setIsOpen] = useState(false);
-    // 👇 --- PERBAIKAN UTAMA DI SINI --- 👇
-    // 1. Gunakan tipe data PaginatedCategories
-    // 2. Kirim parameter default ke getCategories
-    // 3. Ambil array dari properti .data
     const { data: categoriesResponse } = useQuery<PaginatedCategories, Error>({ 
         queryKey: ['categories'], 
-        queryFn: () => getCategories({ page: 1, search: '' }) // Ambil semua data untuk picker
+        queryFn: () => getCategories({ page: 1, search: '' })
     });
     const categories = categoriesResponse?.data;
-    // 👆 --- AKHIR PERBAIKAN --- 👆
     
     return(<Dialog open={isOpen} onOpenChange={setIsOpen}><DialogTrigger asChild><Button type="button" variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4"/> Tambah</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Pilih Kategori</DialogTitle></DialogHeader><div className="max-h-80 overflow-y-auto">{categories?.map(cat => (<div key={cat.id} onClick={() => { onSelect(cat); setIsOpen(false); }} className="p-2 rounded-md hover:bg-accent cursor-pointer">{cat.name}</div>))}</div></DialogContent></Dialog>);
 }

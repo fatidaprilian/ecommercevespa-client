@@ -1,13 +1,10 @@
-// vespa-ecommerce-admin/components/settings/AccurateIntegration.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import axios from 'axios'; // Pastikan Anda sudah punya instance axios terkonfigurasi
+import axios from 'axios';
 
-// Konfigurasi base URL API NestJS Anda
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
 });
@@ -17,7 +14,6 @@ export const AccurateIntegration = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Fungsi untuk memeriksa status koneksi saat komponen dimuat
     const checkStatus = async () => {
       try {
         setIsLoading(true);
@@ -35,11 +31,9 @@ export const AccurateIntegration = () => {
 
   const handleConnectClick = async () => {
     try {
-      // 1. Minta URL otorisasi dari backend NestJS
       const response = await api.get('/accurate/authorize-url');
       const { url } = response.data;
 
-      // 2. Redirect halaman ke URL otorisasi Accurate
       window.location.href = url;
     } catch (error) {
       console.error('Failed to get authorization URL:', error);

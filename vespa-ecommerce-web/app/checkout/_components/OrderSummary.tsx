@@ -1,4 +1,3 @@
-// file: app/checkout/_components/OrderSummary.tsx
 'use client';
 
 import { useCartStore } from '@/store/cart';
@@ -10,7 +9,6 @@ import { Loader2, PackageCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Address } from '@/services/addressService';
 import { ShippingRate } from '@/services/shippingService';
-// 👇 1. Impor store autentikasi untuk mengecek peran pengguna
 import { useAuthStore } from '@/store/auth';
 
 const formatPrice = (price: number) => {
@@ -41,8 +39,6 @@ export function OrderSummary({
   const router = useRouter();
   const { createOrder, selectedItems, cart } = useCartStore();
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-  
-  // 👇 2. Ambil data pengguna dari store
   const { user } = useAuthStore();
 
   const totalItems = cart?.items
@@ -68,20 +64,14 @@ export function OrderSummary({
           selectedAddress.districtId
         );
         
-        // 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
         if (user?.role === 'RESELLER') {
-            // Untuk RESELLER, arahkan langsung ke halaman detail pesanan
             toast.success("Pesanan berhasil dibuat dan dikirim ke admin!");
             router.push(`/orders/${newOrder.id}`);
         } else if (newOrder && newOrder.redirect_url) {
-            // Untuk MEMBER, arahkan ke payment gateway (alur lama)
             window.location.href = newOrder.redirect_url;
         } else {
-            // Fallback jika terjadi kesalahan
             throw new Error('Respons pesanan tidak valid.');
         }
-        // 👆 --- AKHIR PERUBAHAN --- 👆
-
       } catch (error) {
         toast.error("Gagal memproses pesanan. Silakan coba lagi.");
         console.error("Gagal melanjutkan ke pembayaran:", error);
@@ -134,7 +124,6 @@ export function OrderSummary({
       </div>
 
       <div className="mt-6">
-        {/* 👇 3. Ubah teks tombol berdasarkan peran pengguna */}
         <Button onClick={handleCreateOrder} size="lg" className="w-full" disabled={!selectedAddress || !selectedShippingOption || isCreatingOrder}>
             {isCreatingOrder ? <Loader2 className="mr-2 animate-spin" /> : <PackageCheck className="mr-2" />}
             {isCreatingOrder ? 'Memproses...' : (user?.role === 'RESELLER' ? 'Proses Pesanan' : 'Lanjutkan ke Pembayaran')}

@@ -1,4 +1,4 @@
-import Head from 'next/head'; // 1. Import Head
+import Head from 'next/head'; 
 import type { AppProps } from "next/app";
 import { Geist, Geist_Mono } from "next/font/google";
 
@@ -12,7 +12,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// 2. Hapus 'export const metadata' dari sini
 
 export default function RootLayout({
   children,
@@ -21,7 +20,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      {/* 3. Letakkan Head di sini untuk mengatur metadata */}
       <Head>
         <title>Admin Dashboard</title>
         <meta name="description" content="Admin panel for Vespa E-commerce" />

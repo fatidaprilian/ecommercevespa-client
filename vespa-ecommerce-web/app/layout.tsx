@@ -1,10 +1,7 @@
-// file: app/layout.tsx (Revisi)
-
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/components/providers/QueryProvider';
-// [DIUBAH] Impor ConditionalNavbar, bukan Navbar
 import ConditionalNavbar from '@/components/layout/ConditionalNavbar';
 import { Toaster } from 'react-hot-toast';
 
@@ -29,7 +26,6 @@ export default function RootLayout({
                 <QueryProvider>
                     <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
                     
-                    {/* [DIUBAH] Gunakan ConditionalNavbar di sini */}
                     <ConditionalNavbar />
 
                     <main className="flex-1">

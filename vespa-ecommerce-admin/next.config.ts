@@ -1,5 +1,3 @@
-// file: vespa-ecommerce-admin/next.config.ts
-
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -13,10 +11,8 @@ const nextConfig: NextConfig = {
     ],
   },
   
-  // --- BLOK INI TELAH DIPERBARUI ---
   images: {
     formats: ['image/webp', 'image/avif'],
-    // Menambahkan izin untuk hostname dari Cloudinary
     remotePatterns: [
       {
         protocol: 'https',
@@ -26,14 +22,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // -------------------------------
-  
-  // Mengabaikan error ESLint saat build
   eslint: {
     ignoreDuringBuilds: true,
   },
   
-  // Mengabaikan error TypeScript saat build
   typescript: {
     ignoreBuildErrors: true,
   },

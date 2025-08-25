@@ -1,4 +1,3 @@
-// file: app/orders/[id]/page.tsx (Revisi Final untuk Alur Reseller)
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +14,6 @@ import { getOrderById } from '@/services/orderService';
 import { Button } from '@/components/ui/button';
 import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
 
-// Helper Functions
 const formatDate = (dateString?: string) => {
   if (!dateString) return 'Tanggal tidak tersedia';
   return new Date(dateString).toLocaleString('id-ID', {
@@ -34,7 +32,6 @@ const copyToClipboard = (text: string, label: string) => {
   toast.success(`${label} disalin!`);
 };
 
-// Komponen ShipmentTracking (Tidak ada perubahan)
 function ShipmentTracking({ order }: { order: Order }) {
     if (!order.shipment?.trackingNumber || !order.courier) {
         return null;
@@ -92,7 +89,6 @@ function ShipmentTracking({ order }: { order: Order }) {
 }
 
 
-// Komponen Utama Halaman
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -110,7 +106,6 @@ export default function OrderDetailPage() {
   
   const isReseller = user?.role === 'RESELLER';
 
-  // Tentukan status teks berdasarkan peran dan status pesanan
   const getStatusInfo = () => {
       switch (order.status) {
           case 'PENDING':
@@ -216,7 +211,6 @@ export default function OrderDetailPage() {
               
               {/* Logika pembayaran manual untuk member tidak diubah */}
                { !isReseller && order.status === 'PENDING' && order.payment?.method === 'MANUAL_TRANSFER' && (
-                 // ... Tampilkan form upload bukti bayar untuk member jika diperlukan
                  <p className="text-center text-sm text-gray-500 mt-4">Silakan upload bukti pembayaran.</p>
                )}
             </div>

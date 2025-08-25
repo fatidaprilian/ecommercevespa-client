@@ -1,4 +1,3 @@
-// file: app/profile/(dashboard)/_components/AddressDialog.tsx
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -26,15 +25,12 @@ const phoneRegex = new RegExp(
   /^(\+62|62|0)8[1-9][0-9]{6,9}$/
 );
 
-// ==================== PERBAIKAN UTAMA DI SINI ====================
-// Skema validasi disederhanakan. Objek 'area' sekarang hanya memeriksa 'id' dan 'label'.
 const addressSchema = z.object({
   street: z.string().min(10, "Alamat jalan lengkap minimal 10 karakter."),
   area: z.object(
       { 
         id: z.string(), 
         label: z.string()
-        // `postalCode` dihapus dari validasi objek ini untuk mencegah error
       },
       { required_error: "Area harus dipilih." }
   ),
@@ -42,7 +38,6 @@ const addressSchema = z.object({
   phone: z.string().regex(phoneRegex, 'Format nomor telepon tidak valid (contoh: 0812...).'),
   isDefault: z.boolean().default(false),
 });
-// ===============================================================
 
 type AddressFormValues = z.infer<typeof addressSchema>;
 
@@ -151,7 +146,6 @@ export function AddressDialog({ initialData, onSave, onClose }: AddressDialogPro
                     onQueryChange={setAreaQuery}
                     options={areaOptions}
                     onSelect={(area: AreaData) => {
-                      // Menggunakan objek yang lebih sederhana agar cocok dengan skema Zod
                       form.setValue('area', { id: area.id, label: area.label }, { shouldValidate: true, shouldDirty: true });
                       form.setValue('postalCode', area.postalCode, { shouldValidate: true });
                     }}

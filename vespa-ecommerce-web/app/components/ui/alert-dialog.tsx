@@ -1,4 +1,3 @@
-// file: app/components/ui/alert-dialog.tsx
 "use client"
 
 import * as React from "react"

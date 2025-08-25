@@ -1,4 +1,3 @@
-// file: app/page.tsx (Revisi Lengkap)
 'use client';
 
 import { useRef, useEffect } from "react";
@@ -15,7 +14,7 @@ import {
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { useProducts, getProducts } from "@/hooks/use-products"; // Perubahan di sini
+import { useProducts, getProducts } from "@/hooks/use-products"; 
 import { useCategories } from "@/hooks/use-categories";
 import { useBrands } from "@/hooks/use-brands";
 import { Product, Category, Brand } from "@/types";
@@ -24,10 +23,6 @@ import { useAuthStore } from "@/store/auth";
 import { ProductCard } from "@/components/molecules/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// ====================================================================
-// Komponen Pembantu & Bagian Halaman
-// ====================================================================
 
 const Section = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
     const ref = useRef(null);
@@ -91,7 +86,6 @@ const HeroSection = () => {
     );
 };
 
-// [REVISI] Komponen CategoriesSection dengan posisi tombol yang disesuaikan
 const CategoriesSection = () => {
     const { data: categoriesResponse, isLoading, error } = useCategories({ limit: 4 });
     const categories = categoriesResponse?.data; 
@@ -104,7 +98,6 @@ const CategoriesSection = () => {
 
     return (
         <Section className="bg-white">
-            {/* [DIUBAH] Header section diubah menjadi flexbox */}
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-12">
                 <div className="text-center md:text-left mb-6 md:mb-0">
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1E2022] mb-3 font-playfair">Jelajahi Setiap Detail</h2>
@@ -254,10 +247,6 @@ const FeaturedProducts = () => {
 };
 
 
-// ====================================================================
-// Komponen Utama Halaman
-// ====================================================================
-
 export default function HomePage() {
   const { isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
@@ -266,7 +255,6 @@ export default function HomePage() {
     if (isAuthenticated) {
         queryClient.prefetchQuery({
             queryKey: ['products', { sortBy: 'createdAt', sortOrder: 'desc', limit: 4 }],
-            // Perubahan di sini
             queryFn: () => getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 4 }),
         });
     }

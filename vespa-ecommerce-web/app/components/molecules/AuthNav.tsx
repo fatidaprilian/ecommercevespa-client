@@ -1,4 +1,3 @@
-// file: app/components/molecules/AuthNav.tsx
 'use client';
 
 import { useEffect } from 'react';
@@ -18,23 +17,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function AuthNav() {
-  // --- PERBAIKAN DI SINI: Destructure user secara terpisah ---
   const { user, isAuthenticated, setAuth } = useAuthStore();
   const { fetchCart, clearClientCart } = useCartStore();
 
-  // --- PERBAIKAN UTAMA PADA useEffect ---
   useEffect(() => {
     const syncUserAndCart = async () => {
-      // Hanya jalankan jika user terautentikasi
       if (isAuthenticated) {
         try {
-          // Ambil user profile jika belum ada di state
           if (!useAuthStore.getState().user) {
             const profileRes = await api.get('/users/profile');
             const token = useAuthStore.getState().token;
             setAuth(profileRes.data, token);
           }
-          // Muat data keranjang
           await fetchCart();
         } catch (error) {
           console.error("Sesi tidak valid, melakukan logout...", error);
@@ -45,7 +39,6 @@ export default function AuthNav() {
     };
 
     syncUserAndCart();
-    // Dependensi diubah agar tidak memantau 'user', sehingga tidak menyebabkan loop
   }, [isAuthenticated, setAuth, fetchCart, clearClientCart]);
 
   const handleLogout = () => {
@@ -93,7 +86,6 @@ export default function AuthNav() {
     );
   }
 
-  // Tampilan saat pengguna belum login
   return (
     <div className="flex items-center space-x-2">
       <Link href="/login" className="flex items-center gap-2 hover:bg-gray-500/10 px-4 py-2 rounded-full text-sm font-semibold transition-all">

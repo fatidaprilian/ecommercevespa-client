@@ -1,4 +1,3 @@
-// file: app/store/auth.ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '../types';
@@ -8,8 +7,8 @@ type AuthState = {
   token: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User | null, token: string | null) => void;
-  _hasHydrated: boolean; // <-- Tambahkan state ini
-  setHasHydrated: (hydrated: boolean) => void; // <-- Tambahkan fungsi ini
+  _hasHydrated: boolean; 
+  setHasHydrated: (hydrated: boolean) => void; 
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -18,18 +17,17 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      _hasHydrated: false, // <-- State awal
+      _hasHydrated: false, 
       setAuth: (user, token) => set({
         user,
         token,
         isAuthenticated: !!token,
       }),
-      setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }), // <-- Fungsi setter
+      setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }), 
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // ✅ KUNCI PERBAIKAN: Tandai store sebagai "hydrated" setelah selesai memuat
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.setHasHydrated(true);

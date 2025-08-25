@@ -1,5 +1,3 @@
-// vespa-ecommerce-web/app/about/AboutClient.tsx
-
 'use client';
 
 import { motion } from 'framer-motion';
@@ -7,7 +5,6 @@ import { Wrench, Users, ShieldCheck, Heart } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
-// Varian animasi
 const containerVariants = {
   hidden: { opacity: 0 },
   show: {
@@ -29,7 +26,6 @@ const slideInLeft = {
 export default function AboutClient() {
   return (
     <div className="bg-gray-50 overflow-hidden">
-      {/* --- PERBAIKAN PADA BARIS DI BAWAH UNTUK MENAMBAH JARAK --- */}
       <div className="container mx-auto px-4 pt-32 pb-16 md:pt-40 md:pb-24">
         
         <motion.div

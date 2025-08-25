@@ -1,4 +1,3 @@
-// pages/brands/new.tsx
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -23,9 +22,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createBrand, BrandData } from '@/services/brandService';
-import { uploadImage } from '@/services/productService'; // Kita gunakan ulang service upload dari produk
+import { uploadImage } from '@/services/productService';
 
-// Skema validasi untuk form merek
 const brandFormSchema = z.object({
   name: z.string().min(2, { message: 'Nama merek minimal 2 karakter.' }),
   logoUrl: z.string().optional(),

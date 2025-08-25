@@ -1,7 +1,6 @@
-// file: app/checkout/_components/NewAddressForm.tsx
 'use client'
 
-import { useEffect, useState } from 'react'; // Import useEffect
+import { useEffect, useState } from 'react'; 
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -56,7 +55,6 @@ export function NewAddressForm({ initialData, onSuccess, closeModal }: NewAddres
        mode: 'onChange',
     });
 
-    // ==================== PERBAIKAN #4: TAMBAHKAN useEffect ====================
     useEffect(() => {
         if (isEditing && initialData) {
             form.reset({
@@ -75,7 +73,6 @@ export function NewAddressForm({ initialData, onSuccess, closeModal }: NewAddres
             });
         }
     }, [isEditing, initialData, form]);
-    // =========================================================================
 
     const [areaQuery, setAreaQuery] = useState('');
     const { data: areaOptions, isLoading: isLoadingAreas } = useQuery({

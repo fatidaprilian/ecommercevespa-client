@@ -1,4 +1,3 @@
-// vespa-ecommerce-admin/pages/index.tsx
 'use client'; 
 
 import { motion } from 'framer-motion';

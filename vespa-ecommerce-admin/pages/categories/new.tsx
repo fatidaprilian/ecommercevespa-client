@@ -1,4 +1,3 @@
-// pages/categories/new.tsx
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,14 +13,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createCategory, CategoryData } from '@/services/categoryService';
-import { uploadImage } from '@/services/productService'; // Kita gunakan ulang service upload dari produk
+import { uploadImage } from '@/services/productService';
 
-// 👇 **START OF CHANGES** 👇
 const categoryFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama kategori minimal 3 karakter.' }),
   imageUrl: z.string().optional(),
 });
-// 👆 **END OF CHANGES** 👆
 
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
@@ -47,7 +44,6 @@ export default function NewCategoryPage() {
     },
   });
 
-  // 👇 **START OF CHANGES: FUNGSI UPLOAD** 👇
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -69,7 +65,6 @@ export default function NewCategoryPage() {
   const removeImage = () => {
     form.setValue('imageUrl', '', { shouldValidate: true });
   };
-  // 👆 **END OF CHANGES: FUNGSI UPLOAD** 👆
 
   function onSubmit(values: CategoryFormValues) {
     mutation.mutate(values);
@@ -96,7 +91,6 @@ export default function NewCategoryPage() {
                 </FormItem>
               )} />
               
-              {/* 👇 **START OF CHANGES: FORM UPLOAD** 👇 */}
               <FormField control={form.control} name="imageUrl" render={() => (
                 <FormItem>
                   <FormLabel>Gambar Kategori</FormLabel>
@@ -121,7 +115,6 @@ export default function NewCategoryPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-              {/* 👆 **END OF CHANGES: FORM UPLOAD** 👆 */}
             </CardContent>
           </Card>
           <div className="flex justify-end">

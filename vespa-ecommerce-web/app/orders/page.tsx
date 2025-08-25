@@ -1,4 +1,3 @@
-// file: app/orders/page.tsx (Revisi Lengkap)
 'use client';
 
 import { useState } from 'react';
@@ -27,11 +26,9 @@ import { getMyOrders, PaginatedOrders } from '@/services/orderService';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-// Helper
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 
-// Objek konfigurasi status yang lebih detail
 const statusConfig: { [key: string]: { icon: React.ElementType; color: string; text: string } } = {
   PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-300', text: 'Menunggu Pembayaran' },
   PAID: { icon: Package, color: 'bg-blue-100 text-blue-800 border-blue-300', text: 'Dibayar' },
@@ -135,7 +132,7 @@ export default function OrdersPage() {
               className="space-y-6"
             >
               {(isLoading ? Array.from({ length: 5 }) : orders)?.map((order: Order, index) => {
-                if (!order) { // Handle skeleton loading
+                if (!order) { 
                     return <SkeletonCard key={index} />;
                 }
                 const currentStatus = statusConfig[order.status] || statusConfig.PENDING;

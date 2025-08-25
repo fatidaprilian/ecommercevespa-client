@@ -1,4 +1,3 @@
-// file: app/services/userService.ts
 import api from '@/lib/api';
 import { User } from '@/types';
 
@@ -12,7 +11,6 @@ export const getMyProfile = async (): Promise<UserProfile> => {
   return data;
 };
 
-// ✅ FUNGSI BARU UNTUK UPDATE PROFIL
 export const updateMyProfile = async (payload: { name: string }): Promise<UserProfile> => {
     const { data } = await api.patch('/users/profile', payload);
     return data;

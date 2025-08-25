@@ -1,7 +1,5 @@
-// pages/services/brandService.ts
 import api from '@/lib/api';
 
-// Define the Brand data structure
 export interface Brand {
   id: string;
   name: string;
@@ -9,13 +7,11 @@ export interface Brand {
   createdAt: string;
 }
 
-// Tambahkan definisi tipe data untuk payload
 export interface BrandData {
   name: string;
   logoUrl?: string;
 }
 
-// Tipe data untuk struktur respons paginasi dari API
 export interface PaginatedBrands {
   data: Brand[];
   meta: {
@@ -27,7 +23,7 @@ export interface PaginatedBrands {
 }
 
 
-// 👇 --- PERUBAHAN UTAMA DI SINI --- 👇
+
 /**
  * Mengambil merek dari API dengan paginasi dan pencarian.
  * @param page - Nomor halaman
@@ -43,9 +39,8 @@ export const getBrands = async ({ page, search }: { page: number; search: string
   });
   return data;
 };
-// 👆 --- AKHIR PERUBAHAN --- 👆
 
-// Create a new brand
+
 export const createBrand = async (data: BrandData): Promise<Brand> => {
   const response = await api.post('/brands', data);
   return response.data;
@@ -67,7 +62,6 @@ export const updateBrand = async (id: string, data: Partial<BrandData>): Promise
   return response.data;
 };
 
-// Delete a brand by its ID
 export const deleteBrand = async (id: string): Promise<void> => {
   await api.delete(`/brands/${id}`);
 };

@@ -1,4 +1,3 @@
-// file: app/checkout/_components/AddressForm.tsx
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -12,7 +11,7 @@ import { useCartStore } from '@/store/cart';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog } from '@/components/ui/dialog'; // Cukup import Dialog
+import { Dialog } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -34,12 +33,12 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
     const [addressToEdit, setAddressToEdit] = useState<Address | null>(null);
 
     const handleAddNew = () => {
-        setAddressToEdit(null); // Pastikan null untuk mode "Tambah Baru"
+        setAddressToEdit(null);
         setIsModalOpen(true);
     };
 
     const handleEdit = (address: Address) => {
-        setAddressToEdit(address); // Simpan alamat yang akan diedit
+        setAddressToEdit(address);
         setIsModalOpen(true);
     };
 
@@ -180,10 +179,9 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
                 </Card>
             )}
             
-            {/* ==================== PERBAIKAN #3: KIRIM DATA KE DIALOG ==================== */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <NewAddressForm 
-                    initialData={addressToEdit} // Kirim data alamat yang akan diedit
+                    initialData={addressToEdit}
                     onSuccess={(newAddress) => {
                         queryClient.invalidateQueries({ queryKey: ['addresses'] });
                         if (selectedAddress?.id === newAddress.id || !selectedAddress) {
@@ -194,7 +192,6 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
                     closeModal={() => setIsModalOpen(false)} 
                 />
             </Dialog>
-            {/* ========================================================================= */}
         </div>
     );
 }

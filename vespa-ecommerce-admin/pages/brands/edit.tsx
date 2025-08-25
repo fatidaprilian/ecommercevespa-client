@@ -1,4 +1,3 @@
-// pages/brands/edit.tsx
 'use client';
 
 import { useEffect, useState } from 'react';

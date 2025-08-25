@@ -1,5 +1,3 @@
-// file: vespa-ecommerce-admin/pages/products/edit.tsx
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -47,13 +45,11 @@ export default function EditProductPage() {
     enabled: !!productId,
   });
 
-  // Kueri ini sekarang akan menerima array langsung dari service yang sudah diperbaiki
   const { data: categories, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: getCategories });
   const { data: brands, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: getBrands });
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
-    // `values` memastikan form selalu sinkron dengan data dari `useQuery`
     values: {
       name: product?.name || '',
       sku: product?.sku || '',
@@ -195,7 +191,6 @@ export default function EditProductPage() {
                 <FormField name="categoryId" control={form.control} render={({ field }) => (
                     <FormItem>
                     <FormLabel>Kategori</FormLabel>
-                    {/* 👇 **PERBAIKAN KECIL DI SINI** 👇 */}
                     <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingCategories}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
                         <SelectContent>{categories?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>

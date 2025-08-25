@@ -1,4 +1,3 @@
-// file: vespa-ecommerce-web/app/(auth)/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -7,11 +6,13 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LogIn, Mail, KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
-// --- 1. IMPORT KOMPONEN DIALOG ---
 import { ForgotPasswordDialog } from '../_components/ForgotPasswordDialog';
+import { VerificationDialog } from '../_components/VerificationDialog';
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -23,8 +24,9 @@ export default function LoginPage() {
   const { setAuth } = useAuthStore();
   const queryClient = useQueryClient();
 
-  // --- 2. STATE BARU UNTUK KONTROL DIALOG ---
   const [isForgotPassOpen, setIsForgotPassOpen] = useState(false);
+  const [isVerificationOpen, setIsVerificationOpen] = useState(false);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,17 +53,31 @@ export default function LoginPage() {
       
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Email atau password salah.';
-      setError(errorMessage);
-      setIsLoading(false);
+      
+      if (errorMessage.includes('belum terverifikasi')) {
+        toast.error(errorMessage); 
+        setIsVerificationOpen(true); 
+        setError(null); 
+      } else {
+        setError(errorMessage);
+      }
+
+    } finally {
+        setIsLoading(false);
     }
   };
 
   return (
     <>
-      {/* --- 3. RENDER KOMPONEN DIALOG --- */}
       <ForgotPasswordDialog 
         isOpen={isForgotPassOpen}
         onClose={() => setIsForgotPassOpen(false)}
+      />
+
+      <VerificationDialog
+        isOpen={isVerificationOpen}
+        onClose={() => setIsVerificationOpen(false)}
+        email={email}
       />
 
       <div className="flex justify-center items-center min-h-screen bg-[#F0F5F9] px-4 pt-20">
@@ -103,7 +119,6 @@ export default function LoginPage() {
                   placeholder="Password Anda"
                 />
               </div>
-              {/* --- 4. TAMBAHKAN LINK LUPA PASSWORD --- */}
               <div className="text-right mt-2">
                 <button 
                   type="button" 

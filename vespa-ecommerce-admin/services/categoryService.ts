@@ -1,10 +1,7 @@
-// file: vespa-ecommerce-admin/services/categoryService.ts
 
 import api from '@/lib/api';
 
-// ====================================================================
-// Tipe Data (Types)
-// ====================================================================
+
 
 export interface Category {
   id: string;
@@ -29,9 +26,7 @@ export interface CategoryData {
   imageUrl?: string;
 }
 
-// ====================================================================
-// Fungsi-fungsi Service
-// ====================================================================
+
 
 /**
  * Mengambil kategori dari API dengan paginasi dan pencarian.

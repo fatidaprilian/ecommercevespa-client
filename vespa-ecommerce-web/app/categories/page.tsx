@@ -1,10 +1,7 @@
-// file: app/categories/page.tsx (File BARU)
-
 import { Suspense } from 'react';
 import CategoriesClient from './CategoriesClient';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Loading skeleton yang lebih akurat
 const Loading = () => {
   return (
     <div className="container mx-auto px-4 py-12">

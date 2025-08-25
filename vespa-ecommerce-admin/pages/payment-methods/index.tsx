@@ -1,5 +1,3 @@
-// file: pages/payment-methods/index.tsx
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
@@ -7,7 +5,7 @@ import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { motion, AnimatePresence } from 'framer-motion'; // 1. Impor motion dan AnimatePresence
+import { motion, AnimatePresence } from 'framer-motion'; 
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,7 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getAllPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod, PaymentMethod } from '@/services/paymentMethodService';
 import { getAccurateBankAccounts, AccurateBankAccount } from '@/services/accurateService';
 
-// 2. Definisikan varian animasi
 const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
@@ -100,9 +97,6 @@ function PaymentMethodForm({ method, onClose }: { method?: PaymentMethod; onClos
         accurateBankId: bankAccounts?.find(acc => acc.no === no)?.id,
     };
 
-    // Note: This logic seems incorrect. 'isActive' should probably be part of the payload.
-    // If you intend to send 'isActive', you should remove 'delete payload.isActive'.
-    // However, I will keep it as is to not change your business logic.
     delete payload.isActive; 
     delete payload.accurateBankData;
     if (!payload.logoUrl) {
@@ -196,7 +190,6 @@ export default function PaymentMethodsPage() {
   };
 
   return (
-    // 3. Bungkus seluruh halaman dengan motion.div
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={pageVariants}>
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Metode Pembayaran Manual</h1>
@@ -211,7 +204,6 @@ export default function PaymentMethodsPage() {
             {isLoading ? <div className="flex justify-center"><Loader2 className="animate-spin" /></div> : (
               <Table>
                 <TableHeader><TableRow><TableHead>Bank</TableHead><TableHead>Nomor Rekening</TableHead><TableHead>Pemilik</TableHead><TableHead>Akun Accurate</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
-                {/* 4. Gunakan AnimatePresence dan motion.tbody */}
                 <AnimatePresence>
                     <motion.tbody
                         initial="hidden"

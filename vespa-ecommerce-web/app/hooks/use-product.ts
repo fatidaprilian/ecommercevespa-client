@@ -1,4 +1,3 @@
-// file: vespa-ecommerce-web/app/hooks/use-product.ts
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
@@ -23,8 +22,8 @@ const getProductById = async (productId: string): Promise<Product> => {
  */
 export const useProduct = (productId: string) => {
   return useQuery({
-    queryKey: ['product', productId], // Kunci query unik untuk produk spesifik ini
+    queryKey: ['product', productId],
     queryFn: () => getProductById(productId),
-    enabled: !!productId, // Hanya aktifkan query ini jika productId sudah ada
+    enabled: !!productId,
   });
 };

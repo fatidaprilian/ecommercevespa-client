@@ -1,4 +1,3 @@
-// file: app/products/[id]/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -56,7 +55,6 @@ const ProductDetailSkeleton = () => (
     </div>
 );
 
-// Varian animasi untuk staggered effect
 const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -143,7 +141,6 @@ export default function ProductDetailPage() {
                 </motion.div>
             
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-                    {/* Kolom Kiri: Galeri Gambar */}
                     <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="lg:sticky lg:top-28 self-start">
                         <AnimatePresence mode="wait">
                             <motion.div
@@ -170,7 +167,6 @@ export default function ProductDetailPage() {
                         </div>
                     </motion.div>
 
-                    {/* Kolom Kanan: Detail Produk */}
                     <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col">
                         <motion.div variants={itemVariants} className="flex items-center gap-3 mb-3">
                             {product.category && <Link href={`/products?categoryId=${product.category.id}`} className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors">{product.category.name}</Link>}
@@ -191,7 +187,6 @@ export default function ProductDetailPage() {
                         <motion.p variants={itemVariants} className="text-gray-600 leading-relaxed mb-8">{product.description || 'Tidak ada deskripsi untuk produk ini.'}</motion.p>
 
                         <motion.div variants={itemVariants} className="bg-gray-50 border rounded-lg p-4 space-y-3 mb-8">
-                            {/* SKU Dihapus Sesuai Permintaan */}
                             <div className="flex items-center gap-3 text-sm"><Package size={16} className="text-gray-500"/><span>Stok: <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}</span></span></div>
                             <div className="flex items-center gap-3 text-sm"><Ruler size={16} className="text-gray-500"/><span>Berat: <span className="font-semibold text-gray-800">{product.weight || 'N/A'} gram</span></span></div>
                         </motion.div>

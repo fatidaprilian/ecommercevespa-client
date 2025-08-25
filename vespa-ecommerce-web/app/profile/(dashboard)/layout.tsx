@@ -1,5 +1,3 @@
-// file: app/profile/(dashboard)/layout.tsx
-
 import { SidebarNav } from "./_components/SidebarNav";
 
 export default function DashboardLayout({

@@ -1,5 +1,3 @@
-// file: app/categories/CategoriesClient.tsx (File BARU)
-
 'use client';
 
 import { useState } from 'react';

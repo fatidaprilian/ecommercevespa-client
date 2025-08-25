@@ -28,16 +28,11 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Mengabaikan error ESLint saat build
   eslint: {
     ignoreDuringBuilds: true,
   },
 
-  // TAMBAHKAN BLOK INI
-  // Mengabaikan error TypeScript saat build
   typescript: {
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
     ignoreBuildErrors: true,
   },
 };

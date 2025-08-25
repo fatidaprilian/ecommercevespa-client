@@ -1,5 +1,3 @@
-// file: vespa-ecommerce-admin/pages/orders/index.tsx
-
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -13,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getOrders, Order, PaginatedOrders } from '@/services/orderService';
 
-// Varian animasi
 const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
@@ -167,6 +164,6 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </motion.div>
-    </motion.div> // <-- Perbaikan di sini, dari </div> menjadi </motion.div>
+    </motion.div>
   );
 }

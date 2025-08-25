@@ -1,4 +1,3 @@
-// pages/categories/edit.tsx
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,14 +13,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCategoryById, updateCategory, deleteCategory, CategoryData } from '@/services/categoryService';
-import { uploadImage } from '@/services/productService'; // Re-use from product service
+import { uploadImage } from '@/services/productService';
 
-// 👇 **START OF CHANGES** 👇
 const categoryFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama kategori minimal 3 karakter.' }),
   imageUrl: z.string().optional(),
 });
-// 👆 **END OF CHANGES** 👆
 
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
@@ -76,7 +73,6 @@ export default function EditCategoryPage() {
     },
   });
 
-  // 👇 **START OF CHANGES: FUNGSI UPLOAD** 👇
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -97,7 +93,6 @@ export default function EditCategoryPage() {
   const removeImage = () => {
     form.setValue('imageUrl', '', { shouldValidate: true });
   };
-  // 👆 **END OF CHANGES: FUNGSI UPLOAD** 👆
 
   const onSubmit = (values: CategoryFormValues) => {
     updateMutation.mutate(values);
@@ -133,7 +128,6 @@ export default function EditCategoryPage() {
                 </FormItem>
               )} />
               
-              {/* 👇 **START OF CHANGES: FORM UPLOAD** 👇 */}
               <FormField control={form.control} name="imageUrl" render={() => (
                 <FormItem>
                   <FormLabel>Gambar Kategori</FormLabel>
@@ -158,7 +152,6 @@ export default function EditCategoryPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-              {/* 👆 **END OF CHANGES: FORM UPLOAD** 👆 */}
 
               <div className="flex justify-between items-center pt-4">
                 <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>

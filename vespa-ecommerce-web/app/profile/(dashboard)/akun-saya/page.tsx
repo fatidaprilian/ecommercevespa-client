@@ -1,11 +1,10 @@
-// file: app/profile/(dashboard)/akun-saya/page.tsx
 'use client';
 
 import { motion } from 'framer-motion';
 import { Archive, Clock, MapPin, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { useProfile } from '@/hooks/useProfile'; // <-- 1. Ganti import
+import { useProfile } from '@/hooks/useProfile';
 
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -22,7 +21,7 @@ const itemVariants = {
 };
 
 export default function AkunSayaPage() {
-  const { data: user, isLoading } = useProfile(); // <-- 2. Gunakan hook baru
+  const { data: user, isLoading } = useProfile();
 
   if (isLoading) {
     return (
@@ -57,7 +56,6 @@ export default function AkunSayaPage() {
         animate="show"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
       >
-        {/* ... Card lainnya tidak berubah ... */}
         <motion.div variants={itemVariants}>
             <Card className="h-full hover:shadow-lg transition-shadow">
                 <CardHeader>
@@ -99,7 +97,6 @@ export default function AkunSayaPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* 3. Baris ini sekarang akan berfungsi dengan benar */}
               <p className="text-2xl font-bold text-gray-700">
                 {new Date(user.createdAt).toLocaleDateString('id-ID', {
                   year: 'numeric',

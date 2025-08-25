@@ -1,5 +1,3 @@
-// src/accurate/accurate.controller.ts
-
 import { Controller, Get, Post, Body, Query, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AccurateService } from './accurate.service';
@@ -9,10 +7,6 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Role } from '@prisma/client';
 
-/**
- * Because of the global prefix 'api/v1' in main.ts,
- * this controller will handle the '/api/v1/accurate' route.
- */
 @Controller('accurate')
 export class AccurateController {
   private readonly adminUrl: string;
@@ -70,9 +64,6 @@ export class AccurateController {
       return this.accurateService.openDatabase(id);
   }
 
-  /**
-   * ✅ NEW ENDPOINT: Endpoint for the frontend to fetch the list of bank accounts.
-   */
   @Get('bank-accounts')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)

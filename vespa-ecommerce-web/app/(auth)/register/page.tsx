@@ -1,10 +1,9 @@
-// file: vespa-ecommerce-web/app/(auth)/register/page.tsx
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast'; // Pastikan toast diimpor
+import toast from 'react-hot-toast';
 import {
   UserPlus,
   User,
@@ -14,7 +13,6 @@ import {
 } from 'lucide-react';
 
 import api from '@/lib/api';
-// --- PERBAIKAN DI SINI ---
 import { VerificationDialog } from '../_components/VerificationDialog';
 
 export default function RegisterPage() {

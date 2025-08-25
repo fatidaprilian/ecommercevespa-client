@@ -1,5 +1,3 @@
-// file: vespa-ecommerce-admin/pages/products/index.tsx
-
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -26,7 +24,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getProducts, PaginatedProducts } from '@/services/productService';
 
-// Varian animasi untuk kontainer utama halaman
 const pageVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -37,7 +34,6 @@ const pageVariants = {
   },
 };
 
-// Varian animasi untuk setiap item (header, card, baris tabel)
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
   visible: {
@@ -45,7 +41,7 @@ const itemVariants = {
     opacity: 1,
     transition: { ease: 'easeOut', duration: 0.4 },
   },
-  exit: { // 1. Tambahkan animasi "exit"
+  exit: { 
     opacity: 0,
     transition: { ease: 'easeIn', duration: 0.2 },
   },
@@ -117,7 +113,6 @@ export default function ProductsPage() {
                     </TableRow>
                   </TableHeader>
                   <AnimatePresence mode="wait">
-                    {/* 2. Berikan `key` unik pada motion.tbody */}
                     <motion.tbody
                         key={`${page}-${debouncedSearchTerm}`}
                         initial="hidden"

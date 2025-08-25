@@ -1,4 +1,3 @@
-// app/components/molecules/PriceDisplay.tsx
 
 import { PriceInfo } from "@/types";
 
@@ -22,16 +21,9 @@ export default function PriceDisplay({
   originalPriceClassName = 'text-lg',
 }: PriceDisplayProps) {
 
-  // 👇 **START OF CHANGES** 👇
-  // Defensive check: If priceInfo is missing, fall back to a simple display
   if (!priceInfo) {
-    // This will now handle cases where the base price is available but priceInfo is not.
-    // We assume the component is used within a product context.
-    // If you pass a product prop, you can use product.price here.
-    // For now, we'll return a placeholder to avoid crashing.
     return <div className={`font-bold text-gray-900 ${className}`}>-</div>;
   }
-  // 👆 **END OF CHANGES** 👆
 
   if (priceInfo.finalPrice >= priceInfo.originalPrice) {
     return (

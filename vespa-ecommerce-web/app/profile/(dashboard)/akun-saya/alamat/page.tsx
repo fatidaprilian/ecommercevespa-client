@@ -1,4 +1,3 @@
-// file: app/profile/(dashboard)/akun-saya/alamat/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -10,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { getAddresses, deleteAddress, Address } from '@/services/addressService';
 import toast from 'react-hot-toast';
 import { Dialog } from "@/components/ui/dialog";
-// ✅ PERBAIKAN DI SINI: Ubah dari '../' menjadi '../../'
 import { AddressDialog } from '../../_components/AddressDialog';
 
 export default function AlamatPage() {

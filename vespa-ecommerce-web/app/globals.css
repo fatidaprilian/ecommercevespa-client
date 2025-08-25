@@ -124,32 +124,27 @@
   }
 }
 
-/* --- PERUBAHAN DIMULAI DI SINI --- */
-
-/* Styling untuk Custom Scrollbar */
 .custom-scroll::-webkit-scrollbar {
-  width: 6px; /* Lebar scrollbar */
+  width: 6px; 
 }
 
 .custom-scroll::-webkit-scrollbar-track {
-  background: transparent; /* Membuat track transparan */
+  background: transparent; 
 }
 
 .custom-scroll::-webkit-scrollbar-thumb {
-  background: #ccc; /* Warna scrollbar */
-  border-radius: 10px; /* Membuat sudut scrollbar membulat */
+  background: #ccc; 
+  border-radius: 10px; 
 }
 
 .custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: #aaa; /* Warna scrollbar saat di-hover */
+  background: #aaa; 
 }
 
-/* Membuat scroll lebih mulus di seluruh halaman */
 html {
   scroll-behavior: smooth;
 }
 
-/* Menonaktifkan animasi transform yang bermasalah saat scrolling */
 body.scrolling .group:hover .group-hover\:-translate-y-1 {
   transform: none;
 }

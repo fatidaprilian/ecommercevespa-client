@@ -16,7 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { EmailService } from 'src/email/email.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { User, Role } from '@prisma/client'; // <-- Perubahan: Impor 'Role'
+import { User, Role } from '@prisma/client';
 import { EmailVerificationDto } from './dto/email-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -37,8 +37,6 @@ export class AuthService {
     const user = await this.usersService.findByEmail(loginDto.email);
 
     if (user && (await bcrypt.compare(loginDto.password, user.password))) {
-      // Perubahan Utama: Jika email belum terverifikasi DAN peran BUKAN admin,
-      // maka lemparkan error. Admin bisa login tanpa verifikasi.
       if (!user.emailVerified && user.role !== Role.ADMIN) {
         await this.resendVerificationEmail(user.email);
         throw new UnauthorizedException(
@@ -122,7 +120,7 @@ export class AuthService {
       throw new BadRequestException('Email sudah terverifikasi.');
 
     const verificationToken = crypto.randomInt(100000, 999999).toString();
-    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
+    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
 
     await this.prisma.user.update({
       where: { email },
@@ -183,7 +181,7 @@ export class AuthService {
     }
 
     const passwordResetToken = crypto.randomInt(100000, 999999).toString();
-    const passwordResetTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
+    const passwordResetTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     await this.prisma.user.update({
       where: { email },
@@ -209,7 +207,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         passwordResetToken: token,
-        passwordResetTokenExpires: { gt: new Date() },
+        passwordResetTokenExpires: { gt: new Date() }, // Cari token yang belum expired
       },
     });
 

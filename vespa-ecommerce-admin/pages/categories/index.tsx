@@ -1,12 +1,10 @@
-// file: vespa-ecommerce-admin/pages/categories/index.tsx
-
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image'; // 1. Ganti 'img' dengan 'Image' dari Next.js
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,10 +23,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-// 2. Import service dan tipe data yang sudah mendukung paginasi
 import { getCategories, PaginatedCategories } from '@/services/categoryService';
 
-// Varian animasi
 const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
@@ -41,7 +37,6 @@ export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
-  // 3. Sesuaikan useQuery untuk paginasi dan pencarian
   const { data: categoriesResponse, isLoading, isError, error } = useQuery<PaginatedCategories, Error>({
     queryKey: ['categories', page, debouncedSearchTerm],
     queryFn: () => getCategories({ page, search: debouncedSearchTerm }),
@@ -50,8 +45,6 @@ export default function CategoriesPage() {
 
   const categories = categoriesResponse?.data;
   const meta = categoriesResponse?.meta;
-
-  // (Fungsi untuk delete, dsb. bisa ditambahkan di sini jika perlu)
 
   return (
     <motion.div initial="hidden" animate="visible" variants={pageVariants}>
@@ -117,7 +110,6 @@ export default function CategoriesPage() {
                     categories.map((category) => (
                       <motion.tr key={category.id} variants={itemVariants}>
                         <TableCell>
-                           {/* 4. Gunakan komponen Image dari Next.js */}
                            <Image src={category.imageUrl || '/placeholder.svg'} alt={category.name} width={48} height={48} className="rounded-md object-cover bg-muted" />
                         </TableCell>
                         <TableCell className="font-medium">{category.name}</TableCell>
@@ -154,7 +146,6 @@ export default function CategoriesPage() {
               </AnimatePresence>
             </Table>
 
-            {/* 5. Tampilkan tombol paginasi */}
             {meta && meta.lastPage > 1 && (
               <div className="flex items-center justify-end space-x-2 pt-4">
                 <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1 || isLoading}>

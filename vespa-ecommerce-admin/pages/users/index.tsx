@@ -1,4 +1,3 @@
-// file: pages/users/index.tsx
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -13,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getUsers, deleteUser, User } from '@/services/userService';
 
-// Varian Animasi
 const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
@@ -51,7 +49,6 @@ export default function UsersPage() {
     queryFn: getUsers,
   });
 
-  // 👇 --- LOGIKA PENCARIAN & PAGINASI DI SINI --- 👇
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     if (!searchTerm) return users;
@@ -68,7 +65,6 @@ export default function UsersPage() {
     const startIndex = (page - 1) * ITEMS_PER_PAGE;
     return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredUsers, page]);
-  // 👆 --- AKHIR LOGIKA PENCARIAN & PAGINASI --- 👆
 
   const deleteMutation = useMutation({
     mutationFn: deleteUser,

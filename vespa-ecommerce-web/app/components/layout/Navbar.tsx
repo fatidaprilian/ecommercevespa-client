@@ -1,4 +1,3 @@
-// file: app/components/layout/Navbar.tsx (Revisi Lengkap)
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -40,7 +39,6 @@ export default function Navbar() {
     const searchInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
 
-    // [DIUBAH] Ambil hanya 4 kategori untuk dropdown
     const { data: categoriesResponse, isLoading: isLoadingCategories } = useCategories({ limit: 4 });
     const categories = categoriesResponse?.data;
     
@@ -157,7 +155,6 @@ export default function Navbar() {
                                                         );
                                                     })
                                                 )}
-                                                {/* [BARU] Tombol "Lihat Semua Kategori" */}
                                                 <Separator className="my-1"/>
                                                 <Link href="/categories" className="flex items-center justify-center p-3 rounded-md text-blue-600 font-semibold hover:bg-blue-50 transition-colors duration-200">
                                                     Lihat Semua Kategori

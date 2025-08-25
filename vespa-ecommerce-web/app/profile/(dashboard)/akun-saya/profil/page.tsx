@@ -1,4 +1,3 @@
-// file: app/profile/(dashboard)/akun-saya/profil/page.tsx
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -15,15 +14,13 @@ import toast from 'react-hot-toast';
 import { useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateMyProfile } from '@/services/userService';
-import { useAuthStore } from '@/store/auth'; // <-- 1. Import Auth Store
+import { useAuthStore } from '@/store/auth'; 
 
-// Skema untuk update profil
 const profileSchema = z.object({
   name: z.string().min(3, 'Nama minimal 3 karakter.'),
   email: z.string().email(),
 });
 
-// Skema untuk ganti password
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Password saat ini harus diisi.'),
   newPassword: z.string().min(8, 'Password baru minimal 8 karakter.'),
@@ -56,10 +53,8 @@ export default function ProfilPage() {
     mutationFn: updateMyProfile,
     onSuccess: (updatedUser) => {
       toast.success("Profil berhasil diperbarui!");
-      // Perbarui data cache React Query
       queryClient.setQueryData(['my-profile'], updatedUser);
       
-      // ✅ PERBAIKAN UTAMA: Sinkronkan state ke Zustand agar UI (Navbar, Sidebar) ikut ter-update
       const currentToken = useAuthStore.getState().token;
       useAuthStore.getState().setAuth(updatedUser, currentToken);
     },
@@ -69,12 +64,10 @@ export default function ProfilPage() {
   });
 
   const onProfileSubmit = (values: z.infer<typeof profileSchema>) => {
-    // Hanya kirim field 'name' karena email tidak bisa diubah
     profileMutation.mutate({ name: values.name });
   };
 
   const onPasswordSubmit = (values: z.infer<typeof passwordSchema>) => {
-    // TODO: Buat logika API untuk ganti password
     console.log(values);
     toast.success("Password berhasil diubah!");
     passwordForm.reset({currentPassword: '', newPassword: '', confirmPassword: ''});

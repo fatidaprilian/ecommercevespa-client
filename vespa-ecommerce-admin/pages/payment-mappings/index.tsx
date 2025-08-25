@@ -1,5 +1,3 @@
-// file: pages/payment-mappings/index.tsx
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
@@ -10,9 +8,7 @@ import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
-// 👇 --- PERBAIKAN DI SINI --- 👇
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-// 👆 --- AKHIR PERBAIKAN --- 👆
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -21,7 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getAccurateBankAccounts, AccurateBankAccount } from '@/services/accurateService';
 import api from '@/lib/api';
 
-// Varian animasi
 const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },

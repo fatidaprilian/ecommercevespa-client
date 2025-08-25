@@ -1,4 +1,3 @@
-// file: app/orders/[id]/payment/page.tsx
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
@@ -15,7 +14,6 @@ import { getOrderById } from '@/services/orderService';
 import { getActivePaymentMethods, ManualPaymentMethod } from '@/services/paymentService';
 import { Button } from '@/components/ui/button';
 
-// Helper functions
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 const copyToClipboard = (text: string, bankName: string) => {
   navigator.clipboard.writeText(text);
@@ -45,7 +43,6 @@ export default function PaymentInstructionPage() {
         toast.error("Pesanan ini sudah tidak menunggu pembayaran.");
         router.replace(`/orders/${order.id}`);
       } else {
-        // Pembersihan keranjang terjadi di sini, setelah navigasi berhasil
         clearClientCart();
       }
     }
@@ -55,9 +52,6 @@ export default function PaymentInstructionPage() {
   if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin h-8 w-8" /></div>;
   if (isOrderError || !order) return <div className="text-center py-20">Pesanan tidak ditemukan.</div>;
 
-  // --- ✅ PERBAIKAN UTAMA DI SINI ---
-  // Gunakan `order.totalAmount` langsung dari backend.
-  // Nilai ini sudah final dan mencakup semua komponen (subtotal, diskon, PPN, dan ongkir).
   const totalAmount = order.totalAmount;
 
   return (

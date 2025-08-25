@@ -1,5 +1,3 @@
-// file: app/(auth)/_components/VerificationDialog.tsx
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -51,7 +49,6 @@ export function VerificationDialog({
     defaultValues: { token: '' },
   });
 
-  // Timer untuk tombol resend
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (resendCooldown > 0 && isOpen) {
@@ -118,7 +115,6 @@ export function VerificationDialog({
                     autoComplete="one-time-code"
                     onComplete={(value) => {
                         form.setValue('token', value);
-                        // Optional: Otomatis submit saat selesai diisi
                         form.handleSubmit(onSubmit)();
                     }}
                 >

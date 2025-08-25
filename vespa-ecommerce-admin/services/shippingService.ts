@@ -1,5 +1,3 @@
-// file: pages/services/shippingService.ts (Revisi Lengkap)
-
 import api from '@/lib/api';
 
 export interface LocationData {
@@ -9,11 +7,9 @@ export interface LocationData {
   postalCode: string;
 }
 
-// [BARU] Tipe data untuk hasil tracking, sesuai respons Biteship
 export interface TrackingHistory {
   note: string;
   updated_at: string;
-  // Tambahkan eventDate untuk konsistensi dengan frontend utama
   eventDate: string; 
   status: string;
 }
@@ -73,12 +69,10 @@ export const searchAreas = async (query: string): Promise<LocationData[]> => {
     return Array.from(uniqueAreas.values());
 };
 
-// [BARU] Fungsi untuk mengambil detail pelacakan pengiriman
 export const getTrackingDetails = async (waybillId: string, courierCode: string): Promise<TrackingDetails> => {
   if (!waybillId || !courierCode) {
     throw new Error('Nomor resi dan kode kurir dibutuhkan.');
   }
-  // Endpoint ini memanggil backend API Anda, yang kemudian akan memanggil Biteship
   const { data } = await api.get(`/shipping/track/${waybillId}/${courierCode}`);
   return data;
 };

@@ -1,5 +1,3 @@
-// file: vespa-ecommerce-admin/pages/products/new.tsx
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,7 +36,6 @@ export default function NewProductPage() {
   const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
 
-  // useQuery sekarang akan menerima array langsung dari service yang sudah diperbaiki
   const { data: categories, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: getCategories });
   const { data: brands, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: getBrands });
 
@@ -151,7 +148,6 @@ export default function NewProductPage() {
                   <FormLabel>Kategori</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingCategories}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
-                    {/* Kode ini sekarang akan berfungsi karena 'categories' adalah array */}
                     <SelectContent>{categories?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <FormMessage />
@@ -162,7 +158,6 @@ export default function NewProductPage() {
                   <FormLabel>Merek (Opsional)</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingBrands}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Pilih merek..." /></SelectTrigger></FormControl>
-                    {/* Kode ini sekarang akan berfungsi karena 'brands' adalah array */}
                     <SelectContent>{brands?.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <FormMessage />

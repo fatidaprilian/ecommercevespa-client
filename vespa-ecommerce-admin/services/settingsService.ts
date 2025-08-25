@@ -1,15 +1,12 @@
-// file: vespa-ecommerce-admin/services/settingsService.ts
 
 import api from '@/lib/api';
 
-// Tipe data untuk satu item pengaturan
 export interface AppSetting {
   key: string;
   value: string;
   description?: string;
 }
 
-// Tipe data untuk payload batch update
 export interface SettingPayload {
     key: string;
     value: string;
@@ -49,9 +46,6 @@ export const updateMultipleSettings = async (settings: SettingPayload[]): Promis
 };
 
 
-// ======================================================
-// FUNGSI BARU KHUSUS UNTUK PENGATURAN PPN (VAT)
-// ======================================================
 
 /**
  * Mengambil pengaturan PPN secara spesifik.

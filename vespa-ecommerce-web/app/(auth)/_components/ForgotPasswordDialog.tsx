@@ -1,5 +1,3 @@
-// file: app/(auth)/_components/ForgotPasswordDialog.tsx
-
 'use client';
 
 import { useState } from 'react';
@@ -148,7 +146,6 @@ export function ForgotPasswordDialog({ isOpen, onClose }: ForgotPasswordDialogPr
                         autoComplete="one-time-code"
                         onComplete={(value) => {
                             tokenForm.setValue('token', value);
-                             // Optional: Otomatis submit saat selesai diisi
                             tokenForm.handleSubmit(handleTokenSubmit)();
                         }}
                     >

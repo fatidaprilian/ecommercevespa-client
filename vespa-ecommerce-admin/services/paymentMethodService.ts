@@ -1,4 +1,3 @@
-// file: pages/services/paymentMethodService.ts
 
 import api from '@/lib/api';
 

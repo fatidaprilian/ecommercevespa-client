@@ -1,4 +1,3 @@
-// file: app/store/cart.ts
 import { create } from 'zustand';
 import { Product, ProductImage } from '../types';
 import api from '@/lib/api';
@@ -32,7 +31,6 @@ type CartState = {
   selectedItems: Set<string>;
   error: string | null;
   
-  // Actions
   fetchCart: () => Promise<void>;
   addItem: (productId: string, quantity?: number) => Promise<void>;
   updateItemQuantity: (cartItemId: string, quantity: number) => void;
@@ -48,9 +46,7 @@ type CartState = {
     destinationAreaId: string
   ) => Promise<any>;
   
-  // Selectors / Computed Values
   getTotalWeight: () => number;
-  // ✨ --- PERUBAHAN UTAMA DI SINI --- ✨
   getSummary: () => {
     subtotal: number;
     taxAmount: number;
@@ -160,7 +156,6 @@ export const useCartStore = create<CartState>((set, get) => ({
       }, 0);
   },
   
-  // ✨ --- SELECTOR BARU UNTUK KALKULASI HARGA --- ✨
   getSummary: () => {
     const { cart, selectedItems } = get();
     if (!cart) return { subtotal: 0, taxAmount: 0, totalItems: 0 };
