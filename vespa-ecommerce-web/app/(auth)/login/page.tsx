@@ -35,18 +35,18 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      // 1. Login untuk mendapatkan token
       const { data } = await api.post('/auth/login', { email, password });
       
-      const profileResponse = await api.get('/users/profile', {
-        headers: { Authorization: `Bearer ${data.access_token}` }
-      });
-
-      setAuth(profileResponse.data, data.access_token);
+      // 2. Simpan token ke state. Biarkan komponen lain yang mengambil profil.
+      setAuth(null, data.access_token);
       
-      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      // 3. Invalidate query agar data baru di-fetch jika perlu
+      await queryClient.invalidateQueries();
 
       setSuccessMessage('Login berhasil! Anda akan dialihkan...');
 
+      // 4. Arahkan ke halaman utama
       setTimeout(() => {
         router.push('/');
       }, 1500);

@@ -91,26 +91,42 @@ export class ProductsService {
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    const where: Prisma.ProductWhereInput = {};
+    // ### START CHANGE ###
+    const conditions: Prisma.ProductWhereInput[] = [];
+
+    if (search) {
+      conditions.push({
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { sku: { contains: search, mode: 'insensitive' } },
+        ],
+      });
+    }
     
     if (categoryId && categoryId.length > 0) {
-      where.categoryId = {
-        in: categoryId,
-      };
+      const hasNullCategory = categoryId.includes('__null__');
+      const regularCategoryIds = categoryId.filter(id => id !== '__null__');
+      
+      const categoryConditions: Prisma.ProductWhereInput[] = [];
+
+      if(regularCategoryIds.length > 0) {
+        categoryConditions.push({ categoryId: { in: regularCategoryIds } });
+      }
+      if(hasNullCategory) {
+        categoryConditions.push({ categoryId: null });
+      }
+
+      if(categoryConditions.length > 0) {
+          conditions.push({ OR: categoryConditions });
+      }
     }
 
     if (brandId && brandId.length > 0) {
-      where.brandId = {
-        in: brandId,
-      };
+        conditions.push({ brandId: { in: brandId } });
     }
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+    const where: Prisma.ProductWhereInput = conditions.length > 0 ? { AND: conditions } : {};
+    // ### END CHANGE ###
 
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({

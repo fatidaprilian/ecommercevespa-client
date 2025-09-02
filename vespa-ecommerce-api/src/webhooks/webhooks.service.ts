@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, Role } from '@prisma/client'; // Import Role
 import { AccurateService } from 'src/accurate/accurate.service';
 
 @Injectable()
@@ -118,15 +118,19 @@ export class WebhooksService {
       });
 
       if (order) {
+        const newStatus = order.user.role === Role.RESELLER 
+          ? OrderStatus.COMPLETED 
+          : OrderStatus.PROCESSING;
+        
         if (order.status === OrderStatus.PENDING) {
           await this.prisma.order.update({
             where: { id: order.id },
             data: {
               accurateSalesInvoiceNumber: salesInvoiceNo,
-              status: OrderStatus.PROCESSING,
+              status: newStatus,
             },
           });
-          this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} (LUNAS) di-link ke order ${order.id} (${order.orderNumber}). Status diubah ke PROCESSING.`);
+          this.logger.log(`✅ BERHASIL: Invoice ${salesInvoiceNo} (LUNAS) di-link ke order ${order.id} (${order.orderNumber}). Status diubah ke ${newStatus}.`);
         } else {
           this.logger.log(`Pesanan ${order.id} sudah dalam status ${order.status}. Mengabaikan webhook faktur.`);
         }

@@ -53,6 +53,13 @@ export class OrdersService {
         if (!product) throw new NotFoundException(`Produk ID ${item.productId} tidak ditemukan.`);
         if (product.stock < item.quantity) throw new UnprocessableEntityException(`Stok untuk ${product.name} tidak mencukupi.`);
         
+        // ### START CHANGE: Pengurangan stok eksplisit ###
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        });
+        // ### END CHANGE ###
+        
         const originalPrice = product.price;
         subtotal += originalPrice * item.quantity;
         
@@ -194,6 +201,28 @@ export class OrdersService {
   
   async updateStatus(orderId: string, newStatus: OrderStatus) {
     const order = await this.findOne(orderId);
+
+    // ### START CHANGE: Logika pengembalian stok ###
+    if (newStatus === OrderStatus.CANCELLED || newStatus === OrderStatus.REFUNDED) {
+      // Hanya kembalikan stok jika status sebelumnya BUKAN cancelled atau refunded
+      if (order.status !== OrderStatus.CANCELLED && order.status !== OrderStatus.REFUNDED) {
+          await this.prisma.$transaction(async (tx) => {
+              for (const item of order.items) {
+                  await tx.product.update({
+                      where: { id: item.productId },
+                      data: { stock: { increment: item.quantity } },
+                  });
+              }
+              await tx.order.update({
+                  where: { id: orderId },
+                  data: { status: newStatus },
+              });
+          });
+          this.logger.log(`Stok untuk pesanan ${orderId} telah dikembalikan karena status diubah menjadi ${newStatus}.`);
+          return this.findOne(orderId);
+      }
+    }
+    // ### END CHANGE ###
     
     if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAID) {
       throw new ForbiddenException(`Pesanan dengan status ${order.status} tidak dapat diubah.`);

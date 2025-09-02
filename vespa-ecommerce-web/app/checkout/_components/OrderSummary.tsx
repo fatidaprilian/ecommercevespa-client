@@ -114,7 +114,7 @@ export function OrderSummary({
         <div className="flex justify-between text-gray-600">
           <span>Ongkos Kirim</span>
           <span className="font-semibold">
-            {shippingCost > 0 ? formatPrice(shippingCost) : 'Pilih alamat & kurir'}
+            {selectedShippingOption ? formatPrice(shippingCost) : 'Pilih alamat & kurir'}
           </span>
         </div>
         <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2">

@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { NewAddressForm } from './NewAddressForm';
+import { useAuthStore } from '@/store/auth'; // Import useAuthStore
 
 interface AddressFormProps {
   onShippingSelect: (option: ShippingRate | null) => void;
@@ -28,7 +29,8 @@ const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: '
 export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddress }: AddressFormProps) {
     const queryClient = useQueryClient();
     const { cart, selectedItems } = useCartStore();
-    
+    const { user } = useAuthStore(); // Get user from auth store
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [addressToEdit, setAddressToEdit] = useState<Address | null>(null);
 
@@ -67,35 +69,56 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
 
             const selectedCartItems = cart?.items?.filter(item => selectedItems.has(item.id)) || [];
             
-            if (selectedCartItems.length > 0) {
-                setIsCalculatingCost(true);
-                const itemsPayload = selectedCartItems.map(item => ({
-                    name: item.product.name.substring(0, 49),
-                    value: item.product.priceInfo?.finalPrice || item.product.price,
-                    quantity: item.quantity,
-                    weight: item.product.weight || 1000
-                }));
+            if (selectedCartItems.length === 0) return;
 
-                try {
-                    const rates = await calculateCost({
-                        destination_area_id: selectedAddress.districtId,
-                        destination_postal_code: selectedAddress.postalCode,
-                        items: itemsPayload,
-                    });
-                    
-                    if (rates.length > 0) setShippingOptions(rates);
-                    else toast.error("Tidak ada opsi pengiriman untuk tujuan ini.");
+            setIsCalculatingCost(true);
+            
+            // ### START CHANGE ###
+            // Check if the user is a reseller
+            if (user?.role === 'RESELLER') {
+                const freeShippingOption: ShippingRate = {
+                    courier_name: 'Default',
+                    courier_service_name: 'Free Shipping',
+                    price: 0,
+                    estimation: 'N/A',
+                };
+                setShippingOptions([freeShippingOption]);
+                // Automatically select the free shipping option
+                const serviceIdentifier = `${freeShippingOption.courier_name}-${freeShippingOption.courier_service_name}`;
+                setSelectedShippingService(serviceIdentifier);
+                onShippingSelect(freeShippingOption);
+                setIsCalculatingCost(false);
+                return;
+            }
+            // ### END CHANGE ###
 
-                } catch (error) {
-                    toast.error("Gagal menghitung ongkos kirim.");
-                } finally {
-                    setIsCalculatingCost(false);
-                }
+            // Member logic (unchanged)
+            const itemsPayload = selectedCartItems.map(item => ({
+                name: item.product.name.substring(0, 49),
+                value: item.product.priceInfo?.finalPrice || item.product.price,
+                quantity: item.quantity,
+                weight: item.product.weight || 1000
+            }));
+
+            try {
+                const rates = await calculateCost({
+                    destination_area_id: selectedAddress.districtId,
+                    destination_postal_code: selectedAddress.postalCode,
+                    items: itemsPayload,
+                });
+                
+                if (rates.length > 0) setShippingOptions(rates);
+                else toast.error("Tidak ada opsi pengiriman untuk tujuan ini.");
+
+            } catch (error) {
+                toast.error("Gagal menghitung ongkos kirim.");
+            } finally {
+                setIsCalculatingCost(false);
             }
         };
 
         fetchShippingCosts();
-    }, [selectedAddress, cart, selectedItems, onShippingSelect]);
+    }, [selectedAddress, cart, selectedItems, onShippingSelect, user]); // Add user to dependency array
     
     const handleShippingSelect = (serviceIdentifier: string) => {
         setSelectedShippingService(serviceIdentifier);
@@ -148,7 +171,7 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
                     {isCalculatingCost ? (
                         <div className="flex items-center gap-2 text-gray-500"><Loader2 className="animate-spin h-4 w-4"/> Menghitung ongkos kirim...</div>
                     ) : (
-                        <Accordion type="single" collapsible className="w-full">
+                        <Accordion type="single" collapsible className="w-full" defaultValue={user?.role === 'RESELLER' ? 'DEFAULT' : undefined}>
                             {Object.entries(groupedShippingOptions).map(([courierName, services]) => (
                                 <AccordionItem value={courierName} key={courierName}>
                                     <AccordionTrigger className="font-bold">{courierName}</AccordionTrigger>
