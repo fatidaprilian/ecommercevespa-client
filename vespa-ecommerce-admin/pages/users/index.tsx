@@ -148,7 +148,7 @@ export default function UsersPage() {
                                 <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild>
                                     <Link href={`/users/edit?id=${user.id}`}>
-                                    <Edit className="mr-2 h-4 w-4" /> Edit Peran
+                                    <Edit className="mr-2 h-4 w-4" /> Edit Pengguna
                                     </Link>
                                 </DropdownMenuItem>
                                 {user.role === 'RESELLER' && (

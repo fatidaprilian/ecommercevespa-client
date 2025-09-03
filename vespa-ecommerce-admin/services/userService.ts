@@ -1,3 +1,5 @@
+// file: vespa-ecommerce-admin/services/userService.ts
+
 import api from '@/lib/api';
 
 export enum Role {
@@ -11,7 +13,15 @@ export interface User {
   email: string;
   name: string;
   role: Role;
-  createdAt: string;
+  // Tambahkan field ini agar datanya bisa diterima dari API
+  accurateCustomerNo?: string | null; 
+}
+
+// Definisikan tipe untuk data yang akan dikirim
+interface UpdateUserData {
+  name: string;
+  role: Role;
+  accurateCustomerNo?: string;
 }
 
 export const getUsers = async (): Promise<User[]> => {
@@ -23,6 +33,13 @@ export const getUserById = async (id: string): Promise<User> => {
   const { data } = await api.get(`/users/${id}`);
   return data;
 };
+
+// ### FUNGSI BARU DI SINI ###
+export const updateUser = async (id: string, userData: UpdateUserData): Promise<User> => {
+  const { data } = await api.patch(`/users/${id}`, userData);
+  return data;
+};
+// ### SELESAI ###
 
 export const updateUserRole = async ({ id, role }: { id: string, role: Role }): Promise<User> => {
   const { data } = await api.patch(`/users/${id}/role`, { role });

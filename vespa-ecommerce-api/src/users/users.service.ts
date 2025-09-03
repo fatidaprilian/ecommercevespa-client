@@ -1,10 +1,12 @@
 // file: src/users/users.service.ts
+
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateUserDto } from './dto/update-user.dto'; // 1. Import DTO yang baru
 
 @Injectable()
 export class UsersService {
@@ -22,12 +24,33 @@ export class UsersService {
         name: true,
         role: true,
         createdAt: true,
+        // Tambahkan accurateCustomerNo agar bisa ditampilkan di daftar user jika perlu
+        accurateCustomerNo: true, 
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
   }
+  
+  // ### FUNGSI BARU UNTUK HALAMAN EDIT USER ADMIN ###
+  /**
+   * Memperbarui data pengguna secara komprehensif dari admin panel.
+   */
+  async update(id: string, updateUserDto: UpdateUserDto) {
+    await this.findById(id); // Memastikan user ada
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { 
+        ...updateUserDto,
+        // Pastikan string kosong disimpan sebagai null di database
+        accurateCustomerNo: updateUserDto.accurateCustomerNo || null,
+       },
+    });
+  }
+  // ### SELESAI ###
+
 
   /**
    * Mengubah role seorang pengguna.
@@ -80,6 +103,7 @@ export class UsersService {
     if (!user) {
         throw new NotFoundException(`User dengan ID ${id} tidak ditemukan.`);
     }
+    // Kembalikan semua data termasuk accurateCustomerNo
     const { password, ...result } = user;
     return result;
   }

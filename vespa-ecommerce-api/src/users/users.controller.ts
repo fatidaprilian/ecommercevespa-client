@@ -1,4 +1,5 @@
 // file: src/users/users.controller.ts (Revisi Lengkap)
+
 import { Controller, Get, UseGuards, Req, ClassSerializerInterceptor, UseInterceptors, Patch, Param, Body, Delete } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -8,6 +9,7 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto'; 
+import { UpdateUserDto } from './dto/update-user.dto'; // Import DTO yang baru
 
 @Controller('users')
 @UseGuards(AuthGuard('jwt'))
@@ -42,6 +44,15 @@ export class UsersController {
   findOne(@Param('id') id: string) {
     return this.usersService.findById(id);
   }
+
+  // ### ENDPOINT BARU UNTUK HALAMAN EDIT ADMIN ###
+  @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.update(id, updateUserDto);
+  }
+  // ### SELESAI ###
 
   @Patch(':id/role')
   @UseGuards(RolesGuard)
