@@ -1,6 +1,16 @@
 // file: vespa-ecommerce-api/src/orders/orders.controller.ts
 
-import { Controller, Get, Post, Body, Param, UseGuards, Req, Patch, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  Patch,
+  Query,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
@@ -17,7 +27,10 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  create(@Req() req: AuthenticatedRequest, @Body() createOrderDto: CreateOrderDto) {
+  create(
+    @Req() req: AuthenticatedRequest,
+    @Body() createOrderDto: CreateOrderDto,
+  ) {
     const userId = req.user.id;
     return this.ordersService.create(userId, createOrderDto);
   }
@@ -25,23 +38,25 @@ export class OrdersController {
   @Get()
   findAll(
     @Req() req: AuthenticatedRequest,
-    @Query() paginationDto: PaginationDto & { search?: string }
+    @Query() paginationDto: PaginationDto & { search?: string },
   ) {
     return this.ordersService.findAll(req.user, paginationDto);
   }
-  
+
   @Get(':id')
   findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
-    return this.ordersService.findOne(id);
+    // a non-admin user can only see their own order.
+    return this.ordersService.findOne(id, req.user);
   }
-  
+
   @Patch(':id/status')
-  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
+  @UseGuards(RolesGuard)
   updateStatus(
     @Param('id') id: string,
     @Body() updateOrderStatusDto: UpdateOrderStatusDto,
   ) {
-    return this.ordersService.updateStatus(id, updateOrderStatusDto.status);
+    // Pass the entire DTO to the service
+    return this.ordersService.updateStatus(id, updateOrderStatusDto);
   }
 }

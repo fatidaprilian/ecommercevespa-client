@@ -16,7 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { NewAddressForm } from './NewAddressForm';
-import { useAuthStore } from '@/store/auth'; // Import useAuthStore
+import { useAuthStore } from '@/store/auth';
 
 interface AddressFormProps {
   onShippingSelect: (option: ShippingRate | null) => void;
@@ -73,26 +73,21 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
 
             setIsCalculatingCost(true);
             
-            // ### START CHANGE ###
-            // Check if the user is a reseller
             if (user?.role === 'RESELLER') {
                 const freeShippingOption: ShippingRate = {
-                    courier_name: 'Default',
-                    courier_service_name: 'Free Shipping',
+                    courier_name: 'TOKO',
+                    courier_service_name: 'Pengiriman Toko',
                     price: 0,
                     estimation: 'N/A',
                 };
                 setShippingOptions([freeShippingOption]);
-                // Automatically select the free shipping option
                 const serviceIdentifier = `${freeShippingOption.courier_name}-${freeShippingOption.courier_service_name}`;
                 setSelectedShippingService(serviceIdentifier);
                 onShippingSelect(freeShippingOption);
                 setIsCalculatingCost(false);
                 return;
             }
-            // ### END CHANGE ###
 
-            // Member logic (unchanged)
             const itemsPayload = selectedCartItems.map(item => ({
                 name: item.product.name.substring(0, 49),
                 value: item.product.priceInfo?.finalPrice || item.product.price,
@@ -118,7 +113,7 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
         };
 
         fetchShippingCosts();
-    }, [selectedAddress, cart, selectedItems, onShippingSelect, user]); // Add user to dependency array
+    }, [selectedAddress, cart, selectedItems, onShippingSelect, user]);
     
     const handleShippingSelect = (serviceIdentifier: string) => {
         setSelectedShippingService(serviceIdentifier);

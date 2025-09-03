@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -41,29 +41,31 @@ enum PaymentStatus {
 // =================================
 
 model User {
-  id                      String                 @id @default(cuid())
-  email                   String                 @unique
-  name                    String?
-  password                String
-  role                    Role                   @default(MEMBER)
-  createdAt               DateTime               @default(now())
-  updatedAt               DateTime               @updatedAt
-  emailVerified           DateTime?
-  verificationToken       String?
-  verificationTokenExpires DateTime?
-  passwordResetToken      String?
+  id                        String                   @id @default(cuid())
+  email                     String                   @unique
+  name                      String?
+  password                  String
+  role                      Role                     @default(MEMBER)
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  emailVerified             DateTime?
+  verificationToken         String?
+  verificationTokenExpires  DateTime?
+  passwordResetToken        String?
   passwordResetTokenExpires DateTime?
-  defaultDiscountPercentage Float                  @default(0)
-  productDiscounts        UserProductDiscount[]
-  categoryDiscounts       UserCategoryDiscount[]
-  orders                  Order[]
-  reviews                 Review[]
-  wishlists               Wishlist[]
-  addresses               Address[]
-  cart                    Cart?
-  tier                    ResellerTier?          @relation(fields: [resellerTierId], references: [id])
-  resellerTierId          String?
-  accurateCustomerNo String? @unique
+  defaultDiscountPercentage Float                    @default(0)
+  productDiscounts          UserProductDiscount[]
+  categoryDiscounts         UserCategoryDiscount[]
+  orders                    Order[]
+  reviews                   Review[]
+  wishlists                 Wishlist[]
+  addresses                 Address[]
+  cart                      Cart?
+  tier                      ResellerTier?            @relation(fields: [resellerTierId], references: [id])
+  resellerTierId            String?
+  accurateCustomerNo        String?                  @unique
+
+  @@index([resellerTierId])
 }
 
 model ResellerTier {
@@ -82,6 +84,8 @@ model UserProductDiscount {
   productId          String
 
   @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
 }
 
 model UserCategoryDiscount {
@@ -93,6 +97,8 @@ model UserCategoryDiscount {
   categoryId         String
 
   @@unique([userId, categoryId])
+  @@index([userId])
+  @@index([categoryId])
 }
 
 model Brand {
@@ -103,19 +109,19 @@ model Brand {
 }
 
 model Product {
-  id                   String                @id @default(cuid())
-  sku                  String                @unique
+  id                   String                  @id @default(cuid())
+  sku                  String                  @unique
   name                 String
   description          String?
   price                Float
-  stock                Int                   @default(0)
-  weight               Int                   @default(1000)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  stock                Int                     @default(0)
+  weight               Int                     @default(1000)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
   images               ProductImage[]
-  category             Category?             @relation(fields: [categoryId], references: [id])
+  category             Category?               @relation(fields: [categoryId], references: [id])
   categoryId           String?
-  brand                Brand?                @relation(fields: [brandId], references: [id])
+  brand                Brand?                  @relation(fields: [brandId], references: [id])
   brandId              String?
   orderItems           OrderItem[]
   reviews              Review[]
@@ -123,6 +129,9 @@ model Product {
   erpSyncLog           ErpSyncLog[]
   cartItems            CartItem[]
   userProductDiscounts UserProductDiscount[]
+
+  @@index([categoryId])
+  @@index([brandId])
 }
 
 model ProductImage {
@@ -131,16 +140,18 @@ model ProductImage {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId String
   createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 model Category {
-  id                    String                 @id @default(cuid())
-  name                  String                 @unique
+  id                    String                   @id @default(cuid())
+  name                  String                   @unique
   imageUrl              String?
   products              Product[]
   userCategoryDiscounts UserCategoryDiscount[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
 }
 
 model Order {
@@ -166,7 +177,9 @@ model Order {
   accurateSalesInvoiceId     Int?
   accurateSalesInvoiceNumber String?
   accurateSalesReceiptId     Int?
-  accurateSalesOrderNumber     String?
+  accurateSalesOrderNumber   String?
+
+  @@index([userId])
 }
 
 model OrderItem {
@@ -179,27 +192,26 @@ model OrderItem {
   productId String
 
   @@unique([orderId, productId])
+  @@index([orderId])
+  @@index([productId])
 }
 
 model Payment {
-  id                    String                @id @default(cuid())
-  order                 Order                 @relation(fields: [orderId], references: [id])
-  orderId               String                @unique
+  id                    String               @id @default(cuid())
+  order                 Order                @relation(fields: [orderId], references: [id])
+  orderId               String               @unique
   amount                Float
   method                String
-  status                PaymentStatus         @default(PENDING)
+  status                PaymentStatus        @default(PENDING)
   transactionId         String?
   proofOfPayment        String?
   redirectUrl           String?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  
-  // >> TAMBAHAN DIMULAI DI SINI <<
-  // Menambahkan kolom untuk menyimpan ID rekening yang dipilih reseller
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
   manualPaymentMethodId String?
-  // Membuat relasi agar kita bisa mengambil detail rekeningnya nanti
-  manualPaymentMethod   ManualPaymentMethod?  @relation(fields: [manualPaymentMethodId], references: [id])
-  // >> TAMBAHAN SELESAI <<
+  manualPaymentMethod   ManualPaymentMethod? @relation(fields: [manualPaymentMethodId], references: [id])
+
+  @@index([manualPaymentMethodId])
 }
 
 model Shipment {
@@ -227,6 +239,8 @@ model Address {
   isDefault  Boolean @default(false)
   user       User    @relation(fields: [userId], references: [id])
   userId     String
+
+  @@index([userId])
 }
 
 model Voucher {
@@ -252,6 +266,8 @@ model ErpSyncLog {
   runAt     DateTime @default(now())
   product   Product? @relation(fields: [productId], references: [id])
   productId String?
+
+  @@index([productId])
 }
 
 model Review {
@@ -263,6 +279,9 @@ model Review {
   userId    String
   product   Product  @relation(fields: [productId], references: [id])
   productId String
+
+  @@index([userId])
+  @@index([productId])
 }
 
 model Wishlist {
@@ -274,6 +293,8 @@ model Wishlist {
   createdAt DateTime @default(now())
 
   @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
 }
 
 model Cart {
@@ -294,6 +315,8 @@ model CartItem {
   productId String
 
   @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
 }
 
 model AppSettings {
@@ -316,11 +339,7 @@ model ManualPaymentMethod {
   accurateBankName String
   accurateBankId   Int?
   accurateBankNo   String?
-
-  // >> TAMBAHAN DI SINI <<
-  // Menambahkan relasi balik ke tabel Payment
   payments         Payment[]
-  // >> TAMBAHAN SELESAI <<
 }
 
 model PaymentMethodMapping {

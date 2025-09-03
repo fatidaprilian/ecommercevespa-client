@@ -1,7 +1,10 @@
+// file: vespa-ecommerce-admin/pages/orders/index.tsx
+
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Eye, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/router';
+import { Eye, Search, ChevronLeft, ChevronRight, Loader2, MoreHorizontal, Edit } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -9,13 +12,30 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { getOrders, Order, PaginatedOrders } from '@/services/orderService';
 
-const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const pageVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { ease: 'easeOut', duration: 0.4 } },
-  exit: { opacity: 0, transition: { ease: 'easeIn', duration: 0.2 } },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { ease: 'easeOut', duration: 0.4 },
+  },
+  exit: {
+    opacity: 0,
+    transition: { ease: 'easeIn', duration: 0.2 },
+  },
 };
 
 const formatDate = (dateString: string) => {
@@ -29,6 +49,7 @@ const formatPrice = (price: number) => {
 };
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
@@ -41,7 +62,7 @@ export default function OrdersPage() {
 
   const orders = ordersResponse?.data;
   const meta = ordersResponse?.meta;
-
+  
   return (
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={pageVariants}>
       <motion.div variants={itemVariants} className="flex items-center justify-between">
@@ -112,28 +133,45 @@ export default function OrdersPage() {
                   {orders && orders.length > 0 ? (
                     orders.map((order) => (
                       <motion.tr key={order.id} variants={itemVariants}>
-                        <TableCell className="font-mono text-xs">{order.orderNumber}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                           <Link href={`/orders/${order.id}`} className="hover:underline text-blue-600">
+                                #{order.orderNumber}
+                           </Link>
+                        </TableCell>
                         <TableCell>{formatDate(order.createdAt)}</TableCell>
                         <TableCell className="font-medium">{order.user.name}</TableCell>
                         <TableCell>{formatPrice(order.totalAmount)}</TableCell>
                         <TableCell>
                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                              order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                              order.status === 'COMPLETED' || order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
                               order.status === 'PROCESSING' ? 'bg-orange-100 text-orange-800' :
                               order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                              order.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-800' :
-                              order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                              order.status === 'PENDING' || order.status === 'PAID' ? 'bg-yellow-100 text-yellow-800' :
+                              order.status === 'CANCELLED' || order.status === 'REFUNDED' ? 'bg-red-100 text-red-800' :
                               'bg-gray-100 text-gray-800'
                             }`}>
                               {order.status}
                             </span>
                         </TableCell>
                         <TableCell className="text-right">
-                           <Button variant="outline" size="sm" asChild>
-                               <Link href={`/orders/${order.id}`}> 
-                                   <Eye className="mr-2 h-4 w-4" /> Lihat
-                               </Link>
-                           </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Buka menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => router.push(`/orders/${order.id}`)}>
+                                <Eye className="mr-2 h-4 w-4" /> Lihat Detail
+                              </DropdownMenuItem>
+                              {/* ### TOMBOL UBAH STATUS DI SINI ### */}
+                              <DropdownMenuItem onClick={() => router.push(`/orders/edit-status?id=${order.id}`)}>
+                                <Edit className="mr-2 h-4 w-4" /> Ubah Status
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </motion.tr>
                     ))
@@ -160,7 +198,6 @@ export default function OrdersPage() {
                 </Button>
               </div>
             )}
-
           </CardContent>
         </Card>
       </motion.div>
