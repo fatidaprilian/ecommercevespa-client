@@ -246,7 +246,7 @@ export class AccurateService {
         this.logger.log('Mencoba memperbarui webhook Accurate...');
         try {
             const apiClient = await this.getAccurateApiClient();
-            const response = await apiClient.post('/accurate/api/webhook-renew.do');
+            const response = await apiClient.get('/accurate/api/webhook-renew.do');
 
             if (response.data?.s) {
                 this.logger.log(`✅ Webhook Accurate berhasil diperbarui. Aktif untuk 7 hari ke depan.`);

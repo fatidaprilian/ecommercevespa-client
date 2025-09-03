@@ -1,3 +1,5 @@
+// file: src/accurate/accurate.controller.ts
+
 import { Controller, Get, Post, Body, Query, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AccurateService } from './accurate.service';
@@ -69,5 +71,17 @@ export class AccurateController {
   @Roles(Role.ADMIN)
   async getBankAccounts() {
       return this.accurateService.getBankAccounts();
+  }
+
+  /**
+   * Endpoint untuk memicu perpanjangan webhook secara manual.
+   * Hanya bisa diakses oleh ADMIN.
+   */
+  @Post('renew-webhook')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  async triggerWebhookRenewal() {
+      await this.accurateService.renewWebhook();
+      return { message: 'Proses perpanjangan webhook berhasil dipicu.' };
   }
 }
