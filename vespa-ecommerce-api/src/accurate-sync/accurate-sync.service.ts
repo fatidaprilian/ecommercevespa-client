@@ -557,7 +557,6 @@ export class AccurateSyncService {
                     timestamp: Date.now() 
                 });
                 
-                // Clear any failed search cache for this customer
                 this.failedSearchCache.delete(customerIdToCreate);
                 
                 await this.prisma.user.update({
