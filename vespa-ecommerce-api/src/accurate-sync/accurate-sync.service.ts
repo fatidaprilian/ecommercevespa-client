@@ -114,7 +114,7 @@ export class AccurateSyncService {
         }
     }
     
-    @Cron(CronExpression.EVERY_MINUTE)
+    @Cron(CronExpression.EVERY_DAY_AT_2AM)
     async scheduleWebhookRenewal() {
         this.logger.log('CRON JOB: Triggering Accurate webhook renewal.');
         await this.accurateService.renewWebhook();
