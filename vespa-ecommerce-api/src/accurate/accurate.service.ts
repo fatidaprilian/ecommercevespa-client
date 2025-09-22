@@ -242,20 +242,31 @@ export class AccurateService {
         }
     }
 
-    async renewWebhook(): Promise<void> {
-        this.logger.log('Mencoba memperbarui webhook Accurate...');
-        try {
-            const apiClient = await this.getAccurateApiClient();
-            const response = await apiClient.get('/accurate/api/webhook-renew.do');
-
-            if (response.data?.s) {
-                this.logger.log(`✅ Webhook Accurate berhasil diperbarui. Aktif untuk 7 hari ke depan.`);
-            } else {
-                const errorMessage = response.data?.d?.[0] || 'Error tidak diketahui saat perpanjangan webhook.';
-                this.logger.warn(`Tidak dapat memperbarui webhook Accurate: ${errorMessage}`);
-            }
-        } catch (error) {
-            this.logger.error('Gagal memanggil API perpanjangan webhook Accurate', error.response?.data || error.message);
+async renewWebhook(): Promise<void> {
+    this.logger.log('Mencoba memperbarui webhook Accurate...');
+    try {
+        // 1. Dapatkan token yang valid, ini masih diperlukan untuk otorisasi
+        const token = await this.getValidToken();
+        if (!token) {
+            this.logger.error('Tidak dapat memperbarui webhook karena tidak ada token yang valid.');
+            return;
         }
+
+        // 2. Lakukan panggilan API langsung ke URL yang benar
+        const response = await axios.get('https://account.accurate.id/api/webhook-renew.do', {
+            headers: {
+                'Authorization': `Bearer ${token.accessToken}`
+            }
+        });
+
+        if (response.data?.s) {
+            this.logger.log(`✅ Webhook Accurate berhasil diperbarui. Aktif untuk 7 hari ke depan.`);
+        } else {
+            const errorMessage = response.data?.d?.[0] || 'Error tidak diketahui saat perpanjangan webhook.';
+            this.logger.warn(`Tidak dapat memperbarui webhook Accurate: ${errorMessage}`);
+        }
+    } catch (error) {
+        this.logger.error('Gagal memanggil API perpanjangan webhook Accurate', error.response?.data || error.message);
     }
+}
 }
