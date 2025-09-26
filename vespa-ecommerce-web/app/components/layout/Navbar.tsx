@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image'; // <-- Import Image component
 import { usePathname, useRouter } from 'next/navigation';
 import {
     Menu, X, Search, ShoppingCart,
@@ -96,10 +97,10 @@ export default function Navbar() {
     };
     
     const navigationLinks = [
-        { name: 'Home', href: '/' },
-        { name: 'Products', href: '/products', hasDropdown: true },
-        { name: 'About', href: '/about' },
-        { name: 'Contact', href: '/contact' }
+        { name: 'Beranda', href: '/' },
+        { name: 'Produk', href: '/products', hasDropdown: true },
+        { name: 'Tentang Kami', href: '/about' },
+        { name: 'Kontak', href: '/contact' }
     ];
 
     const navIsSolid = isScrolled || isAuthPage;
@@ -119,19 +120,22 @@ export default function Navbar() {
             >
                 <div className="container mx-auto px-6">
                     <div className="flex items-center justify-between h-20">
+                        {/* === START: LOGO SECTION MODIFIED === */}
                         <Link href="/" className="flex items-center space-x-3 group">
-                            <div className="relative">
-                                <div className="w-12 h-12 bg-gradient-to-br from-[#52616B] to-[#1E2022] rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                                    <Package className="w-6 h-6 text-white" />
-                                </div>
-                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#C9D6DF] rounded-full border-2 border-white"></div>
-                            </div>
+                            <Image
+                                src="/JSSLogo.svg"
+                                alt="JSS Logo"
+                                width={60}
+                                height={60}
+                                className="group-hover:scale-110 transition-transform duration-300"
+                            />
                             <div className="hidden sm:block">
                                 <h1 className={`text-2xl font-bold transition-colors duration-300 ${textColorClass}`} style={{ fontFamily: "'Playfair Display', serif" }}>
-                                    VespaParts
+
                                 </h1>
                             </div>
                         </Link>
+                        {/* === END: LOGO SECTION MODIFIED === */}
 
                         <div className="hidden md:flex items-center space-x-6">
                             {navigationLinks.map((link) => (
@@ -279,8 +283,8 @@ export default function Navbar() {
                                                             )}
                                                              <Separator className="my-1"/>
                                                              <Link href="/categories" onClick={() => setIsOpen(false)} className="flex items-center justify-center p-3 rounded-md text-blue-600 font-semibold hover:bg-blue-50 transition-colors duration-200">
-                                                                Lihat Semua Kategori
-                                                                <ArrowRight className="w-4 h-4 ml-2"/>
+                                                                 Lihat Semua Kategori
+                                                                 <ArrowRight className="w-4 h-4 ml-2"/>
                                                             </Link>
                                                         </motion.div>
                                                     )}
