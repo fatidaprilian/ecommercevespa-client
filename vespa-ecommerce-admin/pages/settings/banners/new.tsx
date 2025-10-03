@@ -1,6 +1,6 @@
 // pages/settings/banners/new.tsx
 
-import { BannerForm } from "./form";
+import { BannerForm } from './_form';
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
