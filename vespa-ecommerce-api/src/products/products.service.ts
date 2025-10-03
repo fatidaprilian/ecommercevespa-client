@@ -3,7 +3,7 @@
 import {
   Injectable,
   NotFoundException,
-  BadRequestException, // Ditambahkan untuk validasi
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -161,9 +161,9 @@ export class ProductsService {
   }
   
   // =======================================================
-  // BARU: Method untuk mengambil produk featured
+  // DIUBAH: Method sekarang menerima informasi user
   // =======================================================
-  async findFeatured() {
+  async findFeatured(user?: UserPayload) {
     const featuredProducts = await this.prisma.product.findMany({
       where: { isFeatured: true },
       take: 5,
@@ -177,9 +177,9 @@ export class ProductsService {
       },
     });
     
-    // Proses harga tanpa user context (harga publik)
+    // Teruskan user ke fungsi kalkulasi harga
     return Promise.all(
-      featuredProducts.map((p) => this.processProductWithPrice(p)),
+      featuredProducts.map((p) => this.processProductWithPrice(p, user)),
     );
   }
 
@@ -237,17 +237,13 @@ export class ProductsService {
       relatedProducts.map((p) => this.processProductWithPrice(p, user)),
     );
   }
-
-  // =======================================================
-  // DIMODIFIKASI: Method update dengan validasi featured
-  // =======================================================
+  
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
   ): Promise<Product> {
     const { categoryId, brandId, images, isFeatured, ...productData } = updateProductDto;
 
-    // Validasi jumlah product featured sebelum transaksi database
     if (isFeatured === true) {
       const featuredCount = await this.prisma.product.count({
         where: { isFeatured: true, NOT: { id } },
@@ -258,7 +254,6 @@ export class ProductsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // Data produk yang akan diupdate, termasuk isFeatured
       const dataToUpdate: any = { 
         ...productData,
         ...(isFeatured !== undefined && { isFeatured }),

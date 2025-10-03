@@ -32,12 +32,12 @@ export class ProductsController {
   }
 
   // =======================================================
-  // BARU: Endpoint untuk mengambil produk featured
+  // DIUBAH: Endpoint sekarang menerima informasi user
   // =======================================================
   @Public()
   @Get('featured')
-  findFeatured() {
-    return this.productsService.findFeatured();
+  findFeatured(@Req() req: AuthenticatedRequest) {
+    return this.productsService.findFeatured(req.user);
   }
 
   @Public()
