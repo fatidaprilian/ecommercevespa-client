@@ -2,7 +2,7 @@ import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'react-hot-toast'; 
+import { Toaster } from '@/components/ui/sonner'; // <-- 1. DIUBAH: Impor Toaster dari Sonner
 
 import AdminLayout from '@/components/layouts/AdminLayout';
 import AuthGuard from '@/components/guards/AuthGuard';
@@ -14,7 +14,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster position="top-center" reverseOrder={false} />
+      <Toaster /> {/* <-- 2. DIUBAH: Gunakan Toaster Sonner */}
 
       {router.pathname === '/auth/login' ? (
         <Component {...pageProps} />

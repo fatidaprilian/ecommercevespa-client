@@ -1,11 +1,12 @@
 'use client';
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useProducts, getProducts } from "@/hooks/use-products";
+import { useFeaturedProducts } from "@/hooks/use-featured-products"; // <--- IMPORT HOOK BARU
 import { Product } from "@/types";
 import { useAuthStore } from "@/store/auth";
 
@@ -15,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HeroSection } from "@/components/organisms/HeroSection";
 import { MiddleBanner } from "@/components/organisms/MiddleBanner";
 import { BrandShowcase } from "@/components/organisms/BrandShowcase";
+import { Star } from "lucide-react";
 
 const Section = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
     const ref = useRef(null);
@@ -47,12 +49,31 @@ const BestSellerSkeleton = () => (
 
 const BestSellerProducts = () => {
     const hasHydrated = useAuthStore((state) => state._hasHydrated);
-    const { data: productsResponse, isLoading, error } = useProducts(
+
+    // 1. Ambil data produk unggulan
+    const { data: featuredProducts, isLoading: isLoadingFeatured } = useFeaturedProducts(hasHydrated);
+
+    // 2. Ambil data produk reguler
+    const { data: regularProductsResponse, isLoading: isLoadingRegular, error } = useProducts(
         { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 },
         hasHydrated
     );
 
-    const bestSellerProducts = productsResponse?.data;
+    // 3. Gabungkan dan filter duplikat
+    const combinedProducts = useMemo(() => {
+        if (!featuredProducts && !regularProductsResponse?.data) return [];
+
+        const featured = featuredProducts || [];
+        const regular = regularProductsResponse?.data || [];
+        
+        const featuredIds = new Set(featured.map(p => p.id));
+        
+        const uniqueRegularProducts = regular.filter(p => !featuredIds.has(p.id));
+
+        return [...featured, ...uniqueRegularProducts];
+    }, [featuredProducts, regularProductsResponse]);
+
+    const isLoading = (isLoadingFeatured || isLoadingRegular) && hasHydrated;
 
     if (error) return null;
 
@@ -75,7 +96,7 @@ const BestSellerProducts = () => {
 
                 {isLoading || !hasHydrated ? <BestSellerSkeleton /> : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                        {bestSellerProducts?.slice(0, 5).map((product: Product, index: number) => (
+                        {combinedProducts?.slice(0, 5).map((product: Product, index: number) => (
                             <motion.div
                                 key={product.id}
                                 initial={{ opacity: 0, y: 30 }}
@@ -84,9 +105,11 @@ const BestSellerProducts = () => {
                                 transition={{ duration: 0.6, delay: index * 0.1 }}
                                 className="relative group"
                             >
-                                <div className="absolute top-2 left-2 z-10 bg-[#f04e23] text-white px-2 py-1 text-xs font-bold rounded">
-                                    TOP
-                                </div>
+                                {product.isFeatured && (
+                                    <div className="absolute top-2 left-2 z-10 bg-yellow-400 text-black px-2 py-1 text-xs font-bold rounded flex items-center gap-1">
+                                       <Star className="w-3 h-3" /> PILIHAN
+                                    </div>
+                                )}
                                 <ProductCard product={product} />
                             </motion.div>
                         ))}
@@ -148,6 +171,12 @@ export default function HomePage() {
 
     useEffect(() => {
         if (isAuthenticated) {
+            // Prefetch featured products
+            queryClient.prefetchQuery({
+                queryKey: ['featured-products'],
+                queryFn: () => api.get('/products/featured').then(res => res.data),
+            });
+            // Prefetch regular products
             queryClient.prefetchQuery({
                 queryKey: ['products', { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 }],
                 queryFn: () => getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 10 }),

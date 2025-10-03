@@ -120,6 +120,7 @@ model Product {
   updatedAt            DateTime                @updatedAt
   piaggioCode          String?
   models               String?
+  isFeatured           Boolean                 @default(false)
   images               ProductImage[]
   category             Category?               @relation(fields: [categoryId], references: [id])
   categoryId           String?

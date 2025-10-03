@@ -18,12 +18,6 @@ import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @Public()
-  @Get('search')
-  searchProducts(@Query() query: SearchProductDto) {
-    return this.productsService.search(query.term || '');
-  }
-
   @Post()
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
@@ -35,6 +29,21 @@ export class ProductsController {
   @Get()
   findAll(@Query() queryProductDto: QueryProductDto, @Req() req: AuthenticatedRequest) {
     return this.productsService.findAll(queryProductDto, req.user);
+  }
+
+  // =======================================================
+  // BARU: Endpoint untuk mengambil produk featured
+  // =======================================================
+  @Public()
+  @Get('featured')
+  findFeatured() {
+    return this.productsService.findFeatured();
+  }
+
+  @Public()
+  @Get('search')
+  searchProducts(@Query() query: SearchProductDto) {
+    return this.productsService.search(query.term || '');
   }
 
   @Public()

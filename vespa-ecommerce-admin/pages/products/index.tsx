@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
@@ -22,7 +22,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getProducts, PaginatedProducts } from '@/services/productService';
+import { getProducts, updateProduct, PaginatedProducts } from '@/services/productService';
+import { Switch } from '@/components/ui/switch';
+import { toast } from "sonner"; // <-- 1. IMPORT FUNGSI TOAST DARI SONNER
+import { Product } from '@/types';
 
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -41,17 +44,17 @@ const itemVariants = {
     opacity: 1,
     transition: { ease: 'easeOut', duration: 0.4 },
   },
-  exit: { 
+  exit: {
     opacity: 0,
     transition: { ease: 'easeIn', duration: 0.2 },
   },
 };
 
-
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
+  const queryClient = useQueryClient();
 
   const { data: productsResponse, isLoading, isError, error } = useQuery<PaginatedProducts, Error>({
     queryKey: ['products', page, debouncedSearchTerm],
@@ -62,12 +65,35 @@ export default function ProductsPage() {
   const products = productsResponse?.data;
   const meta = productsResponse?.meta;
 
+  const updateProductMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) => updateProduct(id, data),
+    onSuccess: (updatedProduct) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      // 2. Gunakan toast() untuk notifikasi sukses
+      toast.success(`Produk "${updatedProduct.name}" telah diperbarui.`);
+    },
+    onError: (error: any) => {
+      // 3. Gunakan toast.error() untuk notifikasi error
+      toast.error("Gagal Memperbarui Status", {
+        description: error.response?.data?.message || 'Terjadi kesalahan tidak diketahui.',
+      });
+    },
+  });
+
+  const handleFeatureToggle = (product: Product) => {
+    updateProductMutation.mutate({
+      id: product.id,
+      data: { isFeatured: !product.isFeatured },
+    });
+  };
+
   return (
     <motion.div
       initial="hidden"
       animate="visible"
       variants={pageVariants}
     >
+      {/* ... sisa JSX tetap sama ... */}
       <motion.div variants={itemVariants} className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Manajemen Produk</h1>
@@ -105,6 +131,7 @@ export default function ProductsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[80px]">Unggulan</TableHead>
                       <TableHead>Nama Produk</TableHead>
                       <TableHead>SKU</TableHead>
                       <TableHead>Harga</TableHead>
@@ -114,62 +141,69 @@ export default function ProductsPage() {
                   </TableHeader>
                   <AnimatePresence mode="wait">
                     <motion.tbody
-                        key={`${page}-${debouncedSearchTerm}`}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        variants={{
-                            visible: { transition: { staggerChildren: 0.05 } },
-                        }}
+                      key={`${page}-${debouncedSearchTerm}`}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      variants={{
+                        visible: { transition: { staggerChildren: 0.05 } },
+                      }}
                     >
-                        {isLoading ? (
-                            <motion.tr variants={itemVariants}>
-                                <TableCell colSpan={5} className="text-center h-24">
-                                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                      {isLoading ? (
+                          <motion.tr variants={itemVariants}>
+                              <TableCell colSpan={6} className="text-center h-24">
+                                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                              </TableCell>
+                          </motion.tr>
+                      ) : isError ? (
+                          <motion.tr variants={itemVariants}>
+                              <TableCell colSpan={6} className="text-center h-24 text-red-500">{error.message}</TableCell>
+                          </motion.tr>
+                      ) : products?.length > 0 ? (
+                          products.map((product) => (
+                              <motion.tr key={product.id} variants={itemVariants}>
+                                <TableCell>
+                                  <Switch
+                                    checked={product.isFeatured}
+                                    onCheckedChange={() => handleFeatureToggle(product)}
+                                    disabled={updateProductMutation.isPending}
+                                  />
                                 </TableCell>
-                            </motion.tr>
-                        ) : isError ? (
-                            <motion.tr variants={itemVariants}>
-                                <TableCell colSpan={5} className="text-center h-24 text-red-500">{error.message}</TableCell>
-                            </motion.tr>
-                        ) : products?.length > 0 ? (
-                            products.map((product) => (
-                                <motion.tr key={product.id} variants={itemVariants}>
-                                    <TableCell className="font-medium">{product.name}</TableCell>
-                                    <TableCell>{product.sku}</TableCell>
-                                    <TableCell>Rp{product.price.toLocaleString('id-ID')}</TableCell>
-                                    <TableCell>{product.stock}</TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Buka menu</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem asChild>
-                                            <Link href={`/products/edit?id=${product.id}`}>
-                                                <Edit className="mr-2 h-4 w-4" />
-                                                <span>Edit</span>
-                                            </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                <span>Hapus</span>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </motion.tr>
-                            ))
-                        ) : (
-                            <motion.tr variants={itemVariants}>
-                                <TableCell colSpan={5} className="text-center h-24">
-                                    Produk tidak ditemukan.
+                                <TableCell className="font-medium">{product.name}</TableCell>
+                                <TableCell>{product.sku}</TableCell>
+                                <TableCell>Rp{product.price.toLocaleString('id-ID')}</TableCell>
+                                <TableCell>{product.stock}</TableCell>
+                                <TableCell className="text-right">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" className="h-8 w-8 p-0">
+                                          <span className="sr-only">Buka menu</span>
+                                          <MoreHorizontal className="h-4 w-4" />
+                                          </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                          <DropdownMenuItem asChild>
+                                          <Link href={`/products/edit?id=${product.id}`}>
+                                              <Edit className="mr-2 h-4 w-4" />
+                                              <span>Edit</span>
+                                          </Link>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              <span>Hapus</span>
+                                          </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </TableCell>
-                            </motion.tr>
-                        )}
+                              </motion.tr>
+                          ))
+                      ) : (
+                          <motion.tr variants={itemVariants}>
+                              <TableCell colSpan={6} className="text-center h-24">
+                                  Produk tidak ditemukan.
+                              </TableCell>
+                          </motion.tr>
+                      )}
                     </motion.tbody>
                   </AnimatePresence>
                 </Table>

@@ -1,6 +1,10 @@
 // file: src/products/products.service.ts
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException, // Ditambahkan untuk validasi
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { Product, Prisma, Role } from '@prisma/client';
@@ -155,6 +159,29 @@ export class ProductsService {
       },
     };
   }
+  
+  // =======================================================
+  // BARU: Method untuk mengambil produk featured
+  // =======================================================
+  async findFeatured() {
+    const featuredProducts = await this.prisma.product.findMany({
+      where: { isFeatured: true },
+      take: 5,
+      include: {
+        images: true,
+        category: true,
+        brand: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+    
+    // Proses harga tanpa user context (harga publik)
+    return Promise.all(
+      featuredProducts.map((p) => this.processProductWithPrice(p)),
+    );
+  }
 
   async findOne(id: string, user?: UserPayload): Promise<any> {
     const product = await this.prisma.product.findUnique({
@@ -211,20 +238,44 @@ export class ProductsService {
     );
   }
 
+  // =======================================================
+  // DIMODIFIKASI: Method update dengan validasi featured
+  // =======================================================
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
   ): Promise<Product> {
-    const { categoryId, brandId, images, ...productData } = updateProductDto;
+    const { categoryId, brandId, images, isFeatured, ...productData } = updateProductDto;
+
+    // Validasi jumlah product featured sebelum transaksi database
+    if (isFeatured === true) {
+      const featuredCount = await this.prisma.product.count({
+        where: { isFeatured: true, NOT: { id } },
+      });
+      if (featuredCount >= 5) {
+        throw new BadRequestException('Maksimal 5 produk yang bisa diunggulkan.');
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
+      // Data produk yang akan diupdate, termasuk isFeatured
+      const dataToUpdate: any = { 
+        ...productData,
+        ...(isFeatured !== undefined && { isFeatured }),
+      };
+
+      if (categoryId) {
+        dataToUpdate.category = { connect: { id: categoryId } };
+      }
+      if (brandId) {
+        dataToUpdate.brand = { connect: { id: brandId } };
+      }
+
       await tx.product.update({
         where: { id },
-        data: {
-          ...productData,
-          ...(categoryId && { category: { connect: { id: categoryId } } }),
-          ...(brandId && { brand: { connect: { id: brandId } } }),
-        },
+        data: dataToUpdate,
       });
+
       if (images) {
         await tx.productImage.deleteMany({ where: { productId: id } });
         await tx.product.update({
@@ -232,6 +283,7 @@ export class ProductsService {
           data: { images: { create: images } },
         });
       }
+
       return tx.product.findUniqueOrThrow({
         where: { id },
         include: {
