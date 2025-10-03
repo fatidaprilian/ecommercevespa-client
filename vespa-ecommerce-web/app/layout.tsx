@@ -90,7 +90,7 @@ const Footer = () => {
       <div className="bg-black py-4 mt-8">
         <div className="container mx-auto px-6 lg:px-8">
             <p className="text-center text-gray-500 text-sm">
-              Copyright © {new Date().getFullYear()} Jakarta Scooter. All Rights Reserved.
+              Copyright © {new Date().getFullYear()} Created by KodeKiri
             </p>
         </div>
       </div>
