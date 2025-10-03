@@ -5,7 +5,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { getBannerById } from '@/services/bannerService';
-import { BannerForm } from './_form';
+import { BannerForm } from '../../../components/banners/BannerForm';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
