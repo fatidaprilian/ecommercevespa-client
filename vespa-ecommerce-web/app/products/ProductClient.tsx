@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HeroSection } from '@/components/organisms/HeroSection';
+import { BrandShowcase } from '@/components/organisms/BrandShowcase'; // <-- 1. IMPORT BRANDSHOWCASE
 
 const SkeletonCard = () => (
     <Card className="overflow-hidden shadow-sm flex flex-col h-full bg-white">
@@ -308,6 +309,8 @@ export default function ProductClient() {
         <HeroSection />
       </div>
 
+      <BrandShowcase /> {/* <-- 2. TAMBAHKAN BRANDSHOWCASE DI SINI */}
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {isFilterActive && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-md border">
@@ -357,7 +360,7 @@ export default function ProductClient() {
           </div>
           
           <div className="flex items-center gap-4 flex-shrink-0">
-              <FilterPopup onApplyFilters={handleApplyFilters} currentFilters={{ categoryId: queryParams.categoryId, brandId: queryParams.brandId }} />
+              {/* <FilterPopup onApplyFilters={handleApplyFilters} currentFilters={{ categoryId: queryParams.categoryId, brandId: queryParams.brandId }} /> */} {/* <-- 3. TOMBOL FILTER DIKOMENTARI */}
               <Select onValueChange={handleSortChange} defaultValue={`${queryParams.sortBy}-${queryParams.sortOrder}`}>
                 <SelectTrigger className="w-auto md:w-[180px]">
                   <SelectValue placeholder="Urutkan" />

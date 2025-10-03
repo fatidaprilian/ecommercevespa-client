@@ -34,6 +34,11 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
+import { HeroSection } from '@/components/organisms/HeroSection'; // <-- 1. IMPORT HERO SECTION
+import { BrandShowcase } from '@/components/organisms/BrandShowcase'; // <-- 2. IMPORT BRAND SHOWCASE
+import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
+import { RecentlyViewed } from '@/components/organisms/RecentlyViewed';
+
 
 const ProductDetailSkeleton = () => (
     <div className="bg-white min-h-screen pt-28 animate-pulse">
@@ -89,6 +94,8 @@ export default function ProductDetailPage() {
     const { toggleWishlist, isWishlisted } = useWishlistStore();
     const isInWishlist = isWishlisted(productId);
 
+    const { addProduct: addRecentlyViewedProduct } = useRecentlyViewed();
+
     const [quantity, setQuantity] = useState(1);
     const [isAdded, setIsAdded] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -100,10 +107,13 @@ export default function ProductDetailPage() {
     const startPos = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
-        if (product?.images?.length) {
-            setSelectedImage(product.images[0].url);
+        if (product) {
+            if (product.images?.length) {
+                setSelectedImage(product.images[0].url);
+            }
+            addRecentlyViewedProduct(product);
         }
-    }, [product]);
+    }, [product, addRecentlyViewedProduct]);
 
     const handleOpenChange = (open: boolean) => {
         setIsZoomOpen(open);
@@ -188,7 +198,12 @@ export default function ProductDetailPage() {
     if (!product) return <div className="text-center py-20">Produk tidak ditemukan.</div>;
 
     return (
-        <div className="bg-white min-h-screen pt-28">
+        <div className="bg-white min-h-screen">
+            <div className="pt-28">
+                <HeroSection />
+            </div>
+            <BrandShowcase />
+
             <div className="container mx-auto px-4 py-16">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-6">
                     <Button onClick={() => router.back()} variant="ghost" className="pl-0 text-gray-600 hover:text-gray-900">
@@ -259,25 +274,21 @@ export default function ProductDetailPage() {
                             </div>
                         </div>
                         
-                        {/* --- PERUBAHAN DI SINI: Menghilangkan kotak di sekitar logo --- */}
                         {product.brand && product.brand.logoUrl && (
                             <Link href={`/products?brandId=${product.brand.id}`} className="block mt-6 w-36 transition-opacity hover:opacity-70">
                                 <img src={product.brand.logoUrl} alt={product.brand.name} className="w-full object-contain" />
                             </Link>
                         )}
-                        {/* ----------------------------------------------------------------- */}
                     </motion.div>
 
                     <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col">
                         <motion.h1 variants={itemVariants} className="text-4xl lg:text-5xl font-bold text-gray-800 mb-2">{product.name}</motion.h1>
                         
-                        {/* --- PERUBAHAN DI SINI: Menghilangkan SKU --- */}
                         <motion.div variants={itemVariants} className="text-sm text-gray-500 mb-4">
                             {product.piaggioCode && (
                                 <p>Piaggio Code: <span className="font-semibold text-gray-700">{product.piaggioCode}</span></p>
                             )}
                         </motion.div>
-                        {/* ------------------------------------------- */}
                         
                         <Separator className="my-4" />
                         <motion.div variants={itemVariants} className="mb-6"><PriceDisplay priceInfo={product.priceInfo} className="text-4xl" /></motion.div>
@@ -322,9 +333,9 @@ export default function ProductDetailPage() {
                             <p>Tidak ada deskripsi untuk produk ini.</p>
                         )}
                         {product.models && (
-                             <p className="font-semibold">
-                                MODELS: <span className="font-normal">{product.models}</span>
-                            </p>
+                                <p className="font-semibold">
+                                    MODELS: <span className="font-normal">{product.models}</span>
+                                </p>
                         )}
                     </div>
                 </div>
@@ -333,6 +344,9 @@ export default function ProductDetailPage() {
                     {product.brand && <RelatedProducts productId={product.id} type="brand" value={product.brand.id} title={`Produk Lainnya dari ${product.brand.name}`} />}
                     {product.category && <RelatedProducts productId={product.id} type="category" value={product.category.id} title={`Anda Mungkin Juga Suka`} />}
                 </div>
+
+                <Separator className="my-16"/>
+                <RecentlyViewed currentProductId={productId} />
             </div>
         </div>
     );
