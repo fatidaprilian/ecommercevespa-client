@@ -1,9 +1,16 @@
+// vespa-ecommerce-web/app/layout.tsx
+
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import ConditionalNavbar from '@/components/layout/ConditionalNavbar';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from 'sonner';
+import ClientOnly from '@/components/providers/ClientOnly';
+import Link from 'next/link';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Instagram, Phone } from 'lucide-react';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
@@ -12,6 +19,85 @@ export const metadata: Metadata = {
     title: 'Vespa Sparepart Ecommerce',
     description: 'Temukan sparepart Vespa original dan berkualitas.',
 };
+
+// --- Komponen Footer Baru Sesuai Desain Anda (Sudah Diperbaiki) ---
+const Footer = () => {
+  // Placeholder untuk logo shipping dan pembayaran
+  const PlaceholderBox = () => <div className="w-full h-8 bg-gray-500 rounded"></div>;
+
+  return (
+    <footer className="bg-[#2b2b2b] text-white">
+      <div className="container mx-auto px-6 lg:px-8 py-8">
+        
+        {/* Bagian Atas: Kontak */}
+        <div className="flex flex-col sm:flex-row items-center justify-start gap-6 border-b border-gray-600 pb-6 mb-6 text-center">
+            <h3 className="text-lg font-semibold tracking-wider">Hubungi Kami</h3>
+            <a
+                href="https://wa.me/628159922321"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-gray-300 transition-colors"
+            >
+                <Phone size={20} />
+                <span>+628159922321</span>
+            </a>
+            <a
+                href="https://instagram.com/jakartascootershop"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-gray-300 transition-colors"
+            >
+                <Instagram size={20} />
+                <span>JAKARTASCOOTERSHOP</span>
+            </a>
+        </div>
+
+        {/* Bagian Tengah: Shipping, Pembayaran, Informasi */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          
+          {/* Kolom 1: Shipping */}
+          <div>
+            <h3 className="font-bold text-lg mb-4 tracking-wider">PENGIRIMAN</h3>
+            <div className="grid grid-cols-3 gap-3 max-w-[350px]">
+              <img src="/jne.svg" alt="Logo JNE" />
+              <img src="/jnt.svg" alt="Logo J&T" />
+            </div>
+          </div>
+
+          {/* Kolom 2: Pembayaran */}
+          <div>
+            <h3 className="font-bold text-lg mb-4 tracking-wider">PEMBAYARAN</h3>
+            <div className="grid grid-cols-2 gap-3 max-w-[350px]">
+                <img src="/bca.svg" alt="Logo BCA" />
+                <img src="/mandiri.svg" alt="Logo MANDIRI" />
+                <img src="/mid.svg" alt="Logo MIDTRANS" />
+            </div>
+          </div>
+
+          {/* Kolom 3: Informasi */}
+          <div>
+            <h3 className="font-bold text-lg mb-4 tracking-wider">INFORMASI</h3>
+            <ul className="space-y-3">
+              <li><Link href="/about" className="text-gray-400 hover:text-white transition-colors text-sm">Tentang Kami</Link></li>
+              <li><Link href="#" className="text-gray-400 hover:text-white transition-colors text-sm">FAQ</Link></li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+      
+      {/* Bagian Bawah Footer (Copyright) */}
+      <div className="bg-black py-4 mt-8">
+        <div className="container mx-auto px-6 lg:px-8">
+            <p className="text-center text-gray-500 text-sm">
+              Copyright © {new Date().getFullYear()} Jakarta Scooter. All Rights Reserved.
+            </p>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
 
 export default function RootLayout({
     children,
@@ -24,7 +110,8 @@ export default function RootLayout({
                 className={`${inter.variable} ${playfair.variable} font-sans bg-[#F0F5F9] text-[#1E2022] flex flex-col min-h-screen`}
             >
                 <QueryProvider>
-                    <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+                  <ClientOnly>
+                    <Toaster position="top-center" richColors />
                     
                     <ConditionalNavbar />
 
@@ -32,11 +119,8 @@ export default function RootLayout({
                         {children}
                     </main>
 
-                    <footer className="bg-[#1E2022] text-white p-6">
-                        <div className="container mx-auto text-center">
-                            <p>VespaPart Ecommerce &copy; 2025. Design by. kodekiri.com </p>
-                        </div>
-                    </footer>
+                    <Footer />
+                  </ClientOnly>
                 </QueryProvider>
             </body>
         </html>

@@ -28,6 +28,8 @@ import { AccurateSyncModule } from './accurate-sync/accurate-sync.module';
 import { PaymentMappingsModule } from './payment-mappings/payment-mappings.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EmailModule } from './email/email.module';
+import { WishlistModule } from './wishlist/wishlist.module';
+import { HomepageBannersModule } from './homepage-banners/homepage-banners.module';
 
 
 @Module({
@@ -103,6 +105,8 @@ import { EmailModule } from './email/email.module';
     AccurateSyncModule,
     EmailModule,
     DashboardModule,
+    WishlistModule,
+    HomepageBannersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

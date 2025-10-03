@@ -1,16 +1,15 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { ProductCard } from '@/components/molecules/ProductCard';
 import { useProducts, ProductQueryParams } from '@/hooks/use-products';
 import { useCategories } from '@/hooks/use-categories';
 import { useBrands } from '@/hooks/use-brands';
 import { Product, Category, Brand } from '@/types';
-import { SlidersHorizontal, ServerCrash, ChevronLeft, ChevronRight, Search, X, ArrowRight, RefreshCw } from 'lucide-react';
+import { SlidersHorizontal, ServerCrash, ChevronLeft, ChevronRight, Search, X, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -21,6 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { HeroSection } from '@/components/organisms/HeroSection';
 
 const SkeletonCard = () => (
     <Card className="overflow-hidden shadow-sm flex flex-col h-full bg-white">
@@ -33,32 +34,16 @@ const SkeletonCard = () => (
     </Card>
 );
 
-const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlaceholderData, noun = "Halaman" }: any) => {
+const PaginationControls = ({ currentPage, totalPages, onPageChange, isPlaceholderData }: any) => {
     if (totalPages <= 1) return null;
     return (
         <div className="flex items-center justify-center gap-4 mt-12">
             <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1 || isPlaceholderData}><ChevronLeft className="h-4 w-4" /></Button>
-            <span className="text-sm font-medium text-gray-700">{noun} {currentPage} dari {totalPages}</span>
+            <span className="text-sm font-medium text-gray-700">Halaman {currentPage} dari {totalPages}</span>
             <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages || isPlaceholderData}><ChevronRight className="h-4 w-4" /></Button>
         </div>
     );
 };
-
-const ViewAllCard = ({ categoryId }: { categoryId: string }) => (
-    <div className="flex items-center justify-center w-full h-full">
-        <Link href={`/products?categoryId=${categoryId}`} className="group w-full h-full flex items-center justify-center">
-            <Card className="w-full h-full flex flex-col items-center justify-center bg-gray-50 hover:bg-white hover:shadow-lg transition-all duration-300">
-                <div className="text-center flex flex-col items-center justify-center">
-                    <div className="flex items-center justify-center w-16 h-16 bg-gray-200 group-hover:bg-primary rounded-full mb-4 transition-colors">
-                        <ArrowRight className="w-8 h-8 text-gray-600 group-hover:text-white transition-colors" />
-                    </div>
-                    <h3 className="font-bold text-lg text-gray-800">Lihat Semua</h3>
-                    <p className="text-sm text-gray-500">di kategori ini</p>
-                </div>
-            </Card>
-        </Link>
-    </div>
-);
 
 function FilterPopup({ onApplyFilters, currentFilters }: {
   onApplyFilters: (filters: { categoryId?: string[], brandId?: string[] }) => void;
@@ -207,20 +192,17 @@ export default function ProductClient() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
-  
+  const controlsRef = useRef<HTMLDivElement>(null);
+
   const { data: categoriesResponse } = useCategories();
   const allCategories = categoriesResponse?.data;
   const { data: brandsResponse } = useBrands();
   const allBrands = brandsResponse?.data;
 
-  const CATEGORIES_PER_PAGE = 4;
-  const PRODUCTS_PER_CATEGORY_ROW = 4;
-
   const queryParams = useMemo((): ProductQueryParams => {
     const params = new URLSearchParams(searchParams);
     return {
       page: Number(params.get('page')) || 1,
-      catPage: Number(params.get('catPage')) || 1,
       limit: 12,
       sortBy: (params.get('sortBy') as 'price' | 'createdAt') || 'createdAt',
       sortOrder: (params.get('sortOrder') as 'asc' | 'desc') || 'desc',
@@ -229,29 +211,18 @@ export default function ProductClient() {
       brandId: params.getAll('brandId') || [],
     }
   }, [searchParams]);
-
-  const isFilterActive = useMemo(() => 
-      !!queryParams.search || 
-      (queryParams.categoryId && queryParams.categoryId.length > 0) || 
-      (queryParams.brandId && queryParams.brandId.length > 0),
-  [queryParams]);
   
   const apiQuery = useMemo(() => {
-    if (isFilterActive) {
-      // Hanya kirim parameter yang relevan untuk filter
-      return {
-        page: queryParams.page,
-        limit: queryParams.limit,
-        sortBy: queryParams.sortBy,
-        sortOrder: queryParams.sortOrder,
-        search: queryParams.search,
-        categoryId: queryParams.categoryId,
-        brandId: queryParams.brandId,
-      };
-    }
-    // Untuk tampilan default, fetch semua produk (atau batas wajar)
-    return { limit: 100, page: 1, sortBy: 'createdAt', sortOrder: 'desc' };
-  }, [queryParams, isFilterActive]);
+    return {
+      page: queryParams.page,
+      limit: queryParams.limit,
+      sortBy: queryParams.sortBy,
+      sortOrder: queryParams.sortOrder,
+      search: queryParams.search,
+      categoryId: queryParams.categoryId,
+      brandId: queryParams.brandId,
+    };
+  }, [queryParams]);
 
   useEffect(() => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -261,11 +232,10 @@ export default function ProductClient() {
   const products = productsResponse?.data;
   const meta = productsResponse?.meta;
 
-  const updateUrl = (newParams: Record<string, string | string[] | number | undefined | null>) => {
+  const updateUrl = (newParams: Record<string, string | string[] | number | undefined | null>, options?: { scroll: boolean }) => {
     const currentParams = new URLSearchParams(searchParams.toString());
 
     Object.entries(newParams).forEach(([key, value]) => {
-      // Hapus kunci yang ada untuk memastikan tidak ada duplikasi
       currentParams.delete(key);
       
       if (Array.isArray(value)) {
@@ -274,7 +244,7 @@ export default function ProductClient() {
         currentParams.set(key, String(value));
       }
     });
-    router.push(`/products?${currentParams.toString()}`);
+    router.push(`/products?${currentParams.toString()}`, options);
   };
   
   const handleApplyFilters = (filters: { categoryId?: string[], brandId?: string[] }) => {
@@ -282,25 +252,31 @@ export default function ProductClient() {
       ...queryParams,
       ...filters,
       page: 1,
-      catPage: 1
-    });
+    }, { scroll: false });
   };
 
   const handleClearFilters = () => {
-    router.push('/products');
+    router.push('/products', { scroll: false });
   };
 
   const handleSortChange = (value: string) => {
     const [sortBy, sortOrder] = value.split('-');
-    updateUrl({ ...queryParams, sortBy, sortOrder, page: 1 });
+    updateUrl({ ...queryParams, sortBy, sortOrder, page: 1 }, { scroll: false });
   };
 
   const handlePageChange = (newPage: number) => {
-    updateUrl({ ...queryParams, page: newPage });
+    if (controlsRef.current) {
+        controlsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    updateUrl({ ...queryParams, page: newPage }, { scroll: false });
   };
 
-  const handleCategoryPageChange = (newCatPage: number) => {
-    updateUrl({ ...queryParams, catPage: newCatPage });
+  const handleCategoryClick = (categoryId: string | null) => {
+    updateUrl({
+      ...queryParams,
+      categoryId: categoryId ? [categoryId] : [],
+      page: 1,
+    }, { scroll: false });
   };
   
   const selectedCategories = useMemo(
@@ -319,44 +295,20 @@ export default function ProductClient() {
     [allBrands, queryParams.brandId]
   );
   
-  const productsByCategory = useMemo(() => {
-    if (isFilterActive || !products) return [];
-    
-    const categoryMap = new Map<string, { name: string; products: Product[] }>();
-
-    products.forEach(product => {
-        const categoryId = product.category?.id || '__null__';
-        const categoryName = product.category?.name || 'Lainnya';
-
-        if (!categoryMap.has(categoryId)) {
-            categoryMap.set(categoryId, { name: categoryName, products: [] });
-        }
-        categoryMap.get(categoryId)!.products.push(product);
-    });
-    
-    return Array.from(categoryMap.entries()).map(([id, data]) => ({
-        id,
-        name: data.name,
-        products: data.products,
-    }));
-  }, [products, isFilterActive]);
-
-  const totalCategoryPages = Math.ceil(productsByCategory.length / CATEGORIES_PER_PAGE);
-  const paginatedCategories = useMemo(() => {
-      const startIndex = (queryParams.catPage - 1) * CATEGORIES_PER_PAGE;
-      return productsByCategory.slice(startIndex, startIndex + CATEGORIES_PER_PAGE);
-  }, [productsByCategory, queryParams.catPage]);
-
+  const isFilterActive = useMemo(() => 
+      !!queryParams.search || 
+      (queryParams.categoryId && queryParams.categoryId.length > 0) || 
+      (queryParams.brandId && queryParams.brandId.length > 0),
+  [queryParams]);
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20">
+      
+      <div className="pt-32">
+        <HeroSection />
+      </div>
 
-        <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-bold text-[#1E2022] mb-4 font-playfair">Katalog Produk</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">Temukan semua suku cadang original dan performa tinggi untuk menyempurnakan Vespa Anda.</p>
-        </motion.div>
-        
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {isFilterActive && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-md border">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -375,16 +327,48 @@ export default function ProductClient() {
             </motion.div>
         )}
 
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }} className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-md mb-10 sticky top-24 z-10 border">
-          <FilterPopup onApplyFilters={handleApplyFilters} currentFilters={{ categoryId: queryParams.categoryId || [], brandId: queryParams.brandId || [] }} />
-          <Select onValueChange={handleSortChange} value={`${queryParams.sortBy}-${queryParams.sortOrder}`}>
-            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Urutkan" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="createdAt-desc">Terbaru</SelectItem>
-              <SelectItem value="price-asc">Harga Terendah</SelectItem>
-              <SelectItem value="price-desc">Harga Tertinggi</SelectItem>
-            </SelectContent>
-          </Select>
+        <motion.div
+          ref={controlsRef} 
+          initial={{ opacity: 0, y: -10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.7, delay: 0.3, ease: "easeOut"}}
+          className="flex items-center justify-between gap-2 mb-10"
+        >
+          <div className="flex items-center gap-2 overflow-x-auto pb-4 -mx-4 px-4">
+            <Button
+              variant={!queryParams.categoryId || queryParams.categoryId.length === 0 ? 'default' : 'outline'}
+              size="sm"
+              className="rounded-full shrink-0"
+              onClick={() => handleCategoryClick(null)}
+            >
+              Semua Kategori
+            </Button>
+            {allCategories?.map((category) => (
+              <Button
+                key={category.id}
+                variant={queryParams.categoryId?.includes(category.id) ? 'default' : 'outline'}
+                size="sm"
+                className="rounded-full shrink-0"
+                onClick={() => handleCategoryClick(category.id)}
+              >
+                {category.name}
+              </Button>
+            ))}
+          </div>
+          
+          <div className="flex items-center gap-4 flex-shrink-0">
+              <FilterPopup onApplyFilters={handleApplyFilters} currentFilters={{ categoryId: queryParams.categoryId, brandId: queryParams.brandId }} />
+              <Select onValueChange={handleSortChange} defaultValue={`${queryParams.sortBy}-${queryParams.sortOrder}`}>
+                <SelectTrigger className="w-auto md:w-[180px]">
+                  <SelectValue placeholder="Urutkan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt-desc">Terbaru</SelectItem>
+                  <SelectItem value="price-asc">Harga Terendah</SelectItem>
+                  <SelectItem value="price-desc">Harga Tertinggi</SelectItem>
+                </SelectContent>
+              </Select>
+          </div>
         </motion.div>
 
         <div>
@@ -404,31 +388,18 @@ export default function ProductClient() {
                   </Button>
                 </div>
               ) : products && products.length > 0 ? (
-                isFilterActive ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {products.map((product: Product) => ( <ProductCard key={product.id} product={product} /> ))}
-                  </div>
-                ) : (
-                  <div className="space-y-16">
-                    {paginatedCategories.map(({ id: categoryId, name: categoryName, products: categoryProducts }) => (
-                      <div key={categoryName}>
-                        <h2 className="text-3xl font-bold text-[#1E2022] mb-6 font-playfair border-b pb-3">{categoryName}</h2>
-                        <div className="flex overflow-x-auto gap-6 pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                          {categoryProducts.slice(0, PRODUCTS_PER_CATEGORY_ROW).map((product: Product) => (
-                            <div key={product.id} className="flex-none w-[280px]">
-                              <ProductCard product={product} />
-                            </div>
-                          ))}
-                          {categoryProducts.length > PRODUCTS_PER_CATEGORY_ROW && (
-                            <div className="flex-none w-[280px]">
-                                <ViewAllCard categoryId={categoryId} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-8">
+                  {products.map((product: Product) => (
+                    <motion.div
+                        key={product.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                      <ProductCard product={product} />
+                    </motion.div>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-20 bg-white rounded-lg shadow-md">
                   <p className="text-gray-500 text-lg font-semibold">Produk Tidak Ditemukan</p>
@@ -439,25 +410,16 @@ export default function ProductClient() {
           </AnimatePresence>
         </div>
 
-        {isFilterActive && meta && meta.lastPage > 1 ? (
+        {meta && meta.lastPage > 1 && (
             <PaginationControls
               currentPage={queryParams.page}
               totalPages={meta.lastPage}
               onPageChange={handlePageChange}
               isPlaceholderData={isPlaceholderData}
             />
-        ) : !isFilterActive && totalCategoryPages > 1 ? (
-            <PaginationControls
-                currentPage={queryParams.catPage}
-                totalPages={totalCategoryPages}
-                onPageChange={handleCategoryPageChange}
-                isPlaceholderData={isLoading}
-                noun="Kategori"
-            />
-        ) : null}
+        )}
         
       </div>
     </div>
   );
 }
-

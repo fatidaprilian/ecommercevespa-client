@@ -1,4 +1,4 @@
-// file: src/products/dto/create-product.dto.ts
+// File: src/products/dto/create-product.dto.ts
 
 import { IsString, IsNotEmpty, IsNumber, IsInt, IsOptional, Min, IsArray, ValidateNested, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -29,6 +29,16 @@ export class CreateProductDto {
   @IsString()
   @IsOptional()
   sku?: string;
+
+  // --- TAMBAHKAN DUA PROPERTI INI ---
+  @IsString()
+  @IsOptional()
+  piaggioCode?: string;
+
+  @IsString()
+  @IsOptional()
+  models?: string;
+  // ---------------------------------
 
   @IsString()
   @IsNotEmpty()

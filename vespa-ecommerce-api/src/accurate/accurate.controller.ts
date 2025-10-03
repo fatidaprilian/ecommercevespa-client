@@ -1,6 +1,6 @@
-// file: src/accurate/accurate.controller.ts
+// File: src/accurate/accurate.controller.ts
 
-import { Controller, Get, Post, Body, Query, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Res, UseGuards, Delete, HttpCode, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AccurateService } from './accurate.service';
 import { Response } from 'express';
@@ -73,6 +73,18 @@ export class AccurateController {
       return this.accurateService.getBankAccounts();
   }
 
+  /**
+   * Endpoint untuk memutus koneksi Accurate.
+   * Menghapus semua token dan sesi yang tersimpan.
+   */
+  @Delete('disconnect')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async disconnect() {
+      return this.accurateService.disconnect();
+  }
+  
   /**
    * Endpoint untuk memicu perpanjangan webhook secara manual.
    * Hanya bisa diakses oleh ADMIN.

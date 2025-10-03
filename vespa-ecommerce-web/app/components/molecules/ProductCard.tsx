@@ -2,14 +2,16 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Heart, ShoppingCart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Product } from '@/types';
 import { useCartStore } from '@/store/cart';
+import { useWishlistStore } from '@/store/wishlist';
+import { useAuthStore } from '@/store/auth';
+import { cn } from '@/lib/utils';
 import PriceDisplay from './PriceDisplay';
 
 interface ProductCardProps {
@@ -18,105 +20,103 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
     const { addItem } = useCartStore();
+    const { isAuthenticated } = useAuthStore();
+    const { toggleWishlist, isWishlisted } = useWishlistStore();
+    const router = useRouter();
 
     const handleAddToCart = async (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault(); 
-        e.stopPropagation(); 
+        e.preventDefault();
+        e.stopPropagation();
         try {
-            await addItem(product.id, 1);
+            addItem(product.id, 1);
             toast.success(`${product.name} berhasil ditambahkan!`);
         } catch (error) {
             console.error("Gagal dari ProductCard:", error);
         }
     };
 
-    const imageUrl = product.images?.[0]?.url || 'https://images.unsplash.com/photo-1600727032952-52f683078a17?q=80&w=1287&auto=format&fit=crop';
+    const handleToggleWishlist = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isAuthenticated) {
+            toast.error("Login untuk menambahkan ke wishlist.");
+            router.push('/login');
+            return;
+        }
+        toggleWishlist(product.id);
+    };
+
+    const imageUrl = product.images?.[0]?.url || '/product-placeholder.jpg';
+    const isProductInWishlist = isWishlisted(product.id);
 
     return (
-        <Card className="group w-full h-full overflow-hidden rounded-lg shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col border-gray-200 p-0">
-            <CardHeader className="p-0 relative">
-                <Link href={`/products/${product.id}`} aria-label={product.name} className="block">
+        <Card className="group w-full h-full overflow-hidden rounded-lg shadow-sm hover:shadow-xl transition-shadow duration-300 flex flex-col border-gray-200">
+            <Link href={`/products/${product.id}`} aria-label={product.name} className="flex flex-col h-full">
+                <div className="relative">
+                    <button
+                        onClick={handleToggleWishlist}
+                        aria-label="Tambah ke wishlist"
+                        className="absolute top-3 right-3 z-10 p-1.5 bg-white/70 rounded-full backdrop-blur-sm transition-all hover:bg-white hover:scale-110"
+                    >
+                        <Heart className={cn(
+                            "w-5 h-5 transition-colors",
+                            isProductInWishlist
+                                ? 'fill-red-500 text-red-500'
+                                : 'text-gray-600 hover:fill-red-500 hover:text-red-500'
+                        )} />
+                    </button>
                     <div className="aspect-square w-full overflow-hidden">
                         <motion.div
                             style={{ backgroundImage: `url(${imageUrl})` }}
                             className="w-full h-full bg-cover bg-center bg-no-repeat"
-                            whileHover={{ scale: 1.1 }}
+                            whileHover={{ scale: 1.05 }}
                             transition={{ duration: 0.4, ease: 'easeOut' }}
                         />
                     </div>
-                </Link>
-
-                {/* --- AWAL PERUBAHAN --- */}
-                {/* Tambahkan overlay ini jika stok habis */}
-                {product.stock === 0 && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
-                        <span className="text-white font-bold text-xl bg-red-600 px-4 py-2 rounded-md">
-                            STOK HABIS
-                        </span>
-                    </div>
-                )}
-                {/* --- AKHIR PERUBAHAN --- */}
-
-                {product.category && (
-                    <Badge variant="secondary" className="absolute top-3 left-3 pointer-events-none bg-white/80 backdrop-blur-sm">
-                        {product.category.name}
-                    </Badge>
-                )}
-
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
-                    <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-lg">
-                         <Button
-                             size="icon"
-                             variant="ghost"
-                             className="rounded-full h-9 w-9 text-gray-700 hover:bg-gray-200"
-                             onClick={handleAddToCart}
-                             aria-label="Tambah ke keranjang"
-                             disabled={product.stock === 0}
-                         >
-                             <ShoppingCart className="h-5 w-5" />
-                         </Button>
-                         <Button
-                             asChild
-                             size="icon"
-                             variant="ghost"
-                             className="rounded-full h-9 w-9 text-gray-700 hover:bg-gray-200"
-                             aria-label="Lihat detail produk"
-                         >
-                             <Link href={`/products/${product.id}`}>
-                                 <Eye className="h-5 w-5" />
-                             </Link>
-                         </Button>
-                    </div>
                 </div>
-            </CardHeader>
-            
-            <Link href={`/products/${product.id}`} className="flex flex-col flex-grow bg-white">
-                <CardContent className="p-4 flex-grow w-full">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="flex-grow">
-                            <h3 className="font-bold text-md text-gray-900 group-hover:text-primary transition-colors line-clamp-2" title={product.name}>
-                                {product.name}
-                            </h3>
-                        </div>
+
+                <div className="p-3 flex flex-col flex-grow">
+                    <div className="flex items-center justify-between">
                         <div className="flex-shrink-0">
                             {product.brand?.logoUrl ? (
                                 <img 
                                     src={product.brand.logoUrl} 
-                                    alt={product.brand.name || 'Brand Logo'} 
-                                    className="h-10 w-10 object-contain"
+                                    alt={product.brand.name || 'Brand'} 
+                                    className="h-6 object-contain"
                                 />
                             ) : product.brand?.name ? (
                                 <span className="text-xs font-semibold text-gray-500">{product.brand.name}</span>
                             ) : null}
                         </div>
+                        <div className="text-right">
+                            {product.category && (
+                                <p className="text-xs text-gray-500">{product.category.name}</p>
+                            )}
+                            {product.sku && (
+                                <p className="text-[11px] text-gray-400">{product.sku}</p>
+                            )}
+                        </div>
                     </div>
-                </CardContent>
+                    
+                    <div className="min-h-[40px] my-1 flex items-center">
+                        <h3 className="text-sm font-semibold text-gray-900 group-hover:text-[#f04e23] transition-colors line-clamp-2 leading-tight" title={product.name}>
+                            {product.name}
+                        </h3>
+                    </div>
 
-                <CardFooter className="p-4 pt-0 mt-auto">
-                    <div className="w-full">
-                       <PriceDisplay priceInfo={product.priceInfo} />
+                    <div className="mt-auto">
+                       <div className="flex items-end justify-between gap-2">
+                            <PriceDisplay priceInfo={product.priceInfo} />
+                            <button
+                                onClick={handleAddToCart}
+                                aria-label="Tambah ke keranjang"
+                                className="flex-shrink-0 p-2 bg-[#f04e23] text-white rounded-lg hover:bg-[#d43d1a] transition-colors shadow-md hover:shadow-lg"
+                            >
+                                <ShoppingCart className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
-                </CardFooter>
+                </div>
             </Link>
         </Card>
     );

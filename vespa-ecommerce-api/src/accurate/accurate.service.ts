@@ -1,7 +1,9 @@
+// File: src/accurate/accurate.service.ts
+
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { URLSearchParams } from 'url';
 import { AccurateOAuth } from '@prisma/client';
 
@@ -190,7 +192,6 @@ export class AccurateService {
             });
 
             if (response.data?.s && response.data.d) {
-
                 return response.data.d;
             }
             
@@ -242,31 +243,42 @@ export class AccurateService {
         }
     }
 
-async renewWebhook(): Promise<void> {
-    this.logger.log('Mencoba memperbarui webhook Accurate...');
-    try {
-        // 1. Dapatkan token yang valid, ini masih diperlukan untuk otorisasi
-        const token = await this.getValidToken();
-        if (!token) {
-            this.logger.error('Tidak dapat memperbarui webhook karena tidak ada token yang valid.');
-            return;
-        }
-
-        // 2. Lakukan panggilan API langsung ke URL yang benar
-        const response = await axios.get('https://account.accurate.id/api/webhook-renew.do', {
-            headers: {
-                'Authorization': `Bearer ${token.accessToken}`
+    async renewWebhook(): Promise<void> {
+        this.logger.log('Mencoba memperbarui webhook Accurate...');
+        try {
+            const token = await this.getValidToken();
+            if (!token) {
+                this.logger.error('Tidak dapat memperbarui webhook karena tidak ada token yang valid.');
+                return;
             }
-        });
 
-        if (response.data?.s) {
-            this.logger.log(`✅ Webhook Accurate berhasil diperbarui. Aktif untuk 7 hari ke depan.`);
-        } else {
-            const errorMessage = response.data?.d?.[0] || 'Error tidak diketahui saat perpanjangan webhook.';
-            this.logger.warn(`Tidak dapat memperbarui webhook Accurate: ${errorMessage}`);
+            const response = await axios.get('https://account.accurate.id/api/webhook-renew.do', {
+                headers: {
+                    'Authorization': `Bearer ${token.accessToken}`
+                }
+            });
+
+            if (response.data?.s) {
+                this.logger.log(`✅ Webhook Accurate berhasil diperbarui. Aktif untuk 7 hari ke depan.`);
+            } else {
+                const errorMessage = response.data?.d?.[0] || 'Error tidak diketahui saat perpanjangan webhook.';
+                this.logger.warn(`Tidak dapat memperbarui webhook Accurate: ${errorMessage}`);
+            }
+        } catch (error) {
+            this.logger.error('Gagal memanggil API perpanjangan webhook Accurate', error.response?.data || error.message);
         }
-    } catch (error) {
-        this.logger.error('Gagal memanggil API perpanjangan webhook Accurate', error.response?.data || error.message);
     }
-}
+
+    async disconnect(): Promise<{ message: string }> {
+        this.logger.log('Disconnecting from Accurate by deleting OAuth tokens...');
+        const deleteResult = await this.prisma.accurateOAuth.deleteMany({});
+        
+        if (deleteResult.count > 0) {
+            this.logger.log('✅ Successfully disconnected from Accurate.');
+            return { message: 'Berhasil memutuskan koneksi dari Accurate.' };
+        } else {
+            this.logger.warn('Attempted to disconnect, but no active connection was found.');
+            return { message: 'Tidak ada koneksi aktif yang ditemukan.' };
+        }
+    }
 }

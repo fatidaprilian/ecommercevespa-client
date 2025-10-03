@@ -16,7 +16,7 @@ export class ProductsService {
     private discountsCalcService: DiscountsCalculationService,
   ) {}
 
-  private async processProductPrice(product: any, user?: UserPayload) {
+  public async processProductWithPrice(product: any, user?: UserPayload) {
     if (user && user.role === Role.RESELLER) {
       const fullUser = await this.prisma.user.findUnique({
         where: { id: user.id },
@@ -91,7 +91,6 @@ export class ProductsService {
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    // ### START CHANGE ###
     const conditions: Prisma.ProductWhereInput[] = [];
 
     if (search) {
@@ -126,7 +125,6 @@ export class ProductsService {
     }
 
     const where: Prisma.ProductWhereInput = conditions.length > 0 ? { AND: conditions } : {};
-    // ### END CHANGE ###
 
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
@@ -144,7 +142,7 @@ export class ProductsService {
     ]);
 
     const processedProducts = await Promise.all(
-      products.map((p) => this.processProductPrice(p, user)),
+      products.map((p) => this.processProductWithPrice(p, user)),
     );
 
     return {
@@ -170,7 +168,7 @@ export class ProductsService {
     if (!product) {
       throw new NotFoundException(`Produk dengan ID ${id} tidak ditemukan`);
     }
-    return this.processProductPrice(product, user);
+    return this.processProductWithPrice(product, user);
   }
 
   async findRelated(
@@ -209,7 +207,7 @@ export class ProductsService {
     });
 
     return Promise.all(
-      relatedProducts.map((p) => this.processProductPrice(p, user)),
+      relatedProducts.map((p) => this.processProductWithPrice(p, user)),
     );
   }
 

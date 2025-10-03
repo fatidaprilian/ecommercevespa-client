@@ -45,7 +45,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { href: '/brands', label: 'Merek', icon: Package },
     { href: '/orders', label: 'Pesanan', icon: ShoppingCart },
     { href: '/users', label: 'Pengguna', icon: Users },
-    { href: '/payment-methods', label: 'Metode Pembayaran', icon: Landmark },
     { href: '/payment-mappings', label: 'Pemetaan Pembayaran', icon: Link2 },
     { href: '/settings', label: 'Pengaturan', icon: Settings },
   ];

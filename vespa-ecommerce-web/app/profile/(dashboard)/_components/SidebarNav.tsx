@@ -12,6 +12,7 @@ const navItems = [
   { href: '/profile/akun-saya/profil', label: 'Profil Saya', icon: User },
   { href: '/profile/akun-saya/alamat', label: 'Daftar Alamat', icon: MapPin },
   { href: '/orders', label: 'Pesanan Saya', icon: Archive },
+  { href: '/profile/akun-saya/wishlist', label: 'Wishlist', icon: Heart },
 ];
 
 const containerVariants = {

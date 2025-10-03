@@ -9,5 +9,6 @@ import { DiscountsModule } from 'src/discounts/discounts.module';
   imports: [DiscountsModule],
   controllers: [ProductsController],
   providers: [ProductsService],
+  exports: [ProductsService],
 })
 export class ProductsModule {}

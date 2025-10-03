@@ -1,3 +1,5 @@
+// File: app/types/index.ts
+
 export type ProductImage = {
   id: string;
   url: string;
@@ -33,6 +35,10 @@ export type Product = {
   category: Category;
   brand: Brand | null;
   priceInfo: PriceInfo;
+  // --- TAMBAHKAN DUA BARIS INI ---
+  piaggioCode?: string | null;
+  models?: string | null;
+  // -----------------------------
 };
 
 export type User = {

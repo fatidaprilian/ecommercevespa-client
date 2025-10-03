@@ -118,6 +118,8 @@ model Product {
   weight               Int                     @default(1000)
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
+  piaggioCode          String?
+  models               String?
   images               ProductImage[]
   category             Category?               @relation(fields: [categoryId], references: [id])
   categoryId           String?
@@ -366,4 +368,23 @@ model AccurateOAuth {
   dbHost       String?
   dbSession    String?
   branchName   String?
+}
+
+// ============== NEW MODELS ==============
+
+enum BannerType {
+  HERO
+  MIDDLE
+}
+
+model HomePageBanner {
+  id        String     @id @default(cuid())
+  title     String?    
+  subtitle  String?
+  imageUrl  String
+  linkUrl   String?
+  type      BannerType
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }

@@ -1,4 +1,6 @@
-import { useState } from 'react';
+// File: pages/products/edit.tsx
+
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,6 +26,8 @@ const productFormSchema = z.object({
   stock: z.coerce.number().int().min(0, { message: 'Stok tidak boleh negatif.' }),
   weight: z.coerce.number().int().min(1, { message: 'Berat minimal 1 gram.' }),
   description: z.string().optional(),
+  piaggioCode: z.string().optional(),
+  models: z.string().optional(),
   categoryId: z.string().min(1, { message: 'Kategori harus dipilih.' }),
   brandId: z.string().optional(),
   images: z.array(z.object({ url: z.string() })).optional(),
@@ -50,18 +54,49 @@ export default function EditProductPage() {
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
-    values: {
-      name: product?.name || '',
-      sku: product?.sku || '',
-      price: product?.price || 0,
-      stock: product?.stock || 0,
-      weight: product?.weight || 1000,
-      description: product?.description || '',
-      categoryId: product?.categoryId || '',
-      brandId: product?.brandId || '',
-      images: product?.images || [],
-    },
+    defaultValues: {
+      name: '',
+      sku: '',
+      price: 0,
+      stock: 0,
+      weight: 1000,
+      description: '',
+      piaggioCode: '',
+      models: '',
+      categoryId: '',
+      brandId: '',
+      images: [],
+    }
   });
+
+  useEffect(() => {
+    if (product && categories && brands) {
+      const formData = {
+        name: product.name || '',
+        sku: product.sku || '',
+        price: product.price || 0,
+        stock: product.stock || 0,
+        weight: product.weight || 1000,
+        description: product.description || '',
+        piaggioCode: product.piaggioCode || '',
+        models: product.models || '',
+        categoryId: product.categoryId || '',
+        brandId: product.brandId || '',
+        images: product.images || [],
+      };
+      
+      form.reset(formData);
+      
+      setTimeout(() => {
+        if (product.categoryId) {
+          form.setValue('categoryId', product.categoryId, { shouldValidate: true });
+        }
+        if (product.brandId) {
+          form.setValue('brandId', product.brandId, { shouldValidate: true });
+        }
+      }, 100);
+    }
+  }, [product, categories, brands, form]);
 
   const updateMutation = useMutation({
     mutationFn: (values: ProductFormValues) => updateProduct(productId, values),
@@ -139,77 +174,219 @@ export default function EditProductPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Card>
-                <CardHeader><CardTitle>Informasi Dasar Produk</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                <FormField name="name" control={form.control} render={({ field }) => (<FormItem><FormLabel>Nama Produk</FormLabel><FormControl><Input placeholder="Contoh: Kampas Rem Depan" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField name="description" control={form.control} render={({ field }) => (<FormItem><FormLabel>Deskripsi</FormLabel><FormControl><Textarea placeholder="Jelaskan detail produk di sini..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField name="price" control={form.control} render={({ field }) => (<FormItem><FormLabel>Harga</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField name="stock" control={form.control} render={({ field }) => (<FormItem><FormLabel>Stok</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField name="weight" control={form.control} render={({ field }) => (<FormItem><FormLabel>Berat (gram)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader><CardTitle>Gambar Produk</CardTitle></CardHeader>
-                <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    {form.watch('images')?.map((image, index) => (
-                    <div key={index} className="relative aspect-square group">
-                        <img src={image.url} alt={`product-image-${index}`} className="object-cover w-full h-full rounded-md"/>
-                        <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={16}/>
-                        </button>
-                    </div>
-                    ))}
-                </div>
-                <FormField
-                    control={form.control}
-                    name="images"
-                    render={() => (
+          <Card>
+            <CardHeader>
+              <CardTitle>Informasi Dasar Produk</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FormField 
+                name="name" 
+                control={form.control} 
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Produk</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Contoh: Kampas Rem Depan" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} 
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField 
+                  name="piaggioCode" 
+                  control={form.control} 
+                  render={({ field }) => (
                     <FormItem>
-                        <FormControl>
-                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">
-                            <UploadCloud className="w-10 h-10 text-muted-foreground mb-2"/>
-                            <span className="text-sm text-muted-foreground">Klik untuk upload atau drag and drop</span>
-                            <Input type="file" className="hidden" onChange={handleImageUpload} disabled={isUploading}/>
-                        </label>
-                        </FormControl>
-                        <FormMessage />
+                      <FormLabel>Piaggio Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Contoh: 1D000543" {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )} 
                 />
-                </CardContent>
-            </Card>
+                <FormField 
+                  name="models" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Models</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Contoh: PX125E, PX150E" {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
+              </div>
+              <FormField 
+                name="description" 
+                control={form.control} 
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deskripsi</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Jelaskan detail produk di sini..." {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} 
+              />
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <FormField 
+                  name="sku" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SKU (dari Accurate)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="VSP-001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
+                <FormField 
+                  name="price" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Harga</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
+                <FormField 
+                  name="stock" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stok</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
+                <FormField 
+                  name="weight" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Berat (gram)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-                <CardHeader><CardTitle>Organisasi</CardTitle></CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField name="categoryId" control={form.control} render={({ field }) => (
-                    <FormItem>
+          <Card>
+            <CardHeader>
+              <CardTitle>Gambar Produk</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                {form.watch('images')?.map((image, index) => (
+                  <div key={index} className="relative aspect-square group">
+                    <img src={image.url} alt={`product-image-${index}`} className="object-cover w-full h-full rounded-md"/>
+                    <button 
+                      type="button" 
+                      onClick={() => removeImage(index)} 
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={16}/>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <FormField
+                control={form.control}
+                name="images"
+                render={() => (
+                  <FormItem>
+                    <FormControl>
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">
+                        <UploadCloud className="w-10 h-10 text-muted-foreground mb-2"/>
+                        <span className="text-sm text-muted-foreground">Klik untuk upload atau drag and drop</span>
+                        <Input type="file" className="hidden" onChange={handleImageUpload} disabled={isUploading}/>
+                      </label>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Organisasi</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField 
+                name="categoryId" 
+                control={form.control} 
+                render={({ field }) => (
+                  <FormItem>
                     <FormLabel>Kategori</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingCategories}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
-                        <SelectContent>{categories?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || undefined}
+                      disabled={isLoadingCategories}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih kategori..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories?.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                     <FormMessage />
-                    </FormItem>
-                )} />
-                <FormField name="brandId" control={form.control} render={({ field }) => (
-                    <FormItem>
+                  </FormItem>
+                )} 
+              />
+              <FormField 
+                name="brandId" 
+                control={form.control} 
+                render={({ field }) => (
+                  <FormItem>
                     <FormLabel>Merek (Opsional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingBrands}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Pilih merek..." /></SelectTrigger></FormControl>
-                        <SelectContent>{brands?.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                    <Select 
+                      onValueChange={field.onChange}
+                      value={field.value || undefined}
+                      disabled={isLoadingBrands}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih merek..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {brands?.map((b: any) => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                     <FormMessage />
-                    </FormItem>
-                )} />
-                </CardContent>
-            </Card>
+                  </FormItem>
+                )} 
+              />
+            </CardContent>
+          </Card>
 
           <div className="flex justify-end">
             <Button type="submit" disabled={updateMutation.isPending || isUploading}>

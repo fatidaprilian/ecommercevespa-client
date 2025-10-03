@@ -1,8 +1,12 @@
+// File: pages/settings/index.tsx
+
+'use client';
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2, Edit, Save, Check, ChevronsUpDown } from 'lucide-react';
-import axios from 'axios';
+import { Loader2, Edit, Save, Check, ChevronsUpDown, ArrowRight, LogOut } from 'lucide-react';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,12 +25,24 @@ import {
   getVatSetting,
   updateVatSetting
 } from '@/services/settingsService';
+import { getAccurateStatus, getAccurateAuthUrl, disconnectAccurate } from '@/services/accurateService';
+import api from '@/lib/api';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const VatSettings = () => {
   const [vatValue, setVatValue] = useState('');
@@ -62,7 +78,6 @@ const VatSettings = () => {
     }
     mutation.mutate(numericValue);
   };
-
 
   return (
     <Card>
@@ -102,66 +117,49 @@ const VatSettings = () => {
 };
 
 const AccurateIntegration = () => {
-    const [status, setStatus] = useState<{ connected: boolean; dbSelected: boolean }>({ connected: false, dbSelected: false });
-    const [isLoading, setIsLoading] = useState(true);
+    const queryClient = useQueryClient();
     const [databases, setDatabases] = useState<{ id: string; alias: string }[]>([]);
     const [selectedDb, setSelectedDb] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const api = axios.create({
-        baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-        withCredentials: true,
+    const { data: status, isLoading, refetch } = useQuery({
+        queryKey: ['accurateStatus'],
+        queryFn: getAccurateStatus,
+    });
+
+    const disconnectMutation = useMutation({
+        mutationFn: disconnectAccurate,
+        onSuccess: (data) => {
+            toast.success(data.message || 'Koneksi Accurate berhasil diputus.');
+            queryClient.invalidateQueries({ queryKey: ['accurateStatus'] });
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.message || 'Gagal memutus koneksi.');
+        }
     });
 
     useEffect(() => {
-        const handleUrlParams = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const successParam = urlParams.get('success');
-            const errorParam = urlParams.get('error');
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('success');
+        const error = urlParams.get('error');
 
-            if (successParam) {
-                toast.success('Berhasil terhubung dengan Akun Accurate!');
-            }
-            if (errorParam) {
-                toast.error(`Gagal terhubung: ${decodeURIComponent(errorParam)}`);
-            }
-            if (successParam || errorParam) {
-                window.history.replaceState(null, '', window.location.pathname);
-            }
-            return successParam;
-        };
-
-        const checkStatus = async (isAfterRedirect = false) => {
-            try {
-                setIsLoading(true);
-                const response = await api.get('/accurate/status');
-                const newStatus = response.data;
-                setStatus(newStatus);
-
-                if ((newStatus.connected && !newStatus.dbSelected) || (isAfterRedirect && newStatus.connected)) {
-                    const dbResponse = await api.get('/accurate/databases');
-                    setDatabases(dbResponse.data);
-                }
-            } catch (error) {
-                console.error('Error fetching Accurate status:', error);
-                toast.error('Gagal memeriksa status integrasi Accurate.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        const successRedirect = handleUrlParams();
-        checkStatus(!!successRedirect);
-
-    }, []);
+        if (success) {
+            toast.success('Berhasil terhubung dengan Akun Accurate!');
+            refetch();
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+        if (error) {
+            toast.error(`Gagal terhubung: ${decodeURIComponent(error)}`);
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+    }, [refetch]);
 
     const handleConnectClick = async () => {
         try {
-            const response = await api.get('/accurate/authorize-url');
-            window.location.href = response.data.url;
+            const { url } = await getAccurateAuthUrl();
+            window.location.href = url;
         } catch (error) {
-            console.error('Failed to get authorization URL:', error);
-            toast.error('Gagal memulai koneksi. Cek konsol untuk detail.');
+            toast.error('Gagal memulai koneksi ke Accurate.');
         }
     };
 
@@ -174,30 +172,68 @@ const AccurateIntegration = () => {
             setIsSubmitting(true);
             await api.post('/accurate/open-database', { id: selectedDb });
             toast.success('Database berhasil dipilih dan disimpan!');
-            setStatus({ connected: true, dbSelected: true });
+            queryClient.invalidateQueries({ queryKey: ['accurateStatus'] });
         } catch (error) {
-            console.error('Error selecting database:', error);
             toast.error('Gagal memilih database.');
         } finally {
             setIsSubmitting(false);
         }
     };
+    
+    const fetchDatabases = async () => {
+        try {
+            const dbResponse = await api.get('/accurate/databases');
+            setDatabases(dbResponse.data);
+        } catch (error) {
+            toast.error("Gagal memuat daftar database.");
+        }
+    };
+    
+    useEffect(() => {
+        if (status?.connected && !status.dbSelected) {
+            fetchDatabases();
+        }
+    }, [status]);
+
 
     const renderContent = () => {
         if (isLoading) {
             return <div className="flex items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memeriksa status...</div>;
         }
 
-        if (status.connected && status.dbSelected) {
+        if (status?.connected && status.dbSelected) {
             return (
                 <div className="flex items-center space-x-2">
-                    <span className="text-green-600 font-semibold">✅ Terhubung & Database Terpilih</span>
-                    <Button variant="outline" disabled>Sudah Terkonfigurasi</Button>
+                    <span className="text-green-600 font-semibold flex items-center gap-2">
+                        <Check size={18} /> Terhubung & Database Terpilih
+                    </span>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                           <Button variant="destructive" size="sm" disabled={disconnectMutation.isPending}>
+                                <LogOut className="mr-2 h-4 w-4" /> 
+                                {disconnectMutation.isPending ? 'Memutus...' : 'Putuskan Koneksi'}
+                           </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Anda Yakin?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Tindakan ini akan menghapus token dan sesi koneksi ke Accurate. Anda perlu melakukan otorisasi ulang untuk menghubungkannya kembali.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => disconnectMutation.mutate()}>
+                                    Ya, Putuskan Koneksi
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             );
         }
         
-        if (status.connected && !status.dbSelected) {
+        if (status?.connected && !status.dbSelected) {
             return (
                 <div className="space-y-4">
                     <p className="text-sm text-green-600 font-semibold">✅ Terhubung dengan Akun Accurate.</p>
@@ -387,7 +423,6 @@ function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, 
     );
 }
 
-
 export default function SettingsPage() {
     const queryClient = useQueryClient();
     const [originSearchQuery, setOriginSearchQuery] = useState('');
@@ -455,6 +490,22 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Pengaturan Tampilan</CardTitle>
+                        <CardDescription>
+                            Kelola elemen visual yang tampil di halaman depan website Anda.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Link href="/settings/banners">
+                            <Button variant="outline">
+                                Kelola Banner Homepage <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+
                 <AccurateIntegration />
                 
                 <VatSettings />

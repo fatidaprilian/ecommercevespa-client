@@ -1,3 +1,5 @@
+// File: pages/products/new.tsx
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,6 +26,8 @@ const productFormSchema = z.object({
   stock: z.coerce.number().int().min(0, { message: 'Stok tidak boleh negatif.' }),
   weight: z.coerce.number().int().min(1, { message: 'Berat minimal 1 gram.' }),
   description: z.string().optional(),
+  piaggioCode: z.string().optional(), // <-- Tambahkan ini
+  models: z.string().optional(),       // <-- Tambahkan ini
   categoryId: z.string().min(1, { message: 'Kategori harus dipilih.' }),
   brandId: z.string().optional(),
   images: z.array(z.object({ url: z.string() })).optional(),
@@ -41,7 +45,7 @@ export default function NewProductPage() {
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
-    defaultValues: { name: '', sku: '', price: 0, stock: 0, weight: 1000, description: '', categoryId: '', brandId: '', images: [] },
+    defaultValues: { name: '', sku: '', price: 0, stock: 0, weight: 1000, description: '', piaggioCode: '', models: '', categoryId: '', brandId: '', images: [] },
   });
 
   const mutation = useMutation({
@@ -98,9 +102,13 @@ export default function NewProductPage() {
             <CardHeader><CardTitle>Informasi Dasar Produk</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <FormField name="name" control={form.control} render={({ field }) => (<FormItem><FormLabel>Nama Produk</FormLabel><FormControl><Input placeholder="Contoh: Kampas Rem Depan" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <FormField name="piaggioCode" control={form.control} render={({ field }) => (<FormItem><FormLabel>Piaggio Code</FormLabel><FormControl><Input placeholder="Contoh: 1D000543" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField name="models" control={form.control} render={({ field }) => (<FormItem><FormLabel>Models</FormLabel><FormControl><Input placeholder="Contoh: PX125E, PX150E" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
               <FormField name="description" control={form.control} render={({ field }) => (<FormItem><FormLabel>Deskripsi</FormLabel><FormControl><Textarea placeholder="Jelaskan detail produk di sini..." {...field} /></FormControl><FormMessage /></FormItem>)} />
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU (dari Accurate)</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="price" control={form.control} render={({ field }) => (<FormItem><FormLabel>Harga</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="stock" control={form.control} render={({ field }) => (<FormItem><FormLabel>Stok</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="weight" control={form.control} render={({ field }) => (<FormItem><FormLabel>Berat (gram)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
