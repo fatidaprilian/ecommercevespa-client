@@ -31,23 +31,24 @@ const Footer = () => {
         
         {/* Bagian Atas: Kontak */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 border-b border-gray-600 pb-6 mb-6 text-center">
-            <h3 className="text-xl font-semibold tracking-wider">Hubungi Kami</h3>
+            {/* --- PERUBAHAN DI SINI --- */}
+            <h3 className="text-2xl font-semibold tracking-wider">Hubungi Kami</h3>
             <a
                 href="https://wa.me/628159922321"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-gray-300 transition-colors text-lg"
+                className="flex items-center gap-3 hover:text-gray-300 transition-colors text-xl"
             >
-                <Phone size={24} />
+                <Phone size={26} />
                 <span>+628159922321</span>
             </a>
             <a
                 href="https://instagram.com/jakartascootershop"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-gray-300 transition-colors text-lg"
+                className="flex items-center gap-3 hover:text-gray-300 transition-colors text-xl"
             >
-                <Instagram size={24} />
+                <Instagram size={26} />
                 <span>JAKARTASCOOTERSHOP</span>
             </a>
         </div>

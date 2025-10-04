@@ -126,23 +126,23 @@ export default function Navbar() {
             <header className="relative z-50">
                 {/* Top bar oranye (statis) */}
                 <div ref={topBarRef} className="bg-[#f04e23] text-white">
-                    <div className="container mx-auto px-6 h-12 flex items-center justify-between">
-                        <div className="flex items-center space-x-6 text-xs font-medium">
+                    <div className="container mx-auto px-6 h-14 flex items-center justify-between">
+                        <div className="flex items-center space-x-6 text-sm font-medium">
                             <a
                                 href="https://wa.me/628159922321"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 hover:text-gray-300 transition-colors"
                             >
-                                <Phone size={30} />
+                                <Phone size={32} />
                                 <span>+628159922321</span>
                             </a>
                         </div>
                         <div className="flex items-center gap-1">
-                            <Link href="/profile/akun-saya/wishlist" className="relative p-2 rounded-full transition-colors duration-300 hover:bg-black/10"><Heart className="w-5 h-5" /></Link>
+                            <Link href="/profile/akun-saya/wishlist" className="relative p-2 rounded-full transition-colors duration-300 hover:bg-black/10"><Heart className="w-6 h-6" /></Link>
                             <div className="text-white [&_button]:text-white [&_button:hover]:bg-black/10 [&_a]:text-white [&_a:hover]:bg-black/10"><ClientOnly><AuthNav /></ClientOnly></div>
                             <Link href="/cart" className="relative p-2 rounded-full transition-colors duration-300 hover:bg-black/10">
-                                <ShoppingCart className="w-5 h-5" />
+                                <ShoppingCart className="w-6 h-6" />
                                 <ClientOnly>{uniqueItemCount > 0 && (<span className="absolute -top-1 -right-1 w-5 h-5 bg-white text-[#f04e23] text-xs rounded-full flex items-center justify-center font-bold">{uniqueItemCount}</span>)}</ClientOnly>
                             </Link>
                         </div>
@@ -156,13 +156,13 @@ export default function Navbar() {
                     `}
                 >
                     <div className="container mx-auto px-6">
-                        <div className="flex items-center justify-between h-20 gap-6">
+                        <div className="flex items-center justify-between h-24 gap-6">
                             <Link href="/" className="flex-shrink-0 flex items-center space-x-3 group">
                                 <Image
                                     src="/JSSLogo.svg"
                                     alt="JSS Logo"
-                                    width={100}
-                                    height={100}
+                                    width={120}
+                                    height={120}
                                     className="group-hover:scale-110 transition-transform duration-300"
                                 />
                             </Link>
@@ -174,12 +174,12 @@ export default function Navbar() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Cari produk..."
-                                    className="w-full h-10 pl-4 pr-10 rounded-full text-sm border transition-colors bg-gray-100 border-gray-200 text-black placeholder-gray-400 focus:ring-primary/50 focus:outline-none focus:ring-2"
+                                    className="w-full h-12 pl-5 pr-12 rounded-full text-base border transition-colors bg-gray-100 border-gray-200 text-black placeholder-gray-400 focus:ring-primary/50 focus:outline-none focus:ring-2"
                                 />
                                 <div className="absolute top-0 right-0 h-full flex items-center pr-3 pointer-events-none">
-                                    <Search className="w-5 h-5 text-gray-400" />
+                                    <Search className="w-6 h-6 text-gray-400" />
                                 </div>
-                                { (searchResults.length > 0 || isSearching) && searchQuery.length > 1 && ( <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="absolute top-12 left-0 w-full bg-white rounded-lg shadow-lg border flex flex-col z-20" > <div className="max-h-80 overflow-y-auto"> {isSearching && ( <div className="flex items-center justify-center p-4 text-sm text-gray-500"> <Loader2 className="w-4 h-4 animate-spin mr-2" /> Mencari... </div> )} {!isSearching && searchResults.map((product: Product) => ( <button key={product.id} onClick={() => handleSearchSelect(product.id)} className="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors"> <img src={product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={product.name} className="w-10 h-10 object-cover rounded-md flex-shrink-0" /> <span className="text-sm text-gray-800">{product.name}</span> </button> ))} </div> {!isSearching && searchResults.length > 0 && ( <Link href={`/products?search=${searchQuery}`} onClick={() => { setSearchQuery(''); setSearchResults([]); }} className="block w-full text-center p-3 border-t bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-blue-600" > Lihat Semua Hasil </Link> )} </motion.div> )}
+                                { (searchResults.length > 0 || isSearching) && searchQuery.length > 1 && ( <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="absolute top-14 left-0 w-full bg-white rounded-lg shadow-lg border flex flex-col z-20" > <div className="max-h-80 overflow-y-auto"> {isSearching && ( <div className="flex items-center justify-center p-4 text-sm text-gray-500"> <Loader2 className="w-4 h-4 animate-spin mr-2" /> Mencari... </div> )} {!isSearching && searchResults.map((product: Product) => ( <button key={product.id} onClick={() => handleSearchSelect(product.id)} className="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors"> <img src={product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={product.name} className="w-10 h-10 object-cover rounded-md flex-shrink-0" /> <span className="text-sm text-gray-800">{product.name}</span> </button> ))} </div> {!isSearching && searchResults.length > 0 && ( <Link href={`/products?search=${searchQuery}`} onClick={() => { setSearchQuery(''); setSearchResults([]); }} className="block w-full text-center p-3 border-t bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-blue-600" > Lihat Semua Hasil </Link> )} </motion.div> )}
                             </div>
 
                             <div className={`flex items-center space-x-2 md:space-x-4 ${textColorClass}`}>
@@ -193,7 +193,7 @@ export default function Navbar() {
                                         >
                                             <Link
                                                 href={link.href}
-                                                className={`text-lg font-medium transition-colors duration-300 flex items-center gap-1.5 pb-1 ${pathname === link.href ? textColorClass : 'text-gray-500 hover:text-[#1E2022]'}`}
+                                                className={`text-xl font-medium transition-colors duration-300 flex items-center gap-1.5 pb-1 ${pathname === link.href ? textColorClass : 'text-gray-500 hover:text-[#1E2022]'}`}
                                             >
                                                 {link.name}
                                                 {link.hasDropdown && ( <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${activeDropdown === link.name ? 'rotate-180' : ''}`} /> )}
@@ -214,10 +214,10 @@ export default function Navbar() {
                                             transition={{ duration: 0.3 }}
                                             className="hidden md:flex items-center gap-1 text-gray-600"
                                         >
-                                            <Link href="/profile/akun-saya/wishlist" className="relative p-2 rounded-full transition-colors duration-300 hover:bg-gray-100"><Heart className="w-5 h-5" /></Link>
+                                            <Link href="/profile/akun-saya/wishlist" className="relative p-2 rounded-full transition-colors duration-300 hover:bg-gray-100"><Heart className="w-6 h-6" /></Link>
                                             <div className="text-white [&_button]:text-white [&_button:hover]:bg-black/10 [&_a]:text-white [&_a:hover]:bg-black/10"><ClientOnly><AuthNav /></ClientOnly></div>
                                             <Link href="/cart" className="relative p-2 rounded-full transition-colors duration-300 hover:bg-gray-100">
-                                                <ShoppingCart className="w-5 h-5" />
+                                                <ShoppingCart className="w-6 h-6" />
                                                 <ClientOnly>{uniqueItemCount > 0 && (<span className="absolute -top-1 -right-1 w-5 h-5 bg-[#f04e23] text-white text-xs rounded-full flex items-center justify-center font-bold">{uniqueItemCount}</span>)}</ClientOnly>
                                             </Link>
                                         </motion.div>

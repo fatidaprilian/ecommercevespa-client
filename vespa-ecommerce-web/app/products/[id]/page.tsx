@@ -105,6 +105,7 @@ export default function ProductDetailPage() {
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const isDragging = useRef(false);
     const startPos = useRef({ x: 0, y: 0 });
+    const imageRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (product) {
@@ -135,27 +136,41 @@ export default function ProductDetailPage() {
     };
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (scale > 1) {
+        if (scale > 1 && e.button === 0) {
+            e.preventDefault();
             isDragging.current = true;
             startPos.current = { x: e.clientX - position.x, y: e.clientY - position.y };
-            e.currentTarget.style.cursor = 'grabbing';
+            if (imageRef.current) {
+                imageRef.current.style.cursor = 'grabbing';
+            }
         }
     };
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (isDragging.current && scale > 1) {
+            e.preventDefault();
             const newX = e.clientX - startPos.current.x;
             const newY = e.clientY - startPos.current.y;
             setPosition({ x: newX, y: newY });
         }
     };
 
-    const handleMouseUpOrLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-        isDragging.current = false;
-        if (scale > 1) {
-            e.currentTarget.style.cursor = 'grab';
-        } else {
-            e.currentTarget.style.cursor = 'zoom-in';
+    const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isDragging.current) {
+            e.preventDefault();
+            isDragging.current = false;
+            if (imageRef.current) {
+                imageRef.current.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
+            }
+        }
+    };
+
+    const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isDragging.current) {
+            isDragging.current = false;
+            if (imageRef.current) {
+                imageRef.current.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
+            }
         }
     };
 
@@ -185,6 +200,7 @@ export default function ProductDetailPage() {
     const resetImageState = () => {
         setScale(1);
         setPosition({ x: 0, y: 0 });
+        isDragging.current = false;
     };
 
     if (isLoading) return <ProductDetailSkeleton />;
@@ -243,23 +259,25 @@ export default function ProductDetailPage() {
                                     </div>
                                     
                                     <div
-                                        className="w-full h-full flex items-center justify-center"
+                                        ref={imageRef}
+                                        className="w-full h-full flex items-center justify-center select-none"
                                         onWheel={handleWheel}
                                         onMouseDown={handleMouseDown}
                                         onMouseMove={handleMouseMove}
-                                        onMouseUp={handleMouseUpOrLeave}
-                                        onMouseLeave={handleMouseUpOrLeave}
+                                        onMouseUp={handleMouseUp}
+                                        onMouseLeave={handleMouseLeave}
+                                        style={{ cursor: scale > 1 ? 'grab' : 'zoom-in' }}
                                     >
                                         <motion.img
                                             key={selectedImage}
                                             src={selectedImage || ''}
                                             alt="Zoomed product"
-                                            className="block h-auto w-auto max-w-[95vw] max-h-[95vh] shadow-2xl"
+                                            className="block h-auto w-auto max-w-[95vw] max-h-[95vh] shadow-2xl pointer-events-none"
                                             style={{
                                                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                                                cursor: scale > 1 ? 'grab' : 'zoom-in',
                                                 transition: isDragging.current ? 'none' : 'transform 0.1s linear',
                                             }}
+                                            draggable={false}
                                         />
                                     </div>
                                 </DialogContent>
