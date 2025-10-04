@@ -30,24 +30,24 @@ const Footer = () => {
       <div className="container mx-auto px-6 lg:px-8 py-8">
         
         {/* Bagian Atas: Kontak */}
-        <div className="flex flex-col sm:flex-row items-center justify-start gap-6 border-b border-gray-600 pb-6 mb-6 text-center">
-            <h3 className="text-lg font-semibold tracking-wider">Hubungi Kami</h3>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 border-b border-gray-600 pb-6 mb-6 text-center">
+            <h3 className="text-xl font-semibold tracking-wider">Hubungi Kami</h3>
             <a
                 href="https://wa.me/628159922321"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-gray-300 transition-colors"
+                className="flex items-center gap-2 hover:text-gray-300 transition-colors text-lg"
             >
-                <Phone size={20} />
+                <Phone size={24} />
                 <span>+628159922321</span>
             </a>
             <a
                 href="https://instagram.com/jakartascootershop"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-gray-300 transition-colors"
+                className="flex items-center gap-2 hover:text-gray-300 transition-colors text-lg"
             >
-                <Instagram size={20} />
+                <Instagram size={24} />
                 <span>JAKARTASCOOTERSHOP</span>
             </a>
         </div>

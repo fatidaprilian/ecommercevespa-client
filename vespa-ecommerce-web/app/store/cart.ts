@@ -1,3 +1,4 @@
+// app/store/cart.ts
 import { create } from 'zustand';
 import { Product, ProductImage } from '../types';
 import api from '@/lib/api';
@@ -28,6 +29,7 @@ const debouncedUpdateApi = debounce(async (cartItemId: string, quantity: number)
 type CartState = {
   cart: Cart | null;
   isLoading: boolean;
+  isHydrated: boolean; // <-- DITAMBAHKAN: Lacak status fetch awal
   selectedItems: Set<string>;
   error: string | null;
   
@@ -56,21 +58,24 @@ type CartState = {
 
 export const useCartStore = create<CartState>((set, get) => ({
   cart: null,
-  isLoading: true,
+  isLoading: false, // <-- DIUBAH: Nilai awal false agar tidak loading di awal
+  isHydrated: false, // <-- DITAMBAHKAN
   selectedItems: new Set(),
   error: null,
 
-  clearClientCart: () => set({ cart: null, selectedItems: new Set(), isLoading: false, error: null }),
+  clearClientCart: () => set({ cart: null, selectedItems: new Set(), isLoading: false, error: null, isHydrated: false }), // <-- DIUBAH: Reset isHydrated saat logout/clear
 
   fetchCart: async () => {
+    // <-- DIPERBARUI: Hanya set loading jika data belum ada
+    if (get().isHydrated) return; // <-- Jika sudah fetch, jangan fetch lagi
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.get('/cart');
-      set({ cart: data, isLoading: false });
+      set({ cart: data, isLoading: false, isHydrated: true }); // <-- Set isHydrated setelah sukses
       get().toggleSelectAll(true);
     } catch (error) {
       console.error("Gagal mengambil keranjang:", error);
-      set({ isLoading: false, error: 'Gagal memuat keranjang.' });
+      set({ isLoading: false, error: 'Gagal memuat keranjang.', isHydrated: true }); // <-- Tetap set isHydrated agar tidak re-fetch terus menerus saat error
     }
   },
 

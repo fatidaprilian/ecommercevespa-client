@@ -50,7 +50,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen pt-28 overflow-x-hidden">
+    <div className="bg-gray-50 min-h-screen overflow-x-hidden">
       <div className="container mx-auto px-4 py-16">
         <motion.div
           className="text-center max-w-3xl mx-auto"

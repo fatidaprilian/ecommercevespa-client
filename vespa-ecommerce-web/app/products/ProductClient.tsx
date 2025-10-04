@@ -305,7 +305,7 @@ export default function ProductClient() {
   return (
     <div className="bg-gray-50 min-h-screen">
       
-      <div className="pt-32">
+      <div>
         <HeroSection />
       </div>
 

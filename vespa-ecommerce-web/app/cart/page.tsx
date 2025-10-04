@@ -1,3 +1,4 @@
+// app/cart/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -62,7 +63,8 @@ export default function CartPage() {
     );
   }
   
-  if (isLoading) {
+  // <-- PERUBAHAN KONDISI LOADING
+  if (isLoading && !cart) {
     return (
       <div className="flex justify-center items-center min-h-screen">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -70,7 +72,7 @@ export default function CartPage() {
     );
   }
 
-  if (items.length === 0) {
+  if (!isLoading && items.length === 0) {
      return (
       <div className="text-center bg-white p-12 rounded-lg shadow-md mt-28 container mx-auto">
         <ShoppingBag className="mx-auto h-16 w-16 text-gray-400 mb-4" />
@@ -82,7 +84,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen pt-28 pb-20">
+    <div className="bg-gray-50 min-h-screen">
       <div className="container mx-auto px-4 py-12">
         <motion.h1 
             initial={{ opacity: 0, y: -20 }}

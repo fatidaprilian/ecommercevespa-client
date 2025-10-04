@@ -70,7 +70,7 @@ export default function CheckoutPage() {
     }
 
     return (
-<div className="bg-gray-100 min-h-screen pt-28 pb-20">
+<div className="bg-gray-100 min-h-screen">
             <div className="container mx-auto px-4">
                 
                 <div className="relative mb-8 flex items-center justify-center">

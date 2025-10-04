@@ -99,7 +99,7 @@ const BestSellerProducts = () => {
                         {combinedProducts?.slice(0, 5).map((product: Product, index: number) => (
                             <motion.div
                                 key={product.id}
-                                initial={{ opacity: 0, y: 30 }}
+                                initial={{ opacity: 1, y: 0 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, amount: 0.3 }}
                                 transition={{ duration: 0.6, delay: index * 0.1 }}
@@ -189,7 +189,7 @@ export default function HomePage() {
     }, [isAuthenticated, queryClient]);
 
     return (
-        <div className="min-h-screen bg-white pt-32">
+        <div className="min-h-screen bg-white">
             <HeroSection />
             <BrandShowcase />
             <BestSellerProducts />

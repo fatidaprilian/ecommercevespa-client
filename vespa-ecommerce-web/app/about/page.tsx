@@ -26,7 +26,7 @@ const slideInLeft = {
 export default function AboutClient() {
   return (
     <div className="bg-gray-50 overflow-hidden">
-      <div className="container mx-auto px-4 pt-32 pb-16 md:pt-40 md:pb-24">
+      <div className="container mx-auto">
         
         <motion.div
           className="text-center max-w-3xl mx-auto"

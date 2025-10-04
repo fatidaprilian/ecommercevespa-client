@@ -40,6 +40,10 @@ export default function Navbar() {
     const [isSearching, setIsSearching] = useState(false);
     
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const navRef = useRef<HTMLElement>(null);
+    const topBarRef = useRef<HTMLDivElement>(null);
+    const [headerHeight, setNavHeight] = useState(0);
+
     const router = useRouter();
     const pathname = usePathname();
 
@@ -49,7 +53,24 @@ export default function Navbar() {
     const { cart } = useCartStore();
     const uniqueItemCount = cart?.items?.length || 0;
 
-    const isAuthPage = pathname === '/login' || pathname === '/register';
+    useEffect(() => {
+        const handleScroll = () => {
+            const topBarHeight = topBarRef.current?.offsetHeight || 0;
+            if (window.scrollY > topBarHeight) {
+                setIsScrolled(true);
+            } else {
+                setIsScrolled(false);
+            }
+        };
+
+        if (navRef.current) {
+            setNavHeight(navRef.current.offsetHeight);
+        }
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
 
     useEffect(() => {
         setIsOpen(false);
@@ -98,18 +119,13 @@ export default function Navbar() {
         { name: 'Pesanan', href: '/orders' }
     ];
 
-    const navIsSolid = true;
     const textColorClass = 'text-[#1E2022]';
 
     return (
         <>
-            <motion.nav
-                initial={{ y: -100 }}
-                animate={{ y: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50"
-            >
-                <div className="bg-[#f04e23] text-white">
+            <header className="relative z-50">
+                {/* Top bar oranye (statis) */}
+                <div ref={topBarRef} className="bg-[#f04e23] text-white">
                     <div className="container mx-auto px-6 h-12 flex items-center justify-between">
                         <div className="flex items-center space-x-6 text-xs font-medium">
                             <a
@@ -132,154 +148,95 @@ export default function Navbar() {
                         </div>
                     </div>
                 </div>
-                <div className="container mx-auto px-6">
-                    <div className="flex items-center justify-between h-20 gap-6">
-                        <Link href="/" className="flex items-center space-x-3 group">
-                            <Image
-                                src="/JSSLogo.svg"
-                                alt="JSS Logo"
-                                width={80}
-                                height={80}
-                                className="group-hover:scale-110 transition-transform duration-300"
-                            />
-                        </Link>
 
-                            <div className="relative w-full max-w-lg">
+                <motion.nav
+                    ref={navRef}
+                    className={`left-0 right-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-200/50 transition-all duration-300
+                        ${isScrolled ? 'fixed top-0 shadow-lg' : 'relative shadow-sm'}
+                    `}
+                >
+                    <div className="container mx-auto px-6">
+                        <div className="flex items-center justify-between h-20 gap-6">
+                            <Link href="/" className="flex-shrink-0 flex items-center space-x-3 group">
+                                <Image
+                                    src="/JSSLogo.svg"
+                                    alt="JSS Logo"
+                                    width={100}
+                                    height={100}
+                                    className="group-hover:scale-110 transition-transform duration-300"
+                                />
+                            </Link>
+
+                            <div className="relative w-full max-w-lg hidden md:block">
                                 <input
                                     ref={searchInputRef}
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Cari produk..."
-                                    className={`w-full h-10 pl-4 pr-10 rounded-full text-sm border transition-colors
-                                        ${navIsSolid 
-                                            ? 'bg-gray-100 border-gray-200 text-black placeholder-gray-400 focus:ring-primary/50' 
-                                            : 'bg-white/20 border-white/30 text-white placeholder-gray-300 focus:ring-white/50'
-                                        } 
-                                        focus:outline-none focus:ring-2`}
+                                    className="w-full h-10 pl-4 pr-10 rounded-full text-sm border transition-colors bg-gray-100 border-gray-200 text-black placeholder-gray-400 focus:ring-primary/50 focus:outline-none focus:ring-2"
                                 />
                                 <div className="absolute top-0 right-0 h-full flex items-center pr-3 pointer-events-none">
-                                    <Search className={`w-5 h-5 ${navIsSolid ? 'text-gray-400' : 'text-gray-300'}`} />
+                                    <Search className="w-5 h-5 text-gray-400" />
                                 </div>
-
-                                {(searchResults.length > 0 || isSearching) && searchQuery.length > 1 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 5 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="absolute top-12 left-0 w-full bg-white rounded-lg shadow-lg border flex flex-col z-20"
-                                    >
-                                        <div className="max-h-80 overflow-y-auto">
-                                            {isSearching && (
-                                                <div className="flex items-center justify-center p-4 text-sm text-gray-500">
-                                                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Mencari...
-                                                </div>
-                                            )}
-                                            {!isSearching && searchResults.map((product: Product) => (
-                                                <button key={product.id} onClick={() => handleSearchSelect(product.id)} className="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors">
-                                                    <img src={product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={product.name} className="w-10 h-10 object-cover rounded-md flex-shrink-0" />
-                                                    <span className="text-sm text-gray-800">{product.name}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        {!isSearching && searchResults.length > 0 && (
-                                            <Link
-                                                href={`/products?search=${searchQuery}`}
-                                                onClick={() => {
-                                                    setSearchQuery('');
-                                                    setSearchResults([]);
-                                                }}
-                                                className="block w-full text-center p-3 border-t bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-blue-600"
-                                            >
-                                                Lihat Semua Hasil
-                                            </Link>
-                                        )}
-                                    </motion.div>
-                                )}
+                                { (searchResults.length > 0 || isSearching) && searchQuery.length > 1 && ( <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="absolute top-12 left-0 w-full bg-white rounded-lg shadow-lg border flex flex-col z-20" > <div className="max-h-80 overflow-y-auto"> {isSearching && ( <div className="flex items-center justify-center p-4 text-sm text-gray-500"> <Loader2 className="w-4 h-4 animate-spin mr-2" /> Mencari... </div> )} {!isSearching && searchResults.map((product: Product) => ( <button key={product.id} onClick={() => handleSearchSelect(product.id)} className="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors"> <img src={product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={product.name} className="w-10 h-10 object-cover rounded-md flex-shrink-0" /> <span className="text-sm text-gray-800">{product.name}</span> </button> ))} </div> {!isSearching && searchResults.length > 0 && ( <Link href={`/products?search=${searchQuery}`} onClick={() => { setSearchQuery(''); setSearchResults([]); }} className="block w-full text-center p-3 border-t bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-blue-600" > Lihat Semua Hasil </Link> )} </motion.div> )}
                             </div>
 
-                        <div className={`flex items-center space-x-2 md:space-x-4 ${textColorClass}`}>
-                            {navigationLinks.map((link) => (
-                                <div
-                                    key={link.name}
-                                    className="relative group"
-                                    onMouseEnter={() => link.hasDropdown && setActiveDropdown(link.name)}
-                                    onMouseLeave={() => link.hasDropdown && setActiveDropdown(null)}
-                                >
-                                    <Link
-                                        href={link.href}
-                                        className={`
-                                            text-lg font-medium transition-colors duration-300 flex items-center gap-1.5 pb-1
-                                            ${pathname === link.href
-                                                ? textColorClass
-                                                : navIsSolid
-                                                    ? 'text-gray-500 hover:text-[#1E2022]'
-                                                    : 'text-gray-400 hover:text-white'
-                                            }
-                                        `}
-                                    >
-                                        {link.name}
-                                        {link.hasDropdown && (
-                                            <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${activeDropdown === link.name ? 'rotate-180' : ''}`} />
-                                        )}
-                                    </Link>
-                                    <div
-                                        className={`
-                                            absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-300
-                                            ${pathname === link.href ? 'w-full' : ''}
-                                            ${navIsSolid ? 'bg-[#1E2022]' : 'bg-white'}
-                                        `}
-                                    ></div>
-
-                                    {link.hasDropdown && activeDropdown === link.name && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 10 }}
-                                            transition={{ duration: 0.2 }}
-                                            className="absolute top-full pt-4 left-1/2 -translate-x-1/2 w-64"
+                            <div className={`flex items-center space-x-2 md:space-x-4 ${textColorClass}`}>
+                                <div className="hidden md:flex items-center space-x-4">
+                                    {navigationLinks.map((link) => (
+                                        <div
+                                            key={link.name}
+                                            className="relative group"
+                                            onMouseEnter={() => link.hasDropdown && setActiveDropdown(link.name)}
+                                            onMouseLeave={() => link.hasDropdown && setActiveDropdown(null)}
                                         >
-                                            <div className="bg-white rounded-lg shadow-xl overflow-hidden p-2">
-                                                {isLoadingCategories ? (
-                                                    <div className="p-3 text-center text-gray-500">Memuat...</div>
-                                                ) : (
-                                                    categories?.map((category: Category) => {
-                                                        const Icon = getCategoryIcon(category.name);
-                                                        return (
-                                                            <Link
-                                                                key={category.id}
-                                                                href={`/products?categoryId=${category.id}`}
-                                                                className="flex items-center p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                                                            >
-                                                                <Icon className="w-5 h-5 mr-3 text-[#52616B]" />
-                                                                <span className="font-medium">{category.name}</span>
-                                                            </Link>
-                                                        );
-                                                    })
-                                                )}
-                                                <Separator className="my-1" />
-                                                <Link
-                                                    href="/categories"
-                                                    className="flex items-center justify-center p-3 rounded-md text-blue-600 font-semibold hover:bg-blue-50 transition-colors duration-200"
-                                                >
-                                                    Lihat Semua Kategori
-                                                    <ArrowRight className="w-4 h-4 ml-2" />
-                                                </Link>
-                                            </div>
+                                            <Link
+                                                href={link.href}
+                                                className={`text-lg font-medium transition-colors duration-300 flex items-center gap-1.5 pb-1 ${pathname === link.href ? textColorClass : 'text-gray-500 hover:text-[#1E2022]'}`}
+                                            >
+                                                {link.name}
+                                                {link.hasDropdown && ( <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${activeDropdown === link.name ? 'rotate-180' : ''}`} /> )}
+                                            </Link>
+                                            <div className={`absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-300 bg-[#1E2022] ${pathname === link.href ? 'w-full' : ''}`}></div>
+                                            
+                                            {link.hasDropdown && activeDropdown === link.name && ( <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.2 }} className="absolute top-full pt-4 left-1/2 -translate-x-1/2 w-64" > <div className="bg-white rounded-lg shadow-xl overflow-hidden p-2"> {isLoadingCategories ? ( <div className="p-3 text-center text-gray-500">Memuat...</div> ) : ( categories?.map((category: Category) => { const Icon = getCategoryIcon(category.name); return ( <Link key={category.id} href={`/products?categoryId=${category.id}`} className="flex items-center p-3 rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-200" > <Icon className="w-5 h-5 mr-3 text-[#52616B]" /> <span className="font-medium">{category.name}</span> </Link> ); }) )} <Separator className="my-1" /> <Link href="/categories" className="flex items-center justify-center p-3 rounded-md text-blue-600 font-semibold hover:bg-blue-50 transition-colors duration-200" > Lihat Semua Kategori <ArrowRight className="w-4 h-4 ml-2" /> </Link> </div> </motion.div> )}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <AnimatePresence>
+                                    {isScrolled && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            transition={{ duration: 0.3 }}
+                                            className="hidden md:flex items-center gap-1 text-gray-600"
+                                        >
+                                            <Link href="/profile/akun-saya/wishlist" className="relative p-2 rounded-full transition-colors duration-300 hover:bg-gray-100"><Heart className="w-5 h-5" /></Link>
+                                            <div className="text-white [&_button]:text-white [&_button:hover]:bg-black/10 [&_a]:text-white [&_a:hover]:bg-black/10"><ClientOnly><AuthNav /></ClientOnly></div>
+                                            <Link href="/cart" className="relative p-2 rounded-full transition-colors duration-300 hover:bg-gray-100">
+                                                <ShoppingCart className="w-5 h-5" />
+                                                <ClientOnly>{uniqueItemCount > 0 && (<span className="absolute -top-1 -right-1 w-5 h-5 bg-[#f04e23] text-white text-xs rounded-full flex items-center justify-center font-bold">{uniqueItemCount}</span>)}</ClientOnly>
+                                            </Link>
                                         </motion.div>
                                     )}
-                                </div>
-                            ))}
+                                </AnimatePresence>
 
-                            <button
-                                onClick={() => setIsOpen(!isOpen)}
-                                className={`md:hidden p-2 rounded-full transition-all duration-300 hover:scale-110 ${navIsSolid ? 'hover:bg-[#C9D6DF]/50 hover:text-[#52616B]' : 'hover:bg-white/10'}`}
-                            >
-                                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                            </button>
+                                {/* Tombol Menu Mobile */}
+                                <button
+                                    onClick={() => setIsOpen(!isOpen)}
+                                    className="md:hidden p-2 rounded-full transition-all duration-300 hover:bg-gray-100"
+                                >
+                                    {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </motion.nav>
+                </motion.nav>
+                {isScrolled && <div style={{ height: `${headerHeight}px` }} />}
+            </header>
 
             {/* Mobile Menu */}
             <AnimatePresence>

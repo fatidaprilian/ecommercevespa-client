@@ -1,5 +1,3 @@
-// File: app/products/[id]/page.tsx
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -31,11 +29,13 @@ import {
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
-import { HeroSection } from '@/components/organisms/HeroSection'; // <-- 1. IMPORT HERO SECTION
-import { BrandShowcase } from '@/components/organisms/BrandShowcase'; // <-- 2. IMPORT BRAND SHOWCASE
+import { BrandShowcase } from '@/components/organisms/BrandShowcase';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { RecentlyViewed } from '@/components/organisms/RecentlyViewed';
 
@@ -56,7 +56,7 @@ const ProductDetailSkeleton = () => (
                 {/* Skeleton Kanan */}
                 <div className="flex flex-col space-y-4">
                     <div className="h-10 w-3/4 bg-gray-300 rounded"></div>
-                    <div className="h-6 w-1/3 bg-gray-200 rounded"></div>
+                    <div className="h-6 w-1/3 bg-gray-300 rounded"></div>
                     <div className="h-12 w-1/2 bg-gray-300 rounded my-4"></div>
                     <div className="flex gap-4">
                         <div className="h-14 w-1/3 bg-gray-200 rounded-lg"></div>
@@ -118,28 +118,20 @@ export default function ProductDetailPage() {
     const handleOpenChange = (open: boolean) => {
         setIsZoomOpen(open);
         if (!open) {
-            setScale(1);
-            setPosition({ x: 0, y: 0 });
+            resetImageState();
         }
     };
 
     const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
         e.preventDefault();
-        const rect = e.currentTarget.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        const zoomFactor = e.deltaY > 0 ? 1 / 1.2 : 1.2;
+        const zoomFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
         const newScale = Math.min(Math.max(scale * zoomFactor, 1), 5);
         
-        const imageX = (mouseX - position.x) / scale;
-        const imageY = (mouseY - position.y) / scale;
+        if (newScale <= 1) {
+            setPosition({ x: 0, y: 0 });
+        }
         
-        const newPosX = mouseX - imageX * newScale;
-        const newPosY = mouseY - imageY * newScale;
-
         setScale(newScale);
-        setPosition({ x: newPosX, y: newPosY });
     };
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -162,6 +154,8 @@ export default function ProductDetailPage() {
         isDragging.current = false;
         if (scale > 1) {
             e.currentTarget.style.cursor = 'grab';
+        } else {
+            e.currentTarget.style.cursor = 'zoom-in';
         }
     };
 
@@ -198,13 +192,10 @@ export default function ProductDetailPage() {
     if (!product) return <div className="text-center py-20">Produk tidak ditemukan.</div>;
 
     return (
-        <div className="bg-white min-h-screen">
-            <div className="pt-28">
-                <HeroSection />
-            </div>
+        <div className="min-h-screen bg-white">
             <BrandShowcase />
 
-            <div className="container mx-auto px-4 py-16">
+            <div className="container mx-auto px-4 py-5">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-6">
                     <Button onClick={() => router.back()} variant="ghost" className="pl-0 text-gray-600 hover:text-gray-900">
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -212,7 +203,7 @@ export default function ProductDetailPage() {
                     </Button>
                 </motion.div>
             
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start mb-24">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start mb-10">
                     <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="lg:sticky lg:top-28 self-start">
                         <div className="flex flex-row-reverse gap-4">
                             <Dialog open={isZoomOpen} onOpenChange={handleOpenChange}>
@@ -230,32 +221,44 @@ export default function ProductDetailPage() {
                                         </div>
                                     </motion.div>
                                 </DialogTrigger>
-                                <DialogContent
+                                
+                                <DialogContent 
+                                    showCloseButton={false}
                                     className="max-w-none w-screen h-screen bg-transparent border-none shadow-none flex items-center justify-center p-0"
-                                    style={{ background: 'transparent' }}
                                 >
-                                    <Button onClick={() => handleOpenChange(false)} variant="ghost" size="icon" className="absolute top-4 right-4 text-white hover:bg-white/20 z-20"><X size={32}/></Button>
+                                    <DialogHeader className="sr-only">
+                                        <DialogTitle>{product.name}</DialogTitle>
+                                        <DialogDescription>
+                                            Image viewer for {product.name}. You can zoom with the mouse wheel and pan by dragging.
+                                        </DialogDescription>
+                                    </DialogHeader>
+
                                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 p-2 rounded-lg z-20">
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.max(prev / 1.2, 1))}><ZoomOut /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={resetImageState}><RefreshCw size={18} /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.min(prev * 1.2, 5))}><ZoomIn /></Button>
+                                        <Button onClick={() => handleOpenChange(false)} variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20">
+                                            <X className="h-5 w-5"/>
+                                        </Button>
                                     </div>
+                                    
                                     <div
-                                        className="relative w-full h-full overflow-hidden"
+                                        className="w-full h-full flex items-center justify-center"
                                         onWheel={handleWheel}
                                         onMouseDown={handleMouseDown}
                                         onMouseMove={handleMouseMove}
                                         onMouseUp={handleMouseUpOrLeave}
                                         onMouseLeave={handleMouseUpOrLeave}
                                     >
-                                        <motion.div
-                                            className="absolute top-0 left-0 w-full h-full"
+                                        <motion.img
+                                            key={selectedImage}
+                                            src={selectedImage || ''}
+                                            alt="Zoomed product"
+                                            className="block h-auto w-auto max-w-[95vw] max-h-[95vh] shadow-2xl"
                                             style={{
-                                                backgroundImage: `url(${selectedImage})`,
-                                                backgroundRepeat: 'no-repeat',
-                                                backgroundPosition: `${position.x}px ${position.y}px`,
-                                                backgroundSize: `${100 * scale}%`,
+                                                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
                                                 cursor: scale > 1 ? 'grab' : 'zoom-in',
+                                                transition: isDragging.current ? 'none' : 'transform 0.1s linear',
                                             }}
                                         />
                                     </div>
@@ -275,7 +278,7 @@ export default function ProductDetailPage() {
                         </div>
                         
                         {product.brand && product.brand.logoUrl && (
-                            <Link href={`/products?brandId=${product.brand.id}`} className="block mt-6 w-36 transition-opacity hover:opacity-70">
+                            <Link href={`/products?brandId=${product.brand.id}`} className="block mt-6 w-25 transition-opacity hover:opacity-70">
                                 <img src={product.brand.logoUrl} alt={product.brand.name} className="w-full object-contain" />
                             </Link>
                         )}

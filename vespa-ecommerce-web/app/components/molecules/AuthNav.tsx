@@ -1,3 +1,4 @@
+// app/components/molecules/AuthNav.tsx
 'use client';
 
 import { useEffect } from 'react';
@@ -19,7 +20,7 @@ import {
 
 export default function AuthNav() {
   const { user, isAuthenticated, setAuth } = useAuthStore();
-  const { fetchCart, clearClientCart } = useCartStore();
+  const { fetchCart, clearClientCart } = useCartStore(); // <-- isHydrated tidak perlu diambil di sini
   const { fetchWishlistIds, clearWishlist } = useWishlistStore();
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function AuthNav() {
             const token = useAuthStore.getState().token;
             setAuth(profileRes.data, token);
           }
-          // Fetch cart and wishlist in parallel for better performance
+          // Fetch cart and wishlist in parallel. Logika idempotent sudah ada di dalam store masing-masing.
           await Promise.all([
             fetchCart(),
             fetchWishlistIds()
@@ -46,6 +47,7 @@ export default function AuthNav() {
     };
 
     syncUserAndData();
+    // <-- PERUBAHAN: Cukup jalankan sekali berdasarkan isAuthenticated
   }, [isAuthenticated, setAuth, fetchCart, fetchWishlistIds, clearClientCart, clearWishlist]);
 
   const handleLogout = () => {

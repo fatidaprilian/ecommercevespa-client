@@ -20,7 +20,7 @@ const Loading = () => {
 
 export default function CategoriesPage() {
   return (
-    <div className="bg-white min-h-screen pt-28">
+    <div className="bg-white min-h-screen">
       <Suspense fallback={<Loading />}>
         <CategoriesClient />
       </Suspense>
