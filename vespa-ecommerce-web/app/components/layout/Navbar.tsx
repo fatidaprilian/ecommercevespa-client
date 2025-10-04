@@ -134,7 +134,7 @@ export default function Navbar() {
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 hover:text-gray-300 transition-colors"
                             >
-                                <Phone size={25} />
+                                <Phone size={30} />
                                 <span>+628159922321</span>
                             </a>
                         </div>
