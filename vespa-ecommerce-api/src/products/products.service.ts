@@ -160,9 +160,6 @@ export class ProductsService {
     };
   }
   
-  // =======================================================
-  // DIUBAH: Method sekarang menerima informasi user
-  // =======================================================
   async findFeatured(user?: UserPayload) {
     const featuredProducts = await this.prisma.product.findMany({
       where: { isFeatured: true },
@@ -177,7 +174,6 @@ export class ProductsService {
       },
     });
     
-    // Teruskan user ke fungsi kalkulasi harga
     return Promise.all(
       featuredProducts.map((p) => this.processProductWithPrice(p, user)),
     );
@@ -291,10 +287,38 @@ export class ProductsService {
   }
 
   async remove(id: string): Promise<Product> {
-    const product = await this.prisma.product.findUnique({ where: { id } });
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        orderItems: { take: 1 },
+        wishlists: { take: 1 },
+        reviews: { take: 1 },
+      },
+    });
+  
     if (!product) {
       throw new NotFoundException(`Produk dengan ID ${id} tidak ditemukan`);
     }
+  
+    if (product.orderItems.length > 0) {
+      throw new BadRequestException(
+        `Produk "${product.name}" tidak dapat dihapus karena sudah menjadi bagian dari pesanan.`
+      );
+    }
+  
+    if (product.wishlists.length > 0) {
+      throw new BadRequestException(
+        `Produk "${product.name}" tidak dapat dihapus karena masih ada di wishlist pengguna.`
+      );
+    }
+  
+    if (product.reviews.length > 0) {
+      throw new BadRequestException(
+        `Produk "${product.name}" tidak dapat dihapus karena sudah memiliki ulasan.`
+      );
+    }
+    
+    // Jika semua pengecekan lolos, baru hapus
     return this.prisma.product.delete({
       where: { id },
     });

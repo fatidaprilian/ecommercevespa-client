@@ -1,13 +1,13 @@
 // File: pages/products/edit.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner'; // <-- DIUBAH: Import dari sonner
 import { ArrowLeft, UploadCloud, X, Trash2, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -68,7 +68,11 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
       toast.success('Produk berhasil diperbarui!');
       router.push('/products');
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Gagal memperbarui produk.'),
+    onError: (error: any) => {
+        toast.error('Gagal Memperbarui Produk', {
+            description: error.response?.data?.message || 'Terjadi kesalahan tidak diketahui.',
+        });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -78,7 +82,12 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
       toast.success('Produk berhasil dihapus.');
       router.push('/products');
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Gagal menghapus produk.'),
+    onError: (error: any) => {
+      // <-- DIUBAH: Menggunakan sintaks sonner
+      toast.error('Gagal Menghapus Produk', {
+        description: error.response?.data?.message || 'Terjadi kesalahan tidak diketahui.',
+      });
+    },
   });
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,15 +95,15 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
     if (!file) return;
 
     setIsUploading(true);
-    toast.loading('Mengupload gambar...');
+    const toastId = toast.loading('Mengupload gambar...');
     try {
       const response = await uploadImage(file);
       const currentImages = form.getValues('images') || [];
       form.setValue('images', [...currentImages, { url: response.url }]);
-      toast.dismiss();
+      toast.dismiss(toastId);
       toast.success('Gambar berhasil di-upload!');
     } catch (error) {
-      toast.dismiss();
+      toast.dismiss(toastId);
       toast.error('Upload gambar gagal.');
     } finally {
       setIsUploading(false);

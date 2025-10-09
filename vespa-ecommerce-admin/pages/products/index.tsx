@@ -1,3 +1,5 @@
+// pages/products/index.tsx
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -22,10 +24,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getProducts, updateProduct, PaginatedProducts } from '@/services/productService';
+import { getProducts, updateProduct, deleteProduct, PaginatedProducts } from '@/services/productService';
 import { Switch } from '@/components/ui/switch';
-import { toast } from "sonner"; // <-- 1. IMPORT FUNGSI TOAST DARI SONNER
-import { Product } from '@/types';
+import { toast } from "sonner";
+import { Product } from '@/services/productService'; // Menggunakan tipe dari service
 
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -69,15 +71,26 @@ export default function ProductsPage() {
     mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) => updateProduct(id, data),
     onSuccess: (updatedProduct) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      // 2. Gunakan toast() untuk notifikasi sukses
       toast.success(`Produk "${updatedProduct.name}" telah diperbarui.`);
     },
     onError: (error: any) => {
-      // 3. Gunakan toast.error() untuk notifikasi error
       toast.error("Gagal Memperbarui Status", {
         description: error.response?.data?.message || 'Terjadi kesalahan tidak diketahui.',
       });
     },
+  });
+  
+  const deleteMutation = useMutation({
+    mutationFn: deleteProduct,
+    onSuccess: () => {
+        toast.success('Produk berhasil dihapus.');
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    onError: (error: any) => {
+        toast.error("Gagal Menghapus Produk", {
+            description: error.response?.data?.message || 'Terjadi kesalahan.',
+        });
+    }
   });
 
   const handleFeatureToggle = (product: Product) => {
@@ -87,13 +100,18 @@ export default function ProductsPage() {
     });
   };
 
+  const handleDelete = (id: string) => {
+    if (window.confirm('Anda yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.')) {
+        deleteMutation.mutate(id);
+    }
+  };
+
   return (
     <motion.div
       initial="hidden"
       animate="visible"
       variants={pageVariants}
     >
-      {/* ... sisa JSX tetap sama ... */}
       <motion.div variants={itemVariants} className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Manajemen Produk</h1>
@@ -188,7 +206,11 @@ export default function ProductsPage() {
                                               <span>Edit</span>
                                           </Link>
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                                          <DropdownMenuItem 
+                                            className="text-red-600 focus:text-red-600"
+                                            onClick={() => handleDelete(product.id)}
+                                            disabled={deleteMutation.isPending}
+                                          >
                                               <Trash2 className="mr-2 h-4 w-4" />
                                               <span>Hapus</span>
                                           </DropdownMenuItem>

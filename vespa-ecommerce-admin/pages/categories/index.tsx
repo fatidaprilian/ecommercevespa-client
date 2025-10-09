@@ -1,10 +1,13 @@
+// pages/categories/index.tsx
+
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -23,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getCategories, PaginatedCategories } from '@/services/categoryService';
+import { getCategories, deleteCategory, PaginatedCategories } from '@/services/categoryService';
 
 const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = {
@@ -33,18 +36,37 @@ const itemVariants = {
 };
 
 export default function CategoriesPage() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
   const { data: categoriesResponse, isLoading, isError, error } = useQuery<PaginatedCategories, Error>({
     queryKey: ['categories', page, debouncedSearchTerm],
-    queryFn: () => getCategories({ page, search: debouncedSearchTerm }),
+    queryFn: () => getCategories({ page: page, search: debouncedSearchTerm }),
     keepPreviousData: true,
   });
 
   const categories = categoriesResponse?.data;
   const meta = categoriesResponse?.meta;
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => {
+      toast.success('Kategori berhasil dihapus.');
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Gagal menghapus kategori.');
+    },
+  });
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus kategori ini?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
 
   return (
     <motion.div initial="hidden" animate="visible" variants={pageVariants}>
@@ -128,7 +150,11 @@ export default function CategoriesPage() {
                                   <span>Edit</span>
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                              <DropdownMenuItem 
+                                className="text-red-600 focus:text-red-600"
+                                onClick={() => handleDelete(category.id)}
+                                disabled={deleteMutation.isPending}
+                              >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 <span>Hapus</span>
                               </DropdownMenuItem>

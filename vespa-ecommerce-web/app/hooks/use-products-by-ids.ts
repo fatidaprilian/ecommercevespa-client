@@ -5,40 +5,46 @@ import api from '../lib/api';
 import { Product } from '../types';
 
 const fetchProductById = async (id: string): Promise<Product> => {
-    // Pastikan ID adalah string dan bukan objek
+    // Pengecekan ID Anda sudah bagus, kita pertahankan.
     if (typeof id !== 'string' || !id) {
-        return Promise.reject(new Error('Invalid product ID'));
+        return Promise.reject(new Error('Invalid product ID provided'));
     }
     const { data } = await api.get(`/products/${id}`);
     return data;
 };
 
 export const useProductsByIds = (ids: string[]) => {
+    // ✅ REVISI 1: Saring array untuk memastikan hanya ID yang valid yang diproses.
+    const validIds = ids ? ids.filter(id => typeof id === 'string' && id) : [];
+
     const results = useQueries({
-        queries: ids.map(id => ({
+        queries: validIds.map(id => ({
             queryKey: ['product', id],
-            // 1. PERBAIKAN: Mengambil ID dari queryKey dengan benar
             queryFn: ({ queryKey }) => {
                 const [_key, productId] = queryKey;
                 return fetchProductById(productId as string);
             },
-            // 2. PERBAIKAN: Matikan refetch saat window focus
             refetchOnWindowFocus: false,
             staleTime: 1000 * 60 * 5, // Cache data selama 5 menit
-            enabled: !!id,
+            // Properti `enabled` di sini tidak lagi diperlukan karena kita sudah menyaring `validIds`
         })),
     });
 
     const products = results
         .map(result => result.data)
-        .filter(Boolean) as Product[];
+        // Gunakan type guard untuk filtering yang lebih aman
+        .filter((product): product is Product => !!product); 
     
-    // Urutkan kembali produk sesuai urutan ID terakhir dilihat
-    const sortedProducts = products.sort((a, b) => {
-        return ids.indexOf(a.id) - ids.indexOf(b.id);
+    // ✅ REVISI 2 (Opsional): Optimasi kecil untuk pengurutan menggunakan Map
+    const orderMap = new Map(validIds.map((id, index) => [id, index]));
+    const sortedProducts = [...products].sort((a, b) => {
+        const indexA = orderMap.get(a.id) ?? Infinity;
+        const indexB = orderMap.get(b.id) ?? Infinity;
+        return indexA - indexB;
     });
 
-    const isLoading = results.some(result => result.isLoading && result.fetchStatus !== 'idle');
+    // ✅ REVISI 3: Menyederhanakan pengecekan status loading
+    const isLoading = results.some(result => result.isLoading);
     const isError = results.some(result => result.isError);
 
     return { products: sortedProducts, isLoading, isError };
