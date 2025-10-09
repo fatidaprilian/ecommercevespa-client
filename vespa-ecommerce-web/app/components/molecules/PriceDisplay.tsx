@@ -1,3 +1,4 @@
+// app/components/molecules/PriceDisplay.tsx
 
 import { PriceInfo } from "@/types";
 
@@ -25,6 +26,7 @@ export default function PriceDisplay({
     return <div className={`font-bold text-gray-900 ${className}`}>-</div>;
   }
 
+  // Jika tidak ada diskon, tampilkan harga normal
   if (priceInfo.finalPrice >= priceInfo.originalPrice) {
     return (
       <p className={`font-bold text-gray-900 ${className}`}>
@@ -33,16 +35,13 @@ export default function PriceDisplay({
     );
   }
 
+  // Jika ada diskon, tampilkan harga diskon dengan warna hitam
   return (
     <div className="flex items-center gap-3">
-      <p className={`font-bold text-red-600 ${className}`}>
+      <p className={`font-bold text-gray-900 ${className}`}>
         {formatPrice(priceInfo.finalPrice)}
       </p>
-      <div className="flex flex-col">
-        <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-md">
-          {priceInfo.discountPercentage}% OFF
-        </span>
-      </div>
+      {/* Elemen untuk menampilkan persentase diskon dihapus */}
     </div>
   );
 }

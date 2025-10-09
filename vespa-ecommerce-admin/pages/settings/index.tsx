@@ -1,4 +1,4 @@
-// File: pages/settings/index.tsx
+// pages/settings/index.tsx
 
 'use client';
 
@@ -92,9 +92,9 @@ const VatSettings = () => {
           <div className="flex-1 space-y-2">
             <Label htmlFor="ppn">Persentase PPN (%)</Label>
             {isLoadingVat ? (
-               <div className="flex items-center text-muted-foreground text-sm">
-                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat...
-               </div>
+                <div className="flex items-center text-muted-foreground text-sm">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat...
+                </div>
             ) : (
               <Input
                 id="ppn"
@@ -498,11 +498,18 @@ export default function SettingsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Link href="/settings/banners">
-                            <Button variant="outline">
-                                Kelola Banner Homepage <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        </Link>
+                        <div className="flex flex-wrap gap-4">
+                            <Link href="/settings/banners">
+                                <Button variant="outline">
+                                    Kelola Banner Homepage <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </Link>
+                            <Link href="/settings/pages">
+                                <Button variant="outline">
+                                    Kelola Konten Halaman <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </Link>
+                        </div>
                     </CardContent>
                 </Card>
 

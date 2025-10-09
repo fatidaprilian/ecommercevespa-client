@@ -1,3 +1,5 @@
+// app/components/layout/Navbar.tsx
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -151,20 +153,27 @@ export default function Navbar() {
 
                 <motion.nav
                     ref={navRef}
-                    className={`left-0 right-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-200/50 transition-all duration-300
+                    animate={{ height: isScrolled ? 80 : 112 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    className={`left-0 right-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-200/50
                         ${isScrolled ? 'fixed top-0 shadow-lg' : 'relative shadow-sm'}
                     `}
                 >
-                    <div className="container mx-auto px-6">
-                        <div className="flex items-center justify-between h-24 gap-6">
+                    <div className="container mx-auto px-6 h-full">
+                        <div className="flex items-center justify-between h-full gap-6">
                             <Link href="/" className="flex-shrink-0 flex items-center space-x-3 group">
-                                <Image
-                                    src="/JSSLogo.svg"
-                                    alt="JSS Logo"
-                                    width={120}
-                                    height={120}
-                                    className="group-hover:scale-110 transition-transform duration-300"
-                                />
+                                <motion.div
+                                    animate={{ width: isScrolled ? 96 : 120, height: isScrolled ? 96 : 120 }}
+                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                >
+                                    <Image
+                                        src="/JSSLogo.svg"
+                                        alt="JSS Logo"
+                                        width={120}
+                                        height={120}
+                                        className="group-hover:scale-110 transition-transform duration-300"
+                                    />
+                                </motion.div>
                             </Link>
 
                             <div className="relative w-full max-w-lg hidden md:block">

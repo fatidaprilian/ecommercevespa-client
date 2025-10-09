@@ -1,4 +1,4 @@
-// app/about/page.tsx
+// app/terms-and-conditions/page.tsx
 import CmsPageViewer from "@/components/organisms/CmsPageViewer";
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -9,10 +9,10 @@ const Loading = () => (
   </div>
 );
 
-export default function AboutPage() {
+export default function TermsAndConditionsPage() {
   return (
     <Suspense fallback={<Loading />}>
-      <CmsPageViewer slug="about-us" />
+      <CmsPageViewer slug="terms-and-conditions" />
     </Suspense>
   );
 }

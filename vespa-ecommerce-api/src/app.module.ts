@@ -30,6 +30,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EmailModule } from './email/email.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { HomepageBannersModule } from './homepage-banners/homepage-banners.module';
+import { CmsPagesModule } from './cms-pages/cms-pages.module';
 
 
 @Module({
@@ -107,6 +108,7 @@ import { HomepageBannersModule } from './homepage-banners/homepage-banners.modul
     DashboardModule,
     WishlistModule,
     HomepageBannersModule,
+    CmsPagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

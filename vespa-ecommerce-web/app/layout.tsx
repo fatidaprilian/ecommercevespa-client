@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Instagram, Phone } from 'lucide-react';
+// Tidak perlu import Image karena kita tetap menggunakan <img>
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
@@ -20,18 +21,14 @@ export const metadata: Metadata = {
     description: 'Temukan sparepart Vespa original dan berkualitas.',
 };
 
-// --- Komponen Footer Baru Sesuai Desain Anda (Sudah Diperbaiki) ---
+// --- Komponen Footer Telah Direvisi ---
 const Footer = () => {
-  // Placeholder untuk logo shipping dan pembayaran
-  const PlaceholderBox = () => <div className="w-full h-8 bg-gray-500 rounded"></div>;
-
   return (
     <footer className="bg-[#2b2b2b] text-white">
       <div className="container mx-auto px-6 lg:px-8 py-8">
         
         {/* Bagian Atas: Kontak */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 border-b border-gray-600 pb-6 mb-6 text-center">
-            {/* --- PERUBAHAN DI SINI --- */}
             <h3 className="text-2xl font-semibold tracking-wider">Hubungi Kami</h3>
             <a
                 href="https://wa.me/628159922321"
@@ -61,7 +58,9 @@ const Footer = () => {
             <h3 className="font-bold text-lg mb-4 tracking-wider">PENGIRIMAN</h3>
             <div className="grid grid-cols-3 gap-3 max-w-[350px]">
               <img src="/jne.svg" alt="Logo JNE" />
-              <img src="/jnt.svg" alt="Logo J&T" />
+              {/* --- PERBAIKAN LOGO J&T DI SINI --- */}
+              {/* Menambahkan class agar gambar tidak terpotong, tanpa mengubah ukuran container */}
+              <img src="/jnt.svg" alt="Logo J&T" className="object-contain w-full h-full" />
             </div>
           </div>
 
@@ -78,9 +77,11 @@ const Footer = () => {
           {/* Kolom 3: Informasi */}
           <div>
             <h3 className="font-bold text-lg mb-4 tracking-wider">INFORMASI</h3>
+            {/* --- PENAMBAHAN LINK DI SINI --- */}
             <ul className="space-y-3">
               <li><Link href="/about" className="text-gray-400 hover:text-white transition-colors text-sm">Tentang Kami</Link></li>
-              <li><Link href="#" className="text-gray-400 hover:text-white transition-colors text-sm">FAQ</Link></li>
+              <li><Link href="/faq" className="text-gray-400 hover:text-white transition-colors text-sm">FAQ</Link></li>
+              <li><Link href="/terms-and-conditions" className="text-gray-400 hover:text-white transition-colors text-sm">Syarat & Ketentuan</Link></li>
             </ul>
           </div>
 
