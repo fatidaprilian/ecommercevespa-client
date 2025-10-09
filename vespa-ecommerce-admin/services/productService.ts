@@ -1,3 +1,4 @@
+// services/productService.ts
 
 import api from '@/lib/api'; 
 
@@ -56,7 +57,9 @@ export const uploadImage = async (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const { data } = await api.post<{ url: string; public_id: string }>('/upload', formData, {
+  // --- PERBAIKAN DI BARIS INI ---
+  // Endpoint diubah dari '/upload' menjadi '/upload/image'
+  const { data } = await api.post<{ url: string; public_id: string }>('/upload/image', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

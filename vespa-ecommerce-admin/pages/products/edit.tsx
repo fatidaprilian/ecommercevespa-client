@@ -1,6 +1,6 @@
 // File: pages/products/edit.tsx
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeft, UploadCloud, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, UploadCloud, X, Trash2, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -35,68 +35,30 @@ const productFormSchema = z.object({
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
-export default function EditProductPage() {
+// Komponen Form terpisah untuk logika UI
+function EditProductForm({ initialData, categories, brands }: { initialData: Product; categories: any[]; brands: any[] }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { id } = router.query;
-  const productId = typeof id === 'string' ? id : '';
+  const productId = initialData.id;
 
   const [isUploading, setIsUploading] = useState(false);
-
-  const { data: product, isLoading: isLoadingProduct, isError } = useQuery<Product, Error>({
-    queryKey: ['product', productId],
-    queryFn: () => getProductById(productId),
-    enabled: !!productId,
-  });
-
-  const { data: categories, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: getCategories });
-  const { data: brands, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: getBrands });
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
-      name: '',
-      sku: '',
-      price: 0,
-      stock: 0,
-      weight: 1000,
-      description: '',
-      piaggioCode: '',
-      models: '',
-      categoryId: '',
-      brandId: '',
-      images: [],
-    }
+      name: initialData.name || '',
+      sku: initialData.sku || '',
+      price: initialData.price || 0,
+      stock: initialData.stock || 0,
+      weight: initialData.weight || 1000,
+      description: initialData.description || '',
+      piaggioCode: initialData.piaggioCode || '',
+      models: initialData.models || '',
+      categoryId: initialData.categoryId || '',
+      brandId: initialData.brandId || '',
+      images: initialData.images || [],
+    },
   });
-
-  useEffect(() => {
-    if (product && categories && brands) {
-      const formData = {
-        name: product.name || '',
-        sku: product.sku || '',
-        price: product.price || 0,
-        stock: product.stock || 0,
-        weight: product.weight || 1000,
-        description: product.description || '',
-        piaggioCode: product.piaggioCode || '',
-        models: product.models || '',
-        categoryId: product.categoryId || '',
-        brandId: product.brandId || '',
-        images: product.images || [],
-      };
-      
-      form.reset(formData);
-      
-      setTimeout(() => {
-        if (product.categoryId) {
-          form.setValue('categoryId', product.categoryId, { shouldValidate: true });
-        }
-        if (product.brandId) {
-          form.setValue('brandId', product.brandId, { shouldValidate: true });
-        }
-      }, 100);
-    }
-  }, [product, categories, brands, form]);
 
   const updateMutation = useMutation({
     mutationFn: (values: ProductFormValues) => updateProduct(productId, values),
@@ -125,7 +87,6 @@ export default function EditProductPage() {
 
     setIsUploading(true);
     toast.loading('Mengupload gambar...');
-
     try {
       const response = await uploadImage(file);
       const currentImages = form.getValues('images') || [];
@@ -155,9 +116,6 @@ export default function EditProductPage() {
     }
   };
 
-  if (isLoadingProduct) return <p className="text-center p-6">Memuat data produk...</p>;
-  if (isError) return <p className="text-center p-6 text-red-500">Gagal memuat data atau produk tidak ditemukan.</p>;
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -175,216 +133,79 @@ export default function EditProductPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>
-            <CardHeader>
-              <CardTitle>Informasi Dasar Produk</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Informasi Dasar Produk</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              <FormField 
-                name="name" 
-                control={form.control} 
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nama Produk</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Contoh: Kampas Rem Depan" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} 
-              />
+              <FormField name="name" control={form.control} render={({ field }) => (<FormItem><FormLabel>Nama Produk</FormLabel><FormControl><Input placeholder="Contoh: Kampas Rem Depan" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField 
-                  name="piaggioCode" 
-                  control={form.control} 
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Piaggio Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Contoh: 1D000543" {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} 
-                />
-                <FormField 
-                  name="models" 
-                  control={form.control} 
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Models</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Contoh: PX125E, PX150E" {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} 
-                />
+                <FormField name="piaggioCode" control={form.control} render={({ field }) => (<FormItem><FormLabel>Piaggio Code</FormLabel><FormControl><Input placeholder="Contoh: 1D000543" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField name="models" control={form.control} render={({ field }) => (<FormItem><FormLabel>Models</FormLabel><FormControl><Input placeholder="Contoh: PX125E, PX150E" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
               </div>
-              <FormField 
-                name="description" 
-                control={form.control} 
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deskripsi</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Jelaskan detail produk di sini..." {...field} value={field.value || ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} 
-              />
+              <FormField name="description" control={form.control} render={({ field }) => (<FormItem><FormLabel>Deskripsi</FormLabel><FormControl><Textarea placeholder="Jelaskan detail produk di sini..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <FormField 
-                  name="sku" 
-                  control={form.control} 
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SKU (dari Accurate)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="VSP-001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} 
-                />
-                <FormField 
-                  name="price" 
-                  control={form.control} 
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Harga</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} 
-                />
-                <FormField 
-                  name="stock" 
-                  control={form.control} 
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Stok</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} 
-                />
-                <FormField 
-                  name="weight" 
-                  control={form.control} 
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Berat (gram)</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} 
-                />
+                <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU (dari Accurate)</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField name="price" control={form.control} render={({ field }) => (<FormItem><FormLabel>Harga</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField name="stock" control={form.control} render={({ field }) => (<FormItem><FormLabel>Stok</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField name="weight" control={form.control} render={({ field }) => (<FormItem><FormLabel>Berat (gram)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Gambar Produk</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Gambar Produk</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {form.watch('images')?.map((image, index) => (
                   <div key={index} className="relative aspect-square group">
                     <img src={image.url} alt={`product-image-${index}`} className="object-cover w-full h-full rounded-md"/>
-                    <button 
-                      type="button" 
-                      onClick={() => removeImage(index)} 
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
+                    <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <X size={16}/>
                     </button>
                   </div>
                 ))}
-              </div>
-              <FormField
-                control={form.control}
-                name="images"
-                render={() => (
-                  <FormItem>
-                    <FormControl>
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">
-                        <UploadCloud className="w-10 h-10 text-muted-foreground mb-2"/>
-                        <span className="text-sm text-muted-foreground">Klik untuk upload atau drag and drop</span>
-                        <Input type="file" className="hidden" onChange={handleImageUpload} disabled={isUploading}/>
-                      </label>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                {isUploading && (
+                  <div className="relative aspect-square rounded-md bg-muted/50 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
                 )}
-              />
+              </div>
+              <FormField control={form.control} name="images" render={() => (
+                <FormItem>
+                  <FormControl>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">
+                      <UploadCloud className="w-10 h-10 text-muted-foreground mb-2"/>
+                      <span className="text-sm text-muted-foreground">Klik untuk upload atau drag and drop</span>
+                      <Input type="file" className="hidden" onChange={handleImageUpload} disabled={isUploading}/>
+                    </label>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Organisasi</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Organisasi</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField 
-                name="categoryId" 
-                control={form.control} 
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kategori</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value || undefined}
-                      disabled={isLoadingCategories}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih kategori..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories?.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} 
-              />
-              <FormField 
-                name="brandId" 
-                control={form.control} 
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Merek (Opsional)</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange}
-                      value={field.value || undefined}
-                      disabled={isLoadingBrands}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih merek..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {brands?.map((b: any) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} 
-              />
+              <FormField name="categoryId" control={form.control} render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Kategori</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || undefined}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
+                    <SelectContent>{categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField name="brandId" control={form.control} render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Merek (Opsional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || undefined}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Pilih merek..." /></SelectTrigger></FormControl>
+                    <SelectContent>{brands.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </CardContent>
           </Card>
 
@@ -397,4 +218,40 @@ export default function EditProductPage() {
       </Form>
     </div>
   );
+}
+
+// Komponen Utama untuk mengambil data
+export default function EditProductPage() {
+  const router = useRouter();
+  const { id } = router.query;
+  const productId = typeof id === 'string' ? id : '';
+
+  const { data: product, isLoading: isLoadingProduct, isError } = useQuery<Product, Error>({
+    queryKey: ['product', productId],
+    queryFn: () => getProductById(productId),
+    enabled: !!productId,
+  });
+
+  const { data: categoriesResponse, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => getCategories(),
+  });
+
+  const { data: brandsResponse, isLoading: isLoadingBrands } = useQuery({
+    queryKey: ['brands'],
+    queryFn: () => getBrands(),
+  });
+  
+  if (isLoadingProduct || isLoadingCategories || isLoadingBrands) {
+    return <p className="text-center p-6">Memuat data...</p>;
+  }
+
+  if (isError || !product) {
+    return <p className="text-center p-6 text-red-500">Gagal memuat data atau produk tidak ditemukan.</p>;
+  }
+
+  const categories = categoriesResponse?.data || [];
+  const brands = brandsResponse?.data || [];
+
+  return <EditProductForm initialData={product} categories={categories} brands={brands} />;
 }
