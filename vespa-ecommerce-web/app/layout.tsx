@@ -53,16 +53,24 @@ const Footer = () => {
         {/* Bagian Tengah: Shipping, Pembayaran, Informasi */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           
-          {/* Kolom 1: Shipping */}
-          <div>
+        {/* Kolom 1: Shipping */}
+        <div>
             <h3 className="font-bold text-lg mb-4 tracking-wider">PENGIRIMAN</h3>
-            <div className="grid grid-cols-3 gap-3 max-w-[350px]">
-              <img src="/jne.svg" alt="Logo JNE" />
-              {/* --- PERBAIKAN LOGO J&T DI SINI --- */}
-              {/* Menambahkan class agar gambar tidak terpotong, tanpa mengubah ukuran container */}
-              <img src="/jnt.svg" alt="Logo J&T" className="object-contain w-full h-full" />
+            {/* Ganti grid dengan flexbox untuk alignment yang lebih baik */}
+            <div className="flex items-center gap-4 max-w-[350px]">
+                {/* Atur tinggi yang sama untuk semua logo, lebar akan menyesuaikan */}
+                <img 
+                    src="/jne.svg" 
+                    alt="Logo JNE" 
+                    className="h-10 w-auto" // Tinggi 32px, lebar otomatis
+                />
+                <img 
+                    src="/jnt.png" 
+                    alt="Logo J&T" 
+                    className="h-10 w-auto" // Beri tinggi sedikit lebih besar jika perlu
+                />
             </div>
-          </div>
+        </div>
 
           {/* Kolom 2: Pembayaran */}
           <div>
