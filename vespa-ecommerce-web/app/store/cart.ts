@@ -17,6 +17,14 @@ type Cart = {
   items: CartItem[];
 };
 
+// --- TAMBAHKAN ENUM INI ---
+// (Enum yang sama dengan yang ada di backend DTO)
+export enum PaymentPreference {
+  CREDIT_CARD = 'credit_card',
+  OTHER = 'other',
+}
+// --------------------------
+
 const debouncedUpdateApi = debounce(async (cartItemId: string, quantity: number) => {
   try {
     await api.patch(`/cart/items/${cartItemId}`, { quantity });
@@ -29,7 +37,7 @@ const debouncedUpdateApi = debounce(async (cartItemId: string, quantity: number)
 type CartState = {
   cart: Cart | null;
   isLoading: boolean;
-  isHydrated: boolean; // <-- DITAMBAHKAN: Lacak status fetch awal
+  isHydrated: boolean;
   selectedItems: Set<string>;
   error: string | null;
   
@@ -40,13 +48,17 @@ type CartState = {
   toggleItemSelected: (cartItemId: string) => void;
   toggleSelectAll: (forceSelect?: boolean) => void;
   clearClientCart: () => void;
+  
+  // --- PERBARUI FUNGSI createOrder ---
   createOrder: (
     shippingAddress: string, 
     shippingCost: number, 
     courier: string, 
     destinationPostalCode: string, 
-    destinationAreaId: string
+    destinationAreaId: string,
+    paymentPreference?: PaymentPreference // <-- TAMBAHKAN parameter ini (opsional)
   ) => Promise<any>;
+  // ------------------------------------
   
   getTotalWeight: () => number;
   getSummary: () => {
@@ -58,24 +70,23 @@ type CartState = {
 
 export const useCartStore = create<CartState>((set, get) => ({
   cart: null,
-  isLoading: false, // <-- DIUBAH: Nilai awal false agar tidak loading di awal
-  isHydrated: false, // <-- DITAMBAHKAN
+  isLoading: false,
+  isHydrated: false,
   selectedItems: new Set(),
   error: null,
 
-  clearClientCart: () => set({ cart: null, selectedItems: new Set(), isLoading: false, error: null, isHydrated: false }), // <-- DIUBAH: Reset isHydrated saat logout/clear
+  clearClientCart: () => set({ cart: null, selectedItems: new Set(), isLoading: false, error: null, isHydrated: false }),
 
   fetchCart: async () => {
-    // <-- DIPERBARUI: Hanya set loading jika data belum ada
-    if (get().isHydrated) return; // <-- Jika sudah fetch, jangan fetch lagi
+    if (get().isHydrated) return; 
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.get('/cart');
-      set({ cart: data, isLoading: false, isHydrated: true }); // <-- Set isHydrated setelah sukses
+      set({ cart: data, isLoading: false, isHydrated: true });
       get().toggleSelectAll(true);
     } catch (error) {
       console.error("Gagal mengambil keranjang:", error);
-      set({ isLoading: false, error: 'Gagal memuat keranjang.', isHydrated: true }); // <-- Tetap set isHydrated agar tidak re-fetch terus menerus saat error
+      set({ isLoading: false, error: 'Gagal memuat keranjang.', isHydrated: true });
     }
   },
 
@@ -170,14 +181,24 @@ export const useCartStore = create<CartState>((set, get) => ({
     const subtotal = selectedCartItems.reduce((acc, item) => {
       return acc + (item.product.price * item.quantity);
     }, 0);
-
-    const taxAmount = subtotal * 0.11;
+    
+    // NOTE: taxAmount ini mungkin tidak akurat jika PPN dihitung di backend. 
+    // Ini hanya untuk tampilan, perhitungan PPN final ada di backend.
+    const taxAmount = subtotal * 0.11; 
     const totalItems = selectedCartItems.reduce((acc, item) => acc + item.quantity, 0);
 
     return { subtotal, taxAmount, totalItems };
   },
 
-  createOrder: async (shippingAddress, shippingCost, courier, destinationPostalCode, destinationAreaId) => {
+  // --- PERBARUI FUNGSI createOrder ---
+  createOrder: async (
+    shippingAddress, 
+    shippingCost, 
+    courier, 
+    destinationPostalCode, 
+    destinationAreaId,
+    paymentPreference // <-- Terima parameter baru
+  ) => {
     const { cart, selectedItems } = get();
     if (!cart || selectedItems.size === 0) {
       throw new Error("Tidak ada item yang dipilih untuk di-checkout.");
@@ -195,6 +216,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         courier,
         destinationPostalCode,
         destinationAreaId,
+        paymentPreference, // <-- KIRIM KE API
       });
       
       set({ isLoading: false });
@@ -206,4 +228,5 @@ export const useCartStore = create<CartState>((set, get) => ({
       throw error;
     }
   },
+  // ------------------------------------
 }));
