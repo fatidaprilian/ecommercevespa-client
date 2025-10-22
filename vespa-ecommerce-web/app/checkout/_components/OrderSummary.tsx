@@ -121,7 +121,6 @@ export function OrderSummary({
         ))}
       </div>
       
-      {/* ... (Bagian rincian total tidak berubah, tetap tampilkan total dasar) ... */}
       <div className="border-t mt-4 pt-4 space-y-2">
         <div className="flex justify-between text-gray-600">
           <span>Subtotal ({totalItems} item)</span>
@@ -153,7 +152,7 @@ export function OrderSummary({
         {/* JIKA ROLE RESELLER (Logika Asli) */}
         {user?.role === 'RESELLER' && (
           <Button 
-            onClick={() => handleCreateOrder(null)} // Kirim null untuk Reseller
+            onClick={() => handleCreateOrder(null)}
             size="lg" 
             className="w-full" 
             disabled={!selectedAddress || !selectedShippingOption || !!loadingMethod} // Disable jika sedang loading
