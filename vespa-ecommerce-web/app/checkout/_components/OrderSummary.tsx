@@ -97,7 +97,6 @@ export function OrderSummary({
         setLoadingMethod(null); // Reset state loading saat error
       }
     };
-  // -----------------------------------------------------------
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 sticky top-28">
