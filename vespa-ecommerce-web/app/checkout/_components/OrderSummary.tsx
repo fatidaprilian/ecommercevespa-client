@@ -79,7 +79,7 @@ export function OrderSummary({
           courier, 
           selectedAddress.postalCode,
           selectedAddress.districtId,
-          preference // <-- Teruskan preferensi ke store
+          preference
         );
         
         // Logika redirect/toast tetap sama
