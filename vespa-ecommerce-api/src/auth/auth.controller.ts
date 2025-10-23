@@ -1,4 +1,4 @@
-// file: src/auth/auth.controller.ts
+// src/auth/auth.controller.ts
 
 import {
   Controller,
@@ -6,11 +6,13 @@ import {
   Body,
   UseGuards,
   Request,
-  Res,
+  // Hapus 'Res' jika tidak digunakan lagi setelah perubahan ini
+  // Res,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { Response } from 'express';
+// Hapus 'Response' jika tidak digunakan lagi
+// import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
@@ -29,16 +31,20 @@ export class AuthController {
   @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Request() req, @Res({ passthrough: true }) response: Response) {
+  // --- 👇 HAPUS Parameter @Res dan response ---
+  async login(@Request() req) {
     const { access_token } = await this.authService.login(req.user);
 
-    response.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000,
-    });
+    // --- 👇 HAPUS BLOK KODE COOKIE INI ---
+    // response.cookie('access_token', access_token, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === 'production',
+    //   sameSite: 'strict',
+    //   maxAge: 24 * 60 * 60 * 1000, // 1 day
+    // });
+    // ------------------------------------
 
+    // Kembalikan token langsung di body respons
     return {
       message: 'Login berhasil',
       access_token: access_token,
@@ -54,19 +60,23 @@ export class AuthController {
   @Public()
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
+  // --- 👇 HAPUS Parameter @Res dan response ---
   async verifyEmail(
     @Body() verificationDto: EmailVerificationDto,
-    @Res({ passthrough: true }) response: Response,
+    // @Res({ passthrough: true }) response: Response, // Hapus ini
   ) {
     const result = await this.authService.verifyEmailToken(verificationDto);
 
-    response.cookie('access_token', result.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000,
-    });
+    // --- 👇 HAPUS BLOK KODE COOKIE INI ---
+    // response.cookie('access_token', result.access_token, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === 'production',
+    //   sameSite: 'strict',
+    //   maxAge: 24 * 60 * 60 * 1000, // 1 day
+    // });
+    // ------------------------------------
 
+    // Kembalikan token langsung di body respons
     return {
       message: 'Verifikasi email berhasil!',
       access_token: result.access_token,
@@ -104,8 +114,10 @@ export class AuthController {
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
-  async logout(@Res({ passthrough: true }) response: Response) {
-    response.clearCookie('access_token');
+  // --- 👇 HAPUS Parameter @Res dan response (jika tidak ada logic lain) ---
+  async logout(/*@Res({ passthrough: true }) response: Response*/) {
+    // Hapus baris ini jika cookie sudah tidak digunakan sama sekali
+    // response.clearCookie('access_token');
     return { message: 'Logout berhasil' };
   }
 }
