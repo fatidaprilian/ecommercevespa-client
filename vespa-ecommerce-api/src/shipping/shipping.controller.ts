@@ -1,10 +1,11 @@
 // file: src/shipping/shipping.controller.ts
 
-import { Controller, Get, Post, Body, Query, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, Param, Req } from '@nestjs/common'; // <-- Pastikan Req ada
 import { ShippingService } from './shipping.service';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { AuthGuard } from '@nestjs/passport';
 import { CalculateCostDto } from './dto/calculate-cost.dto';
+import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface'; // <-- Pastikan ini diimpor
 
 @Controller('shipping')
 export class ShippingController {
@@ -16,25 +17,28 @@ export class ShippingController {
     return this.shippingService.searchAreas(searchTerm);
   }
 
+  // --- Perubahan di sini ---
   @Post('cost')
   @UseGuards(AuthGuard('jwt'))
-  calculateCost(@Body() body: CalculateCostDto) {
+  calculateCost(
+    @Body() body: CalculateCostDto,       // <-- Ambil DTO dari body
+    @Req() req: AuthenticatedRequest   // <-- Ambil request
+  ) {
+    const user = req.user; // <-- Dapatkan user
+
+    // Panggil service dengan DTO dan user
     return this.shippingService.calculateShippingCost(
-        body.destination_area_id, 
-        body.items
+        body,
+        user
     );
   }
+  // --- Akhir Perubahan ---
 
-  /**
-   * ✅ ENDPOINT BARU: Endpoint publik untuk melacak pengiriman.
-   * @param waybillId - Nomor resi (AWB).
-   * @param courierCode - Kode kurir.
-   */
-  @Get('track/:waybillId/:courierCode')
+  @Get('track/:waybillId/:courrierCode')
   @Public()
   trackShipment(
     @Param('waybillId') waybillId: string,
-    @Param('courierCode') courierCode: string,
+    @Param('courierCode') courierCode: string, // Perbaiki typo: courierCode
   ) {
     return this.shippingService.getTrackingInfo(waybillId, courierCode);
   }

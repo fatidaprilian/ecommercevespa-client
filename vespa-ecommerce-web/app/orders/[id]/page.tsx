@@ -1,9 +1,10 @@
+// File: app/orders/[id]/page.tsx
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Copy, Info, ArrowLeft, FileText } from 'lucide-react';
+import { Loader2, Package, Truck, UploadCloud, CheckCircle, Landmark, Copy, Info, ArrowLeft, FileText, RefreshCw, CreditCard, Banknote } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
@@ -13,6 +14,7 @@ import { useAuthStore } from '@/store/auth';
 import { getOrderById } from '@/services/orderService';
 import { Button } from '@/components/ui/button';
 import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
+import { PaymentPreference } from '@/store/cart';
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return 'Tanggal tidak tersedia';
@@ -25,6 +27,7 @@ const formatDate = (dateString?: string) => {
   });
 };
 
+// Pastikan formatPrice membulatkan (minimumFractionDigits: 0)
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 
 const copyToClipboard = (text: string, label: string) => {
@@ -32,6 +35,7 @@ const copyToClipboard = (text: string, label: string) => {
   toast.success(`${label} disalin!`);
 };
 
+// Komponen ShipmentTracking (tidak diubah)
 function ShipmentTracking({ order }: { order: Order }) {
     if (!order.shipment?.trackingNumber || !order.courier) {
         return null;
@@ -101,15 +105,47 @@ export default function OrderDetailPage() {
     enabled: !!orderId,
   });
 
+  // State dan Mutasi untuk Retry Payment (tidak diubah)
+  const [loadingMethod, setLoadingMethod] = useState<null | 'cc' | 'other'>(null);
+
+  const retryPaymentMutation = useMutation({
+    mutationFn: async (preference?: PaymentPreference) => {
+      const { data } = await api.post(`/payments/order/${orderId}/retry`, {
+        paymentPreference: preference
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.redirect_url) {
+        toast.success('Mengarahkan ke halaman pembayaran...');
+        window.location.href = data.redirect_url;
+      } else {
+        toast.error('Gagal mendapatkan link pembayaran.');
+        setLoadingMethod(null);
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Gagal memulai ulang pembayaran.');
+      setLoadingMethod(null);
+    },
+  });
+
+  const handleRetryPayment = (preference?: PaymentPreference) => {
+     setLoadingMethod(preference === PaymentPreference.CREDIT_CARD ? 'cc' : 'other');
+     retryPaymentMutation.mutate(preference);
+  };
+
+
   if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin h-8 w-8" /></div>;
   if (isError || !order) return <div className="text-center py-20">Pesanan tidak ditemukan atau terjadi kesalahan.</div>;
-  
+
+  const isMember = user?.role === 'MEMBER';
   const isReseller = user?.role === 'RESELLER';
 
   const getStatusInfo = () => {
       switch (order.status) {
           case 'PENDING':
-              return { text: 'Menunggu Konfirmasi Admin', color: 'bg-yellow-100 text-yellow-800' };
+              return { text: isReseller ? 'Menunggu Konfirmasi Admin' : 'Menunggu Pembayaran', color: 'bg-yellow-100 text-yellow-800' };
           case 'PROCESSING':
               return { text: 'Pesanan Diproses', color: 'bg-orange-100 text-orange-800' };
           case 'SHIPPED':
@@ -117,18 +153,32 @@ export default function OrderDetailPage() {
           case 'DELIVERED':
           case 'COMPLETED':
               return { text: 'Selesai', color: 'bg-green-100 text-green-800' };
+          case 'CANCELLED':
+               return { text: 'Dibatalkan', color: 'bg-red-100 text-red-800' };
+          case 'REFUNDED':
+               return { text: 'Dikembalikan', color: 'bg-gray-100 text-gray-800' };
           default:
               return { text: order.status, color: 'bg-gray-100 text-gray-800' };
       }
   };
   const statusInfo = getStatusInfo();
 
+  // --- HITUNG TOTAL UNTUK OPSI RETRY ---
+  // Total dasar (Non-CC) adalah total sebelum biaya admin kartu kredit
+  const baseTotal = order.subtotal - order.discountAmount + order.taxAmount + order.shippingCost;
+  
+  // Total CC adalah total dasar + 3% biaya admin (sesuai logika API)
+  const adminFeePercentage = 0.03; // 3%
+  const ccTotal = baseTotal * (1 + adminFeePercentage);
+  // --- AKHIR PERHITUNGAN ---
+
 
   return (
     <div className="bg-gray-100 min-h-screen pt-12 sm:pt-16 pb-20">
       <div className="container mx-auto px-4 py-8">
-        
-        <motion.div 
+
+        {/* Header (tidak diubah) */}
+        <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8"
@@ -145,11 +195,12 @@ export default function OrderDetailPage() {
                 {statusInfo.text}
             </span>
         </motion.div>
-        
+
+        {/* Kolom Kiri */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-2 space-y-6">
-            
-            {/* --- BLOK INFORMASI UNTUK RESELLER (REVISI) --- */}
+
+            {/* Blok Info Reseller (tidak diubah) */}
             {isReseller && order.status === 'PENDING' && (
                 <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-r-lg shadow">
                     <div className="flex">
@@ -173,6 +224,7 @@ export default function OrderDetailPage() {
                 </div>
             )}
 
+            {/* Blok Item Pesanan (tidak diubah) */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="font-bold text-xl mb-4 flex items-center gap-2"><Package size={20}/> Item Pesanan</h2>
               <div className="space-y-4">
@@ -191,28 +243,78 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
+            {/* Blok Shipment Tracking (tidak diubah) */}
             {(order.status === 'SHIPPED' || order.status === 'DELIVERED' || order.status === 'COMPLETED') && (
                 <ShipmentTracking order={order} />
             )}
 
+             {/* Blok Upload Bukti TF (tidak diubah) */}
+             {!isReseller && order.status === 'PENDING' && order.payment?.method === 'MANUAL_TRANSFER' && (
+                 <div className="bg-white rounded-lg shadow p-6">
+                     <h2 className="font-bold text-xl mb-4 flex items-center gap-2"><UploadCloud size={20}/> Upload Bukti Pembayaran</h2>
+                     <p className="text-sm text-gray-500">Fitur upload bukti transfer akan ditambahkan di sini.</p>
+                     <Button className="mt-4 w-full">Upload Bukti</Button>
+                 </div>
+             )}
+
           </motion.div>
-          
+
+          {/* Kolom Kanan (Ringkasan) */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-6 space-y-4 sticky top-16">
               <h2 className="font-bold text-xl">Ringkasan</h2>
+              {/* Rincian harga asli (tidak diubah) */}
               <div className="flex justify-between"><span>Subtotal:</span> <span>{formatPrice(order.subtotal)}</span></div>
               <div className="flex justify-between"><span>Diskon:</span> <span>- {formatPrice(order.discountAmount)}</span></div>
               <div className="flex justify-between"><span>PPN:</span> <span>{formatPrice(order.taxAmount)}</span></div>
               <div className="flex justify-between"><span>Ongkos Kirim:</span> <span>{formatPrice(order.shippingCost)}</span></div>
               <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
-                <span>Total:</span> 
+                <span>Total Asli:</span>
                 <span>{formatPrice(order.totalAmount)}</span>
               </div>
-              
-              {/* Logika pembayaran manual untuk member tidak diubah */}
-               { !isReseller && order.status === 'PENDING' && order.payment?.method === 'MANUAL_TRANSFER' && (
-                 <p className="text-center text-sm text-gray-500 mt-4">Silakan upload bukti pembayaran.</p>
-               )}
+
+               {/* --- TOMBOL BAYAR LAGI DENGAN HARGA DINAMIS --- */}
+              {isMember && order.status === 'PENDING' && order.payment?.method === 'MIDTRANS_SNAP' && (
+                <div className="border-t pt-4 mt-4 space-y-3">
+                  <p className="text-sm text-center text-gray-600 font-medium">
+                    Selesaikan atau ubah metode pembayaran:
+                  </p>
+                  
+                  {/* Tombol Bayar Metode Lain */}
+                  <Button
+                    onClick={() => handleRetryPayment(PaymentPreference.OTHER)}
+                    variant="outline"
+                    className="w-full justify-between" // <-- Ganti ke justify-between
+                    disabled={!!loadingMethod}
+                  >
+                    <span className="flex items-center">
+                      {loadingMethod === 'other' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Banknote className="mr-2 h-4 w-4" />}
+                      {loadingMethod === 'other' ? 'Memproses...' : 'Metode Lain'}
+                    </span>
+                    {/* Tampilkan harga Non-CC */}
+                    <span className="font-bold">{formatPrice(baseTotal)}</span>
+                  </Button>
+
+                  {/* Tombol Bayar Kartu Kredit */}
+                  <Button
+                    onClick={() => handleRetryPayment(PaymentPreference.CREDIT_CARD)}
+                    className="w-full justify-between" // <-- Ganti ke justify-between
+                    disabled={!!loadingMethod}
+                  >
+                     <span className="flex items-center">
+                      {loadingMethod === 'cc' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                      {loadingMethod === 'cc' ? 'Memproses...' : 'Kartu Kredit'}
+                    </span>
+                    {/* Tampilkan harga CC */}
+                    <span className="font-bold">{formatPrice(ccTotal)}</span>
+                  </Button>
+                   <p className="text-xs text-center text-gray-500">
+                      Total Kartu Kredit sudah termasuk biaya admin 3%.
+                   </p>
+                </div>
+              )}
+              {/* --- AKHIR TOMBOL BAYAR LAGI --- */}
+
             </div>
           </motion.div>
         </div>

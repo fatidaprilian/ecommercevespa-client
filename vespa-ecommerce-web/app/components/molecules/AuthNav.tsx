@@ -173,11 +173,17 @@ export default function AuthNav() {
   // Tampilkan tombol Login/Register jika sudah terhidrasi dan user tidak login
   return (
     <div className="flex items-center space-x-1">
-        <Link href="/login" className="flex items-center gap-2 hover:bg-gray-500/10 px-3 py-1.5 rounded-full text-sm font-semibold transition-all">
+        <Link
+          href="/login"
+          className="flex items-center gap-2 bg-[#52616B] text-white hover:bg-[#1E2022] px-3 py-1.5 rounded-full text-sm font-semibold transition-all transform hover:scale-105"
+        >
             <User className="w-4 h-4" />
             Login
         </Link>
-        <Link href="/register" className="hidden sm:flex items-center gap-2 bg-[#52616B] text-white hover:bg-[#1E2022] px-3 py-1.5 rounded-full text-sm font-semibold transition-all transform hover:scale-105">
+        <Link
+          href="/register"
+          className="hidden sm:flex items-center gap-2 bg-[#52616B] text-white hover:bg-[#1E2022] px-3 py-1.5 rounded-full text-sm font-semibold transition-all transform hover:scale-105"
+        >
             <UserPlus className="w-4 h-4" />
             Register
         </Link>
