@@ -80,10 +80,12 @@ export class OrdersService {
             `Stok untuk ${product.name} tidak mencukupi.`,
           );
 
+        // --- PENGURANGAN STOK LOKAL ---
         await tx.product.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
         });
+        // -----------------------------
 
         const originalPrice = product.price;
         subtotal += originalPrice * item.quantity;
@@ -121,7 +123,9 @@ export class OrdersService {
       ) {
         adminFee = baseTotalAmount * 0.03; // Hitung 3% dari total dasar
         finalTotalAmount = baseTotalAmount + adminFee; // Total akhir termasuk fee
-        this.logger.log(`Admin fee CC ${adminFee} applied for order. Final total: ${finalTotalAmount}`);
+        this.logger.log(
+          `Admin fee CC ${adminFee} applied for order. Final total: ${finalTotalAmount}`,
+        );
       }
       // ---------------------------------------------------------
 
@@ -178,7 +182,9 @@ export class OrdersService {
     else if (user.role === Role.MEMBER) {
       // Pastikan paymentPreference ada (seharusnya sudah divalidasi di awal)
       if (!paymentPreference) {
-         throw new InternalServerErrorException("PaymentPreference missing for MEMBER role.");
+        throw new InternalServerErrorException(
+          'PaymentPreference missing for MEMBER role.',
+        );
       }
       try {
         const payment = await this.paymentsService.createPaymentForOrder(
@@ -189,36 +195,50 @@ export class OrdersService {
         );
         return { ...createdOrder, redirect_url: payment.redirect_url };
       } catch (paymentError) {
-          // --- Rollback Stok jika Gagal Membuat Pembayaran ---
-          this.logger.error(`Gagal membuat pembayaran Midtrans untuk order ${createdOrder.id}. Melakukan rollback stok...`, paymentError);
-          const stockRestoreOperations = createdOrder.items.map(item =>
-            this.prisma.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: item.quantity } }
-            })
+        // --- Rollback Stok jika Gagal Membuat Pembayaran ---
+        this.logger.error(
+          `Gagal membuat pembayaran Midtrans untuk order ${createdOrder.id}. Melakukan rollback stok...`,
+          paymentError,
+        );
+        const stockRestoreOperations = createdOrder.items.map((item) =>
+          this.prisma.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          }),
+        );
+        // Update status order menjadi CANCELLED
+        const cancelOrderOperation = this.prisma.order.update({
+          where: { id: createdOrder.id },
+          data: { status: OrderStatus.CANCELLED },
+        });
+        try {
+          await this.prisma.$transaction([
+            ...stockRestoreOperations,
+            cancelOrderOperation,
+          ]);
+          this.logger.log(`Rollback stok berhasil untuk order ${createdOrder.id}.`);
+        } catch (rollbackError) {
+          this.logger.error(
+            `FATAL: Gagal rollback stok untuk order ${createdOrder.id}. Perlu pengecekan manual!`,
+            rollbackError,
           );
-          // Update status order menjadi CANCELLED
-          const cancelOrderOperation = this.prisma.order.update({
-              where: { id: createdOrder.id },
-              data: { status: OrderStatus.CANCELLED }
-          });
-          try {
-             await this.prisma.$transaction([...stockRestoreOperations, cancelOrderOperation]);
-             this.logger.log(`Rollback stok berhasil untuk order ${createdOrder.id}.`);
-          } catch (rollbackError) {
-             this.logger.error(`FATAL: Gagal rollback stok untuk order ${createdOrder.id}. Perlu pengecekan manual!`, rollbackError);
-          }
-          // Lemparkan error asli agar frontend tahu gagal
-          throw paymentError;
-          // ----------------------------------------------------
+        }
+        // Lemparkan error asli agar frontend tahu gagal
+        throw paymentError;
+        // ----------------------------------------------------
       }
     }
 
     // Default (seharusnya tidak terjadi jika role hanya MEMBER/RESELLER/ADMIN)
-    throw new InternalServerErrorException('User role tidak valid untuk membuat order.');
+    throw new InternalServerErrorException(
+      'User role tidak valid untuk membuat order.',
+    );
   }
 
-  async findAll(user: UserPayload, queryDto: PaginationDto & { search?: string }) {
+  async findAll(
+    user: UserPayload,
+    queryDto: PaginationDto & { search?: string },
+  ) {
     const { page = 1, limit = 10, search } = queryDto;
     const skip = (Number(page) - 1) * Number(limit);
 
@@ -233,7 +253,9 @@ export class OrdersService {
         { orderNumber: { contains: search, mode: 'insensitive' } },
         {
           items: {
-            some: { product: { name: { contains: search, mode: 'insensitive' } } },
+            some: {
+              product: { name: { contains: search, mode: 'insensitive' } },
+            },
           },
         },
       ];
@@ -310,35 +332,52 @@ export class OrdersService {
 
     return order;
   }
+
+  // ==================================================================
+  // --- FUNGSI UPDATE STATUS YANG TELAH DIREVISI ---
+  // ==================================================================
   async updateStatus(
     orderId: string,
     updateOrderStatusDto: UpdateOrderStatusDto,
   ) {
     const { status: newStatus } = updateOrderStatusDto;
 
+    // --- REVISI: Query order untuk menyertakan info User (Role) ---
+    // accurateSalesOrderNumber dan orderNumber akan otomatis terambil
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
         items: {
           select: { productId: true, quantity: true },
         },
-        payment: { // Pastikan payment di-include
+        payment: {
           include: {
-            manualPaymentMethod: true
-          }
+            manualPaymentMethod: true,
+          },
+        },
+        user: {
+          // PENTING: Ambil Role user untuk logika pembatalan
+          select: { role: true },
         },
       },
     });
+    // --- AKHIR REVISI ---
 
     if (!order) {
       throw new NotFoundException(`Order dengan ID ${orderId} tidak ditemukan`);
     }
 
     // 1. Logika Pengembalian Stok (Restock Logic)
-    if (newStatus === OrderStatus.CANCELLED || newStatus === OrderStatus.REFUNDED) {
+    if (
+      newStatus === OrderStatus.CANCELLED ||
+      newStatus === OrderStatus.REFUNDED
+    ) {
       // Hanya kembalikan stok jika statusnya berubah dan sebelumnya BUKAN cancelled/refunded
-      if (order.status !== OrderStatus.CANCELLED && order.status !== OrderStatus.REFUNDED) {
-
+      if (
+        order.status !== OrderStatus.CANCELLED &&
+        order.status !== OrderStatus.REFUNDED
+      ) {
+        // --- Operasi LOKAL (Tetap sama) ---
         const stockUpdateOperations = order.items.map((item) =>
           this.prisma.product.update({
             where: { id: item.productId },
@@ -350,37 +389,82 @@ export class OrdersService {
           where: { id: orderId },
           data: { status: newStatus },
         });
+        // --- Akhir Operasi LOKAL ---
 
         try {
+          // Jalankan transaksi LOKAL terlebih dahulu
           await this.prisma.$transaction([
             orderStatusUpdateOperation,
             ...stockUpdateOperations,
           ]);
 
-          this.logger.log(`Stok untuk pesanan ${orderId} telah dikembalikan karena status diubah menjadi ${newStatus}.`);
+          this.logger.log(
+            `Stok LOKAL untuk pesanan ${orderId} telah dikembalikan karena status diubah menjadi ${newStatus}.`,
+          );
+
+          // --- REVISI: Logika "Pintar" Pembatalan Accurate ---
+          // Setelah transaksi LOKAL berhasil, tentukan aksi untuk Accurate
+          if (order.user.role === Role.RESELLER) {
+            // --- Alur RESELLER ---
+            // Jika order Reseller, kita HAPUS Sales Order-nya di Accurate
+            if (order.accurateSalesOrderNumber) {
+              this.logger.log(
+                `Order RESELLER ${orderId}, menjadwalkan PENGHAPUSAN Sales Order ${order.accurateSalesOrderNumber} di Accurate...`,
+              );
+              // Anda perlu membuat fungsi/job baru ini di AccurateSyncService
+              // (misal: addDeleteSalesOrderJobToQueue)
+              await this.accurateSyncService.addDeleteSalesOrderJobToQueue(
+                order.accurateSalesOrderNumber,
+              );
+            } else {
+              // Jika karena satu dan lain hal SO tidak ada, catat warning
+              this.logger.warn(
+                `Order RESELLER ${orderId} dibatalkan tanpa accurateSalesOrderNumber. Stok Accurate mungkin perlu dicek manual.`,
+              );
+            }
+          } else {
+            // --- Alur MEMBER ---
+            // Jika order Member (atau role lain), kita TIDAK MELAKUKAN APA-APA di Accurate.
+            // Stok Accurate tidak pernah berkurang (saat PENDING), jadi tidak perlu ditambah.
+            this.logger.log(
+              `Order MEMBER ${orderId} dibatalkan. Hanya stok LOKAL yang dikembalikan. Stok Accurate tidak diubah.`,
+            );
+          }
+          // --- AKHIR REVISI ---
+
           // Ambil data terbaru setelah transaksi
           return this.prisma.order.findUnique({ where: { id: orderId } });
-
         } catch (error) {
-          this.logger.error(`Gagal transaksi pengembalian stok untuk order ${orderId}`, error);
-          throw new InternalServerErrorException('Gagal membatalkan pesanan dan mengembalikan stok.');
+          this.logger.error(
+            `Gagal transaksi pengembalian stok untuk order ${orderId}`,
+            error,
+          );
+          throw new InternalServerErrorException(
+            'Gagal membatalkan pesanan dan mengembalikan stok.',
+          );
         }
       } else {
-         // Jika status sudah CANCELLED/REFUNDED sebelumnya, update status saja
+        // Jika status sudah CANCELLED/REFUNDED sebelumnya, update status saja
         return this.prisma.order.update({
-             where: { id: orderId },
-             data: { status: newStatus },
+          where: { id: orderId },
+          data: { status: newStatus },
         });
       }
     }
 
-    // --- BLOK YANG DIPERBAIKI ---
+    // --- BLOK YANG DIPERBAIKI (Logika PROCESSING) ---
+    // Logika ini sepertinya sudah benar dan tidak perlu diubah
     if (newStatus === OrderStatus.PROCESSING) {
       // Status PAID (dari Midtrans) atau PENDING (jika admin validasi manual) bisa jadi PROCESSING
-      if (order.status !== OrderStatus.PAID && order.status !== OrderStatus.PENDING) {
-        throw new ForbiddenException(`Pesanan dengan status ${order.status} tidak dapat diubah menjadi PROCESSING.`);
+      if (
+        order.status !== OrderStatus.PAID &&
+        order.status !== OrderStatus.PENDING
+      ) {
+        throw new ForbiddenException(
+          `Pesanan dengan status ${order.status} tidak dapat diubah menjadi PROCESSING.`,
+        );
       }
-      
+
       try {
         // Gunakan transaction callback function
         await this.prisma.$transaction(async (tx) => {
@@ -402,26 +486,37 @@ export class OrdersService {
         if (order.payment?.method === 'MANUAL_TRANSFER') {
           const manualMethod = order.payment.manualPaymentMethod;
           if (!manualMethod || !manualMethod.accurateBankNo) {
-            this.logger.error(`Detail bank Accurate tidak ditemukan untuk order ${orderId}. Sinkronisasi Accurate dibatalkan.`);
+            this.logger.error(
+              `Detail bank Accurate tidak ditemukan untuk order ${orderId}. Sinkronisasi Accurate dibatalkan.`,
+            );
           } else {
             // Jalankan di background (tanpa await)
-            this.accurateSyncService.createSalesInvoiceAndReceipt(orderId, manualMethod.accurateBankNo, manualMethod.accurateBankName)
-              .catch(err => {
-                this.logger.error(`Gagal trigger sinkronisasi Accurate untuk order ${orderId} (background process)`, err.stack);
+            this.accurateSyncService
+              .createSalesInvoiceAndReceipt(
+                orderId,
+                manualMethod.accurateBankNo,
+                manualMethod.accurateBankName,
+              )
+              .catch((err) => {
+                this.logger.error(
+                  `Gagal trigger sinkronisasi Accurate untuk order ${orderId} (background process)`,
+                  err.stack,
+                );
               });
           }
         }
 
         // Ambil data order terbaru setelah update untuk dikembalikan
         return this.prisma.order.findUnique({ where: { id: orderId } });
-
       } catch (error) {
-         this.logger.error(`Gagal transaksi saat update order ${orderId} ke PROCESSING`, error);
-         throw new InternalServerErrorException('Gagal memproses status pesanan.');
+        this.logger.error(
+          `Gagal transaksi saat update order ${orderId} ke PROCESSING`,
+          error,
+        );
+        throw new InternalServerErrorException('Gagal memproses status pesanan.');
       }
     }
     // --- AKHIR BLOK YANG DIPERBAIKI ---
-
 
     // Untuk transisi status lainnya (misal: PROCESSING -> SHIPPED, SHIPPED -> DELIVERED, dll.)
     return this.prisma.order.update({

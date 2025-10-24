@@ -114,6 +114,7 @@ model Product {
   name                 String
   description          String?
   price                Float
+  cost                 Float                   @default(0)
   stock                Int                     @default(0)
   weight               Int                     @default(1000)
   createdAt            DateTime                @default(now())

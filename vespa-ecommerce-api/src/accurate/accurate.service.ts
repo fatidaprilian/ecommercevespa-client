@@ -33,7 +33,7 @@ export class AccurateService {
             client_id: this.clientId,
             response_type: 'code',
             redirect_uri: this.redirectUri,
-            scope: 'item_view item_save sales_invoice_view sales_invoice_save customer_view customer_save branch_view sales_receipt_view sales_receipt_save glaccount_view sales_order_save sales_order_view',
+            scope: 'item_view item_save sales_invoice_view sales_invoice_save customer_view customer_save branch_view sales_receipt_view sales_receipt_save glaccount_view sales_order_save sales_order_view item_adjustment_save',
         });
         return `${this.authUrl}?${params.toString()}`;
     }

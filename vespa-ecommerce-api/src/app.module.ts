@@ -33,6 +33,7 @@ import { HomepageBannersModule } from './homepage-banners/homepage-banners.modul
 import { CmsPagesModule } from './cms-pages/cms-pages.module';
 
 
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -109,6 +110,7 @@ import { CmsPagesModule } from './cms-pages/cms-pages.module';
     WishlistModule,
     HomepageBannersModule,
     CmsPagesModule,
+    
   ],
   controllers: [AppController],
   providers: [AppService],
