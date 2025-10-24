@@ -164,7 +164,6 @@ export default function OrderDetailPage() {
     retryPaymentMutation.mutate(preference);
   };
 
-  // Hitung waktu kedaluwarsa untuk MEMBER dengan status PENDING dan payment MIDTRANS_SNAP
   let expirationTime: Date | null = null;
   let formattedExpiration: string | null = null;
   
