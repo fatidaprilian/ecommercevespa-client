@@ -32,13 +32,12 @@ export class ShippingController {
         user
     );
   }
-  // --- Akhir Perubahan ---
 
-  @Get('track/:waybillId/:courrierCode')
+  @Get('track/:waybillId/:courierCode') 
   @Public()
   trackShipment(
     @Param('waybillId') waybillId: string,
-    @Param('courierCode') courierCode: string, // Perbaiki typo: courierCode
+    @Param('courierCode') courierCode: string,
   ) {
     return this.shippingService.getTrackingInfo(waybillId, courierCode);
   }

@@ -110,7 +110,7 @@ export class AccurateSyncService {
       `Adding "delete-sales-order" job for SO Number: ${salesOrderNumber} to the queue.`,
     );
     await this.syncQueue.add(
-      'delete-sales-order', // Nama job baru
+      'delete-sales-order',
       { salesOrderNumber },
       {
         removeOnComplete: true,
@@ -149,7 +149,7 @@ export class AccurateSyncService {
         },
         select: {
           sku: true,
-          cost: true, // Mengambil field 'cost' dari Prisma (pastikan sudah migrasi)
+          cost: true, 
         },
       });
 
@@ -161,9 +161,8 @@ export class AccurateSyncService {
         );
       }
 
-      const productCostMap = new Map<string, number>(); // Map<sku, cost>
+      const productCostMap = new Map<string, number>();
       productsFromDb.forEach((p) => {
-        // Pastikan cost tidak null/undefined.
         if (p.cost === null || p.cost === undefined) {
           this.logger.warn(
             `[WORKER] Cost untuk SKU ${p.sku} adalah null/undefined. Menggunakan 0.`,
@@ -174,7 +173,6 @@ export class AccurateSyncService {
         }
       });
 
-      // 3. [REVISI] Siapkan payload untuk API /api/item-adjustment/save.do
       const adjustmentDetails = items
         .map((item) => {
           const unitCost = productCostMap.get(item.sku);
@@ -183,19 +181,17 @@ export class AccurateSyncService {
             this.logger.warn(
               `[WORKER] SKU: ${item.sku} tidak ditemukan di DB lokal saat mapping. Item ini akan dilewati.`,
             );
-            return null; // Lewati item ini
+            return null;
           }
 
-          // Ini adalah payload yang benar sesuai dokumentasi Accurate
           return {
-            itemNo: item.sku, // <-- PERBAIKAN 1: Gunakan SKU
+            itemNo: item.sku,
             quantity: item.quantity,
-            itemAdjustmentType: 'ADJUSTMENT_IN', // <-- PERBAIKAN 4: Ganti 'INCREASE' menjadi 'ADJUSTMENT_IN'
-            unitCost: unitCost, // <-- PERBAIKAN 3: Tambah cost
-            // 'warehouseName': dbInfo.branchName // Opsional, jika gudang = nama cabang
+            itemAdjustmentType: 'ADJUSTMENT_IN',
+            unitCost: unitCost,
           };
         })
-        .filter(Boolean); // Hapus item yang null (tidak ditemukan cost-nya)
+        .filter(Boolean);
 
       if (adjustmentDetails.length === 0) {
         this.logger.error(
@@ -210,7 +206,7 @@ export class AccurateSyncService {
         transDate: formatDateToAccurate(new Date()),
         description: `Otomatis: Pembatalan pesanan. (${reason})`,
         branchName: dbInfo.branchName,
-        detailItem: adjustmentDetails, // <-- Payload yang sudah benar
+        detailItem: adjustmentDetails,
       };
 
       this.logger.debug(
