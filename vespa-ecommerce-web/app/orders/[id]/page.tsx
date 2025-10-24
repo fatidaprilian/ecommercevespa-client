@@ -112,7 +112,7 @@ function ShipmentTracking({ order }: { order: Order }) {
                   }`}>
                     {item.note}
                   </p>
-                  <p className="text-xs text-gray-500">{formatDate(item.eventDate)}</p>
+                  <p className="text-xs text-gray-500">{formatDate(item.updated_at)}</p>
                 </div>
               </div>
             );
