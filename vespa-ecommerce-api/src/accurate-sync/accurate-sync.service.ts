@@ -418,105 +418,155 @@ export class AccurateSyncService {
   /**
    * [DIREVISI] Sinkronisasi produk, sekarang mengambil 'averageCost'
    */
-  async syncProductsFromAccurate() {
-    this.logger.log('WORKER: Starting product synchronization from Accurate...');
-    try {
-      const apiClient = await this.accurateService.getAccurateApiClient();
-      let page = 1;
-      const pageSize = 100; // Ambil 100 produk per halaman
-      let hasMore = true;
-      let totalSyncedCount = 0;
+/**
+ * [DIREVISI] Sinkronisasi produk dengan logic Reserved Stock
+ * Stok yang ditampilkan = Stok Accurate - Reserved (dari order PENDING/PAID/PROCESSING)
+ */
+async syncProductsFromAccurate() {
+  this.logger.log('WORKER: Starting product synchronization from Accurate...');
+  try {
+    const apiClient = await this.accurateService.getAccurateApiClient();
+    let page = 1;
+    const pageSize = 100;
+    let hasMore = true;
+    let totalSyncedCount = 0;
 
-      while (hasMore) {
-        this.logger.log(`WORKER: Fetching product page ${page}...`);
-        // [REVISI] Tambahkan 'averageCost' ke fields
-        const response = await apiClient.get('/accurate/api/item/list.do', {
-          params: {
-            fields: 'no,name,itemType,unitPrice,quantity,averageCost',
-            'sp.page': page,
-            'sp.pageSize': pageSize,
-          },
-        });
+    while (hasMore) {
+      this.logger.log(`WORKER: Fetching product page ${page}...`);
+      const response = await apiClient.get('/accurate/api/item/list.do', {
+        params: {
+          fields: 'no,name,itemType,unitPrice,quantity,averageCost',
+          'sp.page': page,
+          'sp.pageSize': pageSize,
+        },
+      });
 
-        const itemsFromAccurate = response.data.d;
-        if (!itemsFromAccurate || itemsFromAccurate.length === 0) {
-          this.logger.warn(
-            `WORKER: No items found on page ${page}. Ending sync.`,
-          );
-          hasMore = false; // Stop jika halaman kosong
-          break;
-        }
+      const itemsFromAccurate = response.data.d;
+      if (!itemsFromAccurate || itemsFromAccurate.length === 0) {
+        this.logger.warn(
+          `WORKER: No items found on page ${page}. Ending sync.`,
+        );
+        hasMore = false;
+        break;
+      }
 
-        let pageSyncedCount = 0;
-        for (const item of itemsFromAccurate) {
-          if (item.itemType !== 'INVENTORY') continue;
-          try {
-            // ============================================
-            // --- INI ADALAH PERBAIKAN STOK "BALIK LAGI" ---
-            // ============================================
-            await this.prisma.product.upsert({
-              where: { sku: item.no },
-              // [REVISI] Tambahkan 'cost' saat update
-              update: {
-                name: item.name,
-                price: item.unitPrice || 0, // Default 0 jika null
-                // stock: item.quantity || 0, // <-- DIKOMENTARI
-                cost: item.averageCost || 0, // Default 0 jika averageCost null/undefined
-              },
-              // [REVISI] Tambahkan 'cost' saat create
-              create: {
-                sku: item.no,
-                name: item.name,
-                price: item.unitPrice || 0, // Default 0 jika null
-                stock: item.quantity || 0, // Default 0 jika null
-                cost: item.averageCost || 0, // Default 0 jika averageCost null/undefined
-                weight: 1000, // Atur default weight jika perlu
-              },
-            });
-            // ============================================
-            // --- AKHIR PERBAIKAN ---
-            // ============================================
-            pageSyncedCount++;
-          } catch (upsertError) {
-            this.logger.error(
-              `WORKER: Failed to upsert product with SKU ${item.no}. Error: ${upsertError.message}`,
-              upsertError.stack,
+      let pageSyncedCount = 0;
+      for (const item of itemsFromAccurate) {
+        if (item.itemType !== 'INVENTORY') continue;
+        
+        try {
+          const stockFromAccurate = item.quantity || 0;
+          
+          // ========================================================
+          // LOGIC BARU: Hitung Reserved Stock
+          // ========================================================
+          
+          // 1. Cari product dan hitung reserved stock
+          const existingProduct = await this.prisma.product.findUnique({
+            where: { sku: item.no },
+            include: {
+              orderItems: {
+                where: {
+                  order: {
+                    status: {
+                      in: ['PENDING', 'PAID', 'PROCESSING']
+                    }
+                  }
+                },
+                select: {
+                  quantity: true,
+                  order: {
+                    select: {
+                      orderNumber: true,
+                      status: true
+                    }
+                  }
+                }
+              }
+            }
+          });
+
+          // 2. Hitung total reserved
+          const reservedStock = existingProduct?.orderItems.reduce(
+            (sum, item) => sum + item.quantity, 
+            0
+          ) || 0;
+
+          // 3. Stok final = Stok Accurate - Reserved
+          const finalStock = Math.max(0, stockFromAccurate - reservedStock);
+
+          // 4. Log jika ada reserved stock
+          if (reservedStock > 0) {
+            this.logger.log(
+              `[CronSync] SKU ${item.no}: ` +
+              `Accurate=${stockFromAccurate}, ` +
+              `Reserved=${reservedStock}, ` +
+              `Final=${finalStock}`
             );
           }
+
+          // 5. Upsert dengan stok yang sudah dikurangi reserved
+          await this.prisma.product.upsert({
+            where: { sku: item.no },
+            update: {
+              name: item.name,
+              price: item.unitPrice || 0,
+              stock: finalStock, // ← STOK SUDAH DIKURANGI RESERVED
+              cost: item.averageCost || 0,
+            },
+            create: {
+              sku: item.no,
+              name: item.name,
+              price: item.unitPrice || 0,
+              stock: finalStock, // ← UNTUK PRODUK BARU JUGA
+              cost: item.averageCost || 0,
+              weight: 1000,
+            },
+          });
+          // ========================================================
+          // AKHIR LOGIC BARU
+          // ========================================================
+          
+          pageSyncedCount++;
+        } catch (upsertError) {
+          this.logger.error(
+            `WORKER: Failed to upsert product with SKU ${item.no}. Error: ${upsertError.message}`,
+            upsertError.stack,
+          );
         }
-        this.logger.log(
-          `WORKER: Synced ${pageSyncedCount} products from page ${page}.`,
-        );
-        totalSyncedCount += pageSyncedCount;
-
-        // Cek pagination dari Accurate
-        hasMore = response.data.m?.next || false;
-        page++;
-
-        // Beri jeda sedikit antar halaman jika perlu
-        if (hasMore) {
-          await delay(500); // Jeda 500ms
-        }
-      } // End while loop
-
+      }
+      
       this.logger.log(
-        `WORKER: Successfully synced ${totalSyncedCount} products of type INVENTORY.`,
+        `WORKER: Synced ${pageSyncedCount} products from page ${page}.`,
       );
-      return {
-        syncedCount: totalSyncedCount,
-        message: `Berhasil menyinkronkan ${totalSyncedCount} produk.`,
-      };
-    } catch (error) {
-      const errorMessage = error.response?.data
-        ? JSON.stringify(error.response.data)
-        : error.message;
-      this.logger.error(
-        `WORKER: Failed to sync products from Accurate. Error: ${errorMessage}`,
-        error.stack,
-      );
-      throw new Error('Gagal menyinkronkan produk dari Accurate.');
+      totalSyncedCount += pageSyncedCount;
+
+      hasMore = response.data.m?.next || false;
+      page++;
+
+      if (hasMore) {
+        await delay(500);
+      }
     }
+
+    this.logger.log(
+      `WORKER: Successfully synced ${totalSyncedCount} products of type INVENTORY.`,
+    );
+    return {
+      syncedCount: totalSyncedCount,
+      message: `Berhasil menyinkronkan ${totalSyncedCount} produk.`,
+    };
+  } catch (error) {
+    const errorMessage = error.response?.data
+      ? JSON.stringify(error.response.data)
+      : error.message;
+    this.logger.error(
+      `WORKER: Failed to sync products from Accurate. Error: ${errorMessage}`,
+      error.stack,
+    );
+    throw new Error('Gagal menyinkronkan produk dari Accurate.');
   }
+}
 
   async createSalesInvoiceAndReceipt(
     orderId: string,

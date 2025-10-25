@@ -48,14 +48,15 @@ export class WebhooksService {
       // Hanya proses stok jika ada data relevan
       if (stockEventData && Array.isArray(stockEventData)) {
         switch (eventType) {
-          // [BARU] Menangani 'ITEM_QUANTITY' dengan OVERWRITE (SET)
+          // [SKIP] ITEM_QUANTITY - Hanya 1 gudang, tidak akurat untuk total stok
+          // Biarkan Cron Job (sync-products) yang handle update stok dari API Accurate
           case 'ITEM_QUANTITY':
-            this.logger.log(`[StockSync-OVERWRITE] Memulai: ITEM_QUANTITY`);
-            for (const detail of stockEventData) {
-              // 'quantity' di sini adalah nilai total baru
-              const newTotalStock = parseInt(detail.quantity, 10);
-              await this.overwriteStock(detail.itemNo, newTotalStock);
-            }
+            this.logger.warn(
+              `[StockSync] ITEM_QUANTITY webhook DIABAIKAN. ` +
+              `Webhook ini hanya berisi stok 1 gudang (${stockEventData[0]?.warehouseName}), ` +
+              `sedangkan system membutuhkan total stok dari SEMUA gudang. ` +
+              `Update stok akan dilakukan oleh Cron Job yang fetch dari API Accurate.`
+            );
             break;
 
           // Kasus: Penyesuaian Persediaan (Stok +/-) - DELTA
@@ -186,13 +187,16 @@ export class WebhooksService {
   /**
    * [FUNGSI BARU] Helper untuk update stok (OVERWRITE / SET).
    * Digunakan untuk event 'ITEM_QUANTITY'.
+   * 
+   * CATATAN: Fungsi ini SKIP webhook ITEM_QUANTITY karena hanya berisi stok 1 gudang.
+   * Update stok OVERWRITE hanya dilakukan oleh Cron Job yang fetch dari API Accurate.
    */
   private async overwriteStock(sku: string, newTotalStock: number) {
     if (!sku) {
       this.logger.warn(`[StockSync-OVERWRITE] SKIPPING: SKU tidak ditemukan.`);
       return;
     }
-    if (isNaN(newTotalStock) || newTotalStock < 0) { // Tambah validasi >= 0
+    if (isNaN(newTotalStock) || newTotalStock < 0) {
       this.logger.warn(
         `[StockSync-OVERWRITE] SKIPPING: Kuantitas total tidak valid (${newTotalStock}) untuk SKU ${sku}.`,
       );
@@ -204,20 +208,56 @@ export class WebhooksService {
     );
 
     try {
+      // HITUNG RESERVED STOCK (dari order yang belum selesai)
+      const product = await this.prisma.product.findUnique({
+        where: { sku: sku },
+        include: {
+          orderItems: {
+            where: {
+              order: {
+                status: {
+                  in: ['PENDING', 'PAID', 'PROCESSING'] // Order yang stoknya masih "reserved"
+                }
+              }
+            },
+            select: {
+              quantity: true
+            }
+          }
+        }
+      });
+
+      if (!product) {
+        this.logger.error(
+          `❌ [StockSync-OVERWRITE] GAGAL: Produk dengan SKU ${sku} tidak ditemukan di database lokal.`,
+        );
+        return;
+      }
+
+      // Hitung total reserved
+      const reservedStock = product.orderItems.reduce((sum, item) => sum + item.quantity, 0);
+      
+      // Stok final = Stok dari Accurate - Reserved
+      const finalStock = Math.max(0, newTotalStock - reservedStock);
+
+      this.logger.log(
+        `[StockSync-OVERWRITE] SKU ${sku}: Accurate=${newTotalStock}, Reserved=${reservedStock}, Final=${finalStock}`
+      );
+
       await this.prisma.product.update({
         where: { sku: sku },
         data: {
-          // Menggunakan 'set' (implisit) untuk menimpa nilai
-          stock: newTotalStock,
+          stock: finalStock,
         },
       });
+      
       this.logger.log(
-        `✅ [StockSync-OVERWRITE] BERHASIL: Stok untuk SKU ${sku} di-set ke ${newTotalStock}`,
+        `✅ [StockSync-OVERWRITE] BERHASIL: Stok untuk SKU ${sku} di-set ke ${finalStock} (Accurate: ${newTotalStock}, Reserved: ${reservedStock})`,
       );
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025' // Record not found
+        error.code === 'P2025'
       ) {
         this.logger.error(
           `❌ [StockSync-OVERWRITE] GAGAL: Produk dengan SKU ${sku} tidak ditemukan di database lokal.`,
@@ -228,7 +268,6 @@ export class WebhooksService {
           error.stack,
         );
       }
-      // Tidak melempar error agar webhook lain (jika ada) tetap diproses
     }
   }
 
