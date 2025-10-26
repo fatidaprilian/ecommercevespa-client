@@ -125,20 +125,23 @@ export default function NewProductPage() {
           <Card>
             <CardHeader><CardTitle>Gambar Produk</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="flex flex-wrap gap-2 mb-4">
                 {form.watch('images')?.map((image, index) => (
-                  <div key={index} className="relative aspect-square group">
-                    <img src={image.url} alt={`product-image-${index}`} className="object-cover w-full h-full rounded-md"/>
-                    <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <X size={16}/>
+                  <div key={index} className="relative w-20 h-20 group">
+                    <img src={image.url} alt={`product-image-${index}`} className="object-cover w-full h-full rounded-lg border-2 border-gray-200"/>
+                    <button type="button" onClick={() => removeImage(index)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                      <X size={14}/>
                     </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-0.5 text-center rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      #{index + 1}
+                    </div>
                   </div>
                 ))}
                 
                 {/* ✅ 2. Tambahkan blok ini untuk menampilkan spinner */}
                 {isUploading && (
-                  <div className="relative aspect-square rounded-md bg-muted/50 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <div className="relative w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 bg-muted/50 flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 )}
               </div>

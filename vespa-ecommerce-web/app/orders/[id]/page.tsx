@@ -294,7 +294,7 @@ export default function OrderDetailPage() {
                   <Info className="h-6 w-6 text-blue-500 mr-4"/>
                 </div>
                 <div>
-                  <p className="font-bold">Menunggu Pembayaran Faktur</p>
+                  <p className="font-bold">Menunggu Pembayaran</p>
                   <p className="text-sm">
                     Admin telah mengonfirmasi pesanan Anda. Silakan{' '}
                     <a 

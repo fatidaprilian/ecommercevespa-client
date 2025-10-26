@@ -110,8 +110,8 @@ export default function ProductDetailPage() {
     // Thumbnail scroll states
     const [scrollPosition, setScrollPosition] = useState(0);
     const thumbnailContainerRef = useRef<HTMLDivElement>(null);
-    const THUMBNAIL_HEIGHT = 88; // 80px + 8px gap
-    const MAX_VISIBLE_THUMBNAILS = 4;
+    const THUMBNAIL_HEIGHT = 108; // 96px + 12px gap
+    const MAX_VISIBLE_THUMBNAILS = 5;
 
     useEffect(() => {
         if (product) {
@@ -307,25 +307,26 @@ export default function ProductDetailPage() {
                                 </DialogContent>
                             </Dialog>
 
-                            <div className="relative flex flex-col w-20 flex-shrink-0">
+                            <div className="relative flex flex-col w-24 flex-shrink-0">
                                 {showScrollButtons && canScrollUp && (
                                     <button
                                         onClick={() => scrollThumbnails('up')}
-                                        className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1 shadow-md transition-all"
+                                        className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm"
                                     >
-                                        <ChevronUp size={20} className="text-gray-700" />
+                                        <ChevronUp size={20} className="text-gray-800" strokeWidth={2.5} />
                                     </button>
                                 )}
 
                                 <div 
                                     ref={thumbnailContainerRef}
-                                    className="flex flex-col gap-2 overflow-hidden"
+                                    className="flex flex-col gap-3 overflow-hidden relative"
                                     style={{ 
-                                        height: showScrollButtons ? `${MAX_VISIBLE_THUMBNAILS * THUMBNAIL_HEIGHT - 8}px` : 'auto'
+                                        height: showScrollButtons ? `${MAX_VISIBLE_THUMBNAILS * THUMBNAIL_HEIGHT - 12}px` : 'auto'
                                     }}
                                 >
+                                    
                                     <div 
-                                        className="flex flex-col gap-2 transition-transform duration-300 ease-out"
+                                        className="flex flex-col gap-3 transition-transform duration-300 ease-out"
                                         style={{ 
                                             transform: `translateY(-${scrollPosition}px)`
                                         }}
@@ -335,8 +336,10 @@ export default function ProductDetailPage() {
                                                 key={image.id} 
                                                 onClick={() => setSelectedImage(image.url)} 
                                                 className={cn(
-                                                    'aspect-square rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 ring-offset-2 hover:ring-2 hover:ring-orange-500',
-                                                    selectedImage === image.url ? 'ring-2 ring-orange-500' : 'ring-0'
+                                                    'aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
+                                                    selectedImage === image.url 
+                                                        ? 'scale-105 shadow-lg ring-4 ring-orange-400' 
+                                                        : 'ring-0'
                                                 )}
                                             >
                                                 <img 
@@ -347,14 +350,15 @@ export default function ProductDetailPage() {
                                             </button>
                                         ))}
                                     </div>
+
                                 </div>
 
                                 {showScrollButtons && canScrollDown && (
                                     <button
                                         onClick={() => scrollThumbnails('down')}
-                                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1 shadow-md transition-all"
+                                        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm"
                                     >
-                                        <ChevronDown size={20} className="text-gray-700" />
+                                        <ChevronDown size={20} className="text-gray-800" strokeWidth={2.5} />
                                     </button>
                                 )}
                             </div>
