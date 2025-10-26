@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Check, Minus, Plus, Package, Ruler, ArrowLeft, Heart, Search, X, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Check, Minus, Plus, Package, Ruler, ArrowLeft, Heart, Search, X, ZoomIn, ZoomOut, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -107,6 +107,12 @@ export default function ProductDetailPage() {
     const startPos = useRef({ x: 0, y: 0 });
     const imageRef = useRef<HTMLDivElement>(null);
 
+    // Thumbnail scroll states
+    const [scrollPosition, setScrollPosition] = useState(0);
+    const thumbnailContainerRef = useRef<HTMLDivElement>(null);
+    const THUMBNAIL_HEIGHT = 88; // 80px + 8px gap
+    const MAX_VISIBLE_THUMBNAILS = 4;
+
     useEffect(() => {
         if (product) {
             if (product.images?.length) {
@@ -203,6 +209,24 @@ export default function ProductDetailPage() {
         isDragging.current = false;
     };
 
+    // Thumbnail scroll functions
+    const scrollThumbnails = (direction: 'up' | 'down') => {
+        const container = thumbnailContainerRef.current;
+        if (!container || !product?.images) return;
+
+        const maxScroll = Math.max(0, (product.images.length - MAX_VISIBLE_THUMBNAILS) * THUMBNAIL_HEIGHT);
+        
+        if (direction === 'down') {
+            setScrollPosition(prev => Math.min(prev + THUMBNAIL_HEIGHT, maxScroll));
+        } else {
+            setScrollPosition(prev => Math.max(prev - THUMBNAIL_HEIGHT, 0));
+        }
+    };
+
+    const canScrollUp = scrollPosition > 0;
+    const canScrollDown = product?.images && scrollPosition < (product.images.length - MAX_VISIBLE_THUMBNAILS) * THUMBNAIL_HEIGHT;
+    const showScrollButtons = product?.images && product.images.length > MAX_VISIBLE_THUMBNAILS;
+
     if (isLoading) return <ProductDetailSkeleton />;
     if (error) return <div className="text-center py-20 text-red-500">Error: {error.message}</div>;
     if (!product) return <div className="text-center py-20">Produk tidak ditemukan.</div>;
@@ -283,15 +307,56 @@ export default function ProductDetailPage() {
                                 </DialogContent>
                             </Dialog>
 
-                            <div className="flex flex-col gap-3 w-20 flex-shrink-0">
-                                {product.images?.map((image) => (
-                                    <button 
-                                        key={image.id} onClick={() => setSelectedImage(image.url)} 
-                                        className={cn('aspect-square rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 ring-offset-2 hover:ring-2 hover:ring-orange-500', selectedImage === image.url ? 'ring-2 ring-orange-500' : 'ring-0')}
+                            <div className="relative flex flex-col w-20 flex-shrink-0">
+                                {showScrollButtons && canScrollUp && (
+                                    <button
+                                        onClick={() => scrollThumbnails('up')}
+                                        className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1 shadow-md transition-all"
                                     >
-                                        <img src={image.url} alt={`Thumbnail ${product.name}`} className="w-full h-full object-cover"/>
+                                        <ChevronUp size={20} className="text-gray-700" />
                                     </button>
-                                ))}
+                                )}
+
+                                <div 
+                                    ref={thumbnailContainerRef}
+                                    className="flex flex-col gap-2 overflow-hidden"
+                                    style={{ 
+                                        height: showScrollButtons ? `${MAX_VISIBLE_THUMBNAILS * THUMBNAIL_HEIGHT - 8}px` : 'auto'
+                                    }}
+                                >
+                                    <div 
+                                        className="flex flex-col gap-2 transition-transform duration-300 ease-out"
+                                        style={{ 
+                                            transform: `translateY(-${scrollPosition}px)`
+                                        }}
+                                    >
+                                        {product.images?.map((image) => (
+                                            <button 
+                                                key={image.id} 
+                                                onClick={() => setSelectedImage(image.url)} 
+                                                className={cn(
+                                                    'aspect-square rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 ring-offset-2 hover:ring-2 hover:ring-orange-500',
+                                                    selectedImage === image.url ? 'ring-2 ring-orange-500' : 'ring-0'
+                                                )}
+                                            >
+                                                <img 
+                                                    src={image.url} 
+                                                    alt={`Thumbnail ${product.name}`} 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {showScrollButtons && canScrollDown && (
+                                    <button
+                                        onClick={() => scrollThumbnails('down')}
+                                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1 shadow-md transition-all"
+                                    >
+                                        <ChevronDown size={20} className="text-gray-700" />
+                                    </button>
+                                )}
                             </div>
                         </div>
                         

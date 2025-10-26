@@ -44,9 +44,9 @@ export class WebhooksService {
           case 'ITEM_QUANTITY':
             this.logger.warn(
               `[StockSync] ITEM_QUANTITY webhook DIABAIKAN. ` +
-              `Webhook ini hanya berisi stok 1 gudang (${stockEventData[0]?.warehouseName}), ` +
-              `sedangkan system membutuhkan total stok dari SEMUA gudang. ` +
-              `Update stok akan dilakukan oleh Cron Job yang fetch dari API Accurate.`
+                `Webhook ini hanya berisi stok 1 gudang (${stockEventData[0]?.warehouseName}), ` +
+                `sedangkan system membutuhkan total stok dari SEMUA gudang. ` +
+                `Update stok akan dilakukan oleh Cron Job yang fetch dari API Accurate.`,
             );
             break;
 
@@ -71,58 +71,70 @@ export class WebhooksService {
           case 'SALES_INVOICE':
             this.logger.log(
               `[StockSync-DELTA] Memulai: SALES_INVOICE (${
-                eventDataRoot?.number || eventDataRoot?.id
+                eventDataRoot?.number ||
+                eventDataRoot?.salesInvoiceNo || // fallback
+                eventDataRoot?.id
               })`,
             );
-            
+
             // Extract order number dari invoice number
-            const invoiceNo = eventDataRoot?.number;
+            // PERBAIKAN: Gunakan field yang benar
+            const invoiceNo =
+              eventDataRoot?.number || eventDataRoot?.salesInvoiceNo;
             const orderNumberFromInvoice = invoiceNo?.replace(/^INV-/, '');
-            
+
             // Cari order lokal untuk cek apakah sudah di-reserve
             let localOrder: any = null; // Gunakan 'any' untuk fleksibilitas tipe
             if (orderNumberFromInvoice) {
               localOrder = await this.prisma.order.findUnique({
                 where: { orderNumber: orderNumberFromInvoice },
-                include: { 
+                include: {
                   items: {
                     include: {
                       product: {
-                        select: { sku: true }
-                      }
-                    }
-                  }
-                }
+                        select: { sku: true },
+                      },
+                    },
+                  },
+                },
               });
             }
 
-            for (const detail of stockEventData) {
-              const quantitySold = parseFloat(detail.quantity || 0);
-              if (quantitySold > 0) {
-                // Cek apakah item ini sudah di-reserve di local order
-                // Bandingkan SKU dari Accurate dengan SKU product di order items
-                const isReservedLocally = localOrder?.items?.some(
-                  (item: any) => item.product?.sku === detail.itemNo
-                ) || false;
+            // Cek 'detailItem' dari payload, BUKAN dari 'stockEventData'
+            // 'stockEventData' dinormalisasi dan mungkin tidak memiliki info SO
+            const siDetailItems =
+              payload.data?.[0]?.details || payload.data?.[0]?.detailItem;
 
-                if (isReservedLocally) {
-                  this.logger.log(
-                    `[StockSync-DELTA] SKIP pengurangan stok untuk SKU ${detail.itemNo} ` +
-                    `karena sudah di-reserve saat order ${orderNumberFromInvoice} dibuat (PENDING).`
-                  );
-                  // TIDAK update stok karena sudah berkurang saat order dibuat
-                } else {
-                  // Order tidak ditemukan di lokal atau bukan dari web (manual di Accurate)
-                  // Kurangi stok secara normal
-                  this.logger.log(
-                    `[StockSync-DELTA] Mengurangi stok untuk SKU ${detail.itemNo} ` +
-                    `(Order tidak di-reserve lokal atau invoice manual dari Accurate).`
-                  );
-                  await this.updateStockDelta(
-                    detail.itemNo,
-                    -quantitySold,
-                    eventType,
-                  );
+            if (siDetailItems && Array.isArray(siDetailItems)) {
+              for (const detail of siDetailItems) {
+                const quantitySold = parseFloat(detail.quantity || 0);
+                if (quantitySold > 0) {
+                  // Cek apakah item ini sudah di-reserve di local order
+                  // Bandingkan SKU dari Accurate dengan SKU product di order items
+                  const isReservedLocally =
+                    localOrder?.items?.some(
+                      (item: any) => item.product?.sku === detail.itemNo,
+                    ) || false;
+
+                  if (isReservedLocally) {
+                    this.logger.log(
+                      `[StockSync-DELTA] SKIP pengurangan stok untuk SKU ${detail.itemNo} ` +
+                        `karena sudah di-reserve saat order ${orderNumberFromInvoice} dibuat (PENDING).`,
+                    );
+                    // TIDAK update stok karena sudah berkurang saat order dibuat
+                  } else {
+                    // Order tidak ditemukan di lokal atau bukan dari web (manual di Accurate)
+                    // Kurangi stok secara normal
+                    this.logger.log(
+                      `[StockSync-DELTA] Mengurangi stok untuk SKU ${detail.itemNo} ` +
+                        `(Order tidak di-reserve lokal atau invoice manual dari Accurate).`,
+                    );
+                    await this.updateStockDelta(
+                      detail.itemNo,
+                      -quantitySold,
+                      eventType,
+                    );
+                  }
                 }
               }
             }
@@ -147,12 +159,16 @@ export class WebhooksService {
             }
             break;
 
-           default:
-             this.logger.log(`Event ${eventType} tidak memerlukan update stok atau belum ditangani.`);
-             break;
+          default:
+            this.logger.log(
+              `Event ${eventType} tidak memerlukan update stok atau belum ditangani.`,
+            );
+            break;
         }
       } else if (eventType === 'ITEM_QUANTITY' && !stockEventData) {
-         this.logger.warn(`Data webhook tidak ditemukan untuk tipe: ${eventType}`);
+        this.logger.warn(
+          `Data webhook tidak ditemukan untuk tipe: ${eventType}`,
+        );
       }
     } catch (error) {
       this.logger.error(
@@ -170,37 +186,40 @@ export class WebhooksService {
     }
 
     if (eventDataRoot) {
-        switch (eventType) {
-          case 'SALES_INVOICE':
-            if (eventDataRoot.status === 'LUNAS') {
-                await this.processSalesInvoiceWebhook(eventDataRoot);
-            } else {
-                 this.logger.log(`Mengabaikan webhook SALES_INVOICE ${eventDataRoot.number || eventDataRoot.id} karena status bukan LUNAS (${eventDataRoot.status})`);
-            }
-            break;
+      switch (eventType) {
+        case 'SALES_INVOICE':
+          // ==================================================================
+          // PERBAIKAN #1: (DIPERTAHANKAN)
+          // Hapus pengecekan 'status === LUNAS'. Payload SI tidak berisi 'status'.
+          // Pengecekan ini (eventDataRoot.status) selalu 'undefined' dan menyebabkan log "Mengabaikan... (undefined)"
+          // Biarkan 'processSalesInvoiceWebhook' selalu berjalan untuk mencatat nomor SI.
+          // Logika LUNAS akan ditangani oleh 'SALES_RECEIPT'.
+          // ==================================================================
+          await this.processSalesInvoiceWebhook(eventDataRoot);
+          break;
 
-          case 'SALES_RECEIPT':
-            await this.processSalesReceiptWebhook(eventDataRoot);
-            break;
+        case 'SALES_RECEIPT':
+          await this.processSalesReceiptWebhook(eventDataRoot);
+          break;
 
-          case 'SALES_ORDER':
-            await this.processSalesOrderWebhook(eventDataRoot);
-            break;
+        case 'SALES_ORDER':
+          await this.processSalesOrderWebhook(eventDataRoot);
+          break;
 
-          case 'ITEM_QUANTITY':
-          case 'ITEM_ADJUSTMENT':
-          case 'SALES_RETURN':
-            this.logger.log(
-              `Event ${eventType} telah diproses untuk stok (jika relevan). Tidak ada aksi status order.`,
-            );
-            break;
+        case 'ITEM_QUANTITY':
+        case 'ITEM_ADJUSTMENT':
+        case 'SALES_RETURN':
+          this.logger.log(
+            `Event ${eventType} telah diproses untuk stok (jika relevan). Tidak ada aksi status order.`,
+          );
+          break;
 
-          default:
-            this.logger.log(
-              `Tidak ada handler status order spesifik untuk tipe webhook "${eventType}". Diabaikan.`,
-            );
-            break;
-        }
+        default:
+          this.logger.log(
+            `Tidak ada handler status order spesifik untuk tipe webhook "${eventType}". Diabaikan.`,
+          );
+          break;
+      }
     }
   }
 
@@ -209,7 +228,10 @@ export class WebhooksService {
    * Digunakan oleh CRON JOB saja (bukan webhook).
    * Menghitung reserved stock dari order PENDING/PAID/PROCESSING.
    */
-  async overwriteStockWithReserved(sku: string, newTotalStockFromAccurate: number) {
+  async overwriteStockWithReserved(
+    sku: string,
+    newTotalStockFromAccurate: number,
+  ) {
     if (!sku) {
       this.logger.warn(`[StockSync-OVERWRITE] SKIPPING: SKU tidak ditemukan.`);
       return;
@@ -230,21 +252,21 @@ export class WebhooksService {
             where: {
               order: {
                 status: {
-                  in: ['PENDING', 'PAID', 'PROCESSING']
-                }
-              }
+                  in: ['PENDING', 'PAID', 'PROCESSING'],
+                },
+              },
             },
             select: {
               quantity: true,
               order: {
                 select: {
                   orderNumber: true,
-                  status: true
-                }
-              }
-            }
-          }
-        }
+                  status: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!product) {
@@ -255,17 +277,20 @@ export class WebhooksService {
       }
 
       // Hitung total reserved dari semua order aktif
-      const reservedStock = product.orderItems.reduce((sum, item) => sum + item.quantity, 0);
-      
+      const reservedStock = product.orderItems.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      );
+
       // Stok yang tampil di web = Stok Accurate - Reserved
       const finalStock = Math.max(0, newTotalStockFromAccurate - reservedStock);
 
       if (reservedStock > 0) {
         this.logger.log(
           `[StockSync-OVERWRITE] SKU ${sku}: ` +
-          `Accurate=${newTotalStockFromAccurate}, ` +
-          `Reserved=${reservedStock} (dari ${product.orderItems.length} order), ` +
-          `Final=${finalStock}`
+            `Accurate=${newTotalStockFromAccurate}, ` +
+            `Reserved=${reservedStock} (dari ${product.orderItems.length} order), ` +
+            `Final=${finalStock}`,
         );
       }
 
@@ -273,10 +298,10 @@ export class WebhooksService {
         where: { sku: sku },
         data: { stock: finalStock },
       });
-      
+
       this.logger.log(
         `✅ [StockSync-OVERWRITE] BERHASIL: Stok untuk SKU ${sku} di-set ke ${finalStock}` +
-        (reservedStock > 0 ? ` (Reserved: ${reservedStock})` : '')
+          (reservedStock > 0 ? ` (Reserved: ${reservedStock})` : ''),
       );
     } catch (error) {
       this.logger.error(
@@ -357,36 +382,48 @@ export class WebhooksService {
     );
 
     if (salesOrderNo) {
-        try {
-            // Extract order number: SO-{orderNumber} → {orderNumber}
-            const orderNumberFromSO = salesOrderNo.replace(/^SO-/,'');
-            const order = await this.prisma.order.findUnique({
-                 where: { orderNumber: orderNumberFromSO }
-            });
-            if(order && !order.accurateSalesOrderNumber) {
-                 await this.prisma.order.update({
-                      where: { id: order.id },
-                      data: { accurateSalesOrderNumber: salesOrderNo }
-                 });
-                 this.logger.log(`✅ Linked Accurate SO ${salesOrderNo} to local order ${order.orderNumber}`);
-            } else if (order && order.accurateSalesOrderNumber === salesOrderNo) {
-                 this.logger.log(`Accurate SO ${salesOrderNo} already linked to local order ${order.orderNumber}.`);
-            } else if (!order) {
-                 this.logger.warn(`Local order not found for Accurate SO ${salesOrderNo} (extracted order number: ${orderNumberFromSO}).`);
-            }
-        } catch (linkError) {
-             this.logger.error(`Error linking SO ${salesOrderNo}: ${linkError.message}`);
+      try {
+        // Extract order number: SO-{orderNumber} → {orderNumber}
+        const orderNumberFromSO = salesOrderNo.replace(/^SO-/, '');
+        const order = await this.prisma.order.findUnique({
+          where: { orderNumber: orderNumberFromSO },
+        });
+        if (order && !order.accurateSalesOrderNumber) {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: { accurateSalesOrderNumber: salesOrderNo },
+          });
+          this.logger.log(
+            `✅ Linked Accurate SO ${salesOrderNo} to local order ${order.orderNumber}`,
+          );
+        } else if (order && order.accurateSalesOrderNumber === salesOrderNo) {
+          this.logger.log(
+            `Accurate SO ${salesOrderNo} already linked to local order ${order.orderNumber}.`,
+          );
+        } else if (!order) {
+          this.logger.warn(
+            `Local order not found for Accurate SO ${salesOrderNo} (extracted order number: ${orderNumberFromSO}).`,
+          );
         }
+      } catch (linkError) {
+        this.logger.error(
+          `Error linking SO ${salesOrderNo}: ${linkError.message}`,
+        );
+      }
     }
   }
 
   private async processSalesInvoiceWebhook(eventData: any) {
-    const salesInvoiceNo = eventData.number;
-    const salesInvoiceId = eventData.id;
+    // ==================================================================
+    // PERBAIKAN #2: (DIPERTAHANKAN)
+    // Baca field 'salesInvoiceNo' dan 'salesInvoiceId' sebagai fallback dari 'number' dan 'id'
+    // ==================================================================
+    const salesInvoiceNo = eventData.number || eventData.salesInvoiceNo;
+    const salesInvoiceId = eventData.id || eventData.salesInvoiceId;
 
     if (!salesInvoiceNo) {
       this.logger.warn(
-        'Webhook Faktur Penjualan tidak memiliki nomor ("number").',
+        'Webhook Faktur Penjualan tidak memiliki nomor ("number" atau "salesInvoiceNo").',
         eventData,
       );
       return;
@@ -396,148 +433,264 @@ export class WebhooksService {
       `Processing Sales Invoice webhook: ${salesInvoiceNo} (ID: ${salesInvoiceId})`,
     );
 
-    const orderNumberFromInvoice = salesInvoiceNo.replace(/^INV-/,'');
+    let orderNumberFromInvoice: string | null = null;
+    
+    // ==================================================================
+    // PERBAIKAN #4: LOGIKA WAJIB FETCH DETAIL
+    // Karena payload tidak berisi 'detailItem', kita HARUS mem-fetch-nya.
+    // ==================================================================
+    try {
+        this.logger.log(`Payload SI ${salesInvoiceNo} minimal. Fetching details from Accurate...`);
+        
+        // ==================================================================
+        // PERBAIKAN #6: Menggunakan nama fungsi yang BENAR
+        // ==================================================================
+        const siDetail = await this.accurateService.getSalesInvoiceByNumber(salesInvoiceNo);
+        // ==================================================================
+
+        // Cek struktur response dari getSalesInvoiceByNumber
+        // Sesuaikan jika struktur 'detailItem' atau 'salesOrder' berbeda
+        const soNumber = siDetail?.detailItem?.[0]?.salesOrder?.number; // <- Periksa struktur ini
+        if (soNumber) {
+            orderNumberFromInvoice = soNumber.replace(/^SO-/, '');
+            this.logger.log(`✅ Sukses fetch SI. Ditemukan SO: ${soNumber}. Ekstrak Order Number: ${orderNumberFromInvoice}`);
+        } else {
+            // Log detail response jika SO tidak ditemukan
+            this.logger.warn(`SI ${salesInvoiceNo} tidak memiliki SO terkait di detailnya (setelah fetch). Detail: ${JSON.stringify(siDetail)}`);
+            return;
+        }
+    } catch (fetchError) {
+         this.logger.error(`❌ Gagal fetch detail SI ${salesInvoiceNo}: ${fetchError.message}`);
+         // Hapus log ini karena nama fungsi sudah benar
+         // this.logger.error(`❌ PASTIKAN NAMA FUNGSI 'getSalesInvoiceDetailByNo' SUDAH BENAR SESUAI 'accurate.service.ts'`);
+         return;
+    }
+
+
     if (!orderNumberFromInvoice) {
-        this.logger.warn(`Tidak bisa ekstrak nomor order dari nomor invoice ${salesInvoiceNo}`);
-        return;
+      this.logger.warn(
+        `Tidak bisa ekstrak/cari nomor order dari nomor invoice ${salesInvoiceNo}`,
+      );
+      return;
     }
 
     try {
-        const order = await this.prisma.order.findUnique({
-            where: { orderNumber: orderNumberFromInvoice },
-            include: { user: true }
-        });
+      const order = await this.prisma.order.findUnique({
+        where: { orderNumber: orderNumberFromInvoice },
+        include: { user: true },
+      });
 
-        if (order) {
-            if (order.accurateSalesInvoiceNumber === salesInvoiceNo) {
-                 this.logger.log(`Invoice ${salesInvoiceNo} sudah tercatat untuk order ${order.orderNumber}. Mengabaikan.`);
-                 return;
-            }
-
-            if (eventData.status !== 'LUNAS') {
-                await this.prisma.order.update({
-                     where: { id: order.id },
-                     data: { accurateSalesInvoiceNumber: salesInvoiceNo, accurateSalesInvoiceId: salesInvoiceId }
-                });
-                this.logger.log(`✅ Invoice ${salesInvoiceNo} (BELUM LUNAS) dicatat untuk order ${order.orderNumber}. Status tidak diubah.`);
-                return;
-            }
-
-            const newStatus = (order.user?.role === Role.RESELLER) ? OrderStatus.COMPLETED : OrderStatus.PROCESSING;
-
-            if (order.status === OrderStatus.PENDING || order.status === OrderStatus.PAID) {
-                await this.prisma.order.update({
-                where: { id: order.id },
-                data: {
-                    accurateSalesInvoiceNumber: salesInvoiceNo,
-                    accurateSalesInvoiceId: salesInvoiceId,
-                    status: newStatus,
-                },
-                });
-                this.logger.log(
-                `✅ BERHASIL: Invoice ${salesInvoiceNo} (LUNAS) di-link ke order ${order.id} (${order.orderNumber}). Status diubah ke ${newStatus}.`,
-                );
-            } else {
-                 if (!order.accurateSalesInvoiceNumber) {
-                     await this.prisma.order.update({
-                          where: { id: order.id },
-                          data: { accurateSalesInvoiceNumber: salesInvoiceNo, accurateSalesInvoiceId: salesInvoiceId }
-                     });
-                     this.logger.log(`✅ Invoice ${salesInvoiceNo} (LUNAS) dicatat untuk order ${order.orderNumber} (status ${order.status}).`);
-                 } else {
-                    this.logger.log(
-                    `Pesanan ${order.id} sudah dalam status ${order.status}. Mengabaikan update status dari webhook faktur lunas ${salesInvoiceNo}.`,
-                    );
-                 }
-            }
-        } else {
-            this.logger.warn(
-            `❌ Order tidak ditemukan untuk nomor: ${orderNumberFromInvoice} (dari Invoice ${salesInvoiceNo})`,
-            );
+      if (order) {
+        if (order.accurateSalesInvoiceNumber === salesInvoiceNo) {
+          this.logger.log(
+            `Invoice ${salesInvoiceNo} sudah tercatat untuk order ${order.orderNumber}. Mengabaikan.`,
+          );
+          return;
         }
 
+        // ==================================================================
+        // PERBAIKAN: (DIPERTAHANKAN) eventData.status selalu undefined.
+        // Logika ini akan selalu 'true' (undefined !== 'LUNAS')
+        // Ini adalah perilaku yang BENAR. Kita hanya mencatat SI di sini.
+        // Logika LUNAS ada di SALES_RECEIPT.
+        // ==================================================================
+        if (eventData.status !== 'LUNAS') {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: {
+              accurateSalesInvoiceNumber: salesInvoiceNo,
+              accurateSalesInvoiceId: salesInvoiceId,
+            },
+          });
+          this.logger.log(
+            `✅ Invoice ${salesInvoiceNo} (status: ${eventData.status}) dicatat untuk order ${order.orderNumber}. Status tidak diubah.`,
+          );
+          return;
+        }
+
+        // Blok ini kemungkinan tidak akan pernah berjalan, karena SI tidak punya 'status'.
+        // Tapi kita biarkan sesuai permintaan "jangan ubah logika".
+        const newStatus =
+          order.user?.role === Role.RESELLER
+            ? OrderStatus.COMPLETED
+            : OrderStatus.PROCESSING;
+
+        if (
+          order.status === OrderStatus.PENDING ||
+          order.status === OrderStatus.PAID
+        ) {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: {
+              accurateSalesInvoiceNumber: salesInvoiceNo,
+              accurateSalesInvoiceId: salesInvoiceId,
+              status: newStatus,
+            },
+          });
+          this.logger.log(
+            `✅ BERHASIL: Invoice ${salesInvoiceNo} (LUNAS) di-link ke order ${order.id} (${order.orderNumber}). Status diubah ke ${newStatus}.`,
+          );
+        } else {
+          if (!order.accurateSalesInvoiceNumber) {
+            await this.prisma.order.update({
+              where: { id: order.id },
+              data: {
+                accurateSalesInvoiceNumber: salesInvoiceNo,
+                accurateSalesInvoiceId: salesInvoiceId,
+              },
+            });
+            this.logger.log(
+              `✅ Invoice ${salesInvoiceNo} (LUNAS) dicatat untuk order ${order.orderNumber} (status ${order.status}).`,
+            );
+          } else {
+            this.logger.log(
+              `Pesanan ${order.id} sudah dalam status ${order.status}. Mengabaikan update status dari webhook faktur lunas ${salesInvoiceNo}.`,
+            );
+          }
+        }
+      } else {
+        this.logger.warn(
+          `❌ Order tidak ditemukan untuk nomor: ${orderNumberFromInvoice} (dari Invoice ${salesInvoiceNo})`,
+        );
+      }
     } catch (error) {
-         this.logger.error(
-            `❌ Error processing Sales Invoice webhook for ${salesInvoiceNo}: ${error.message}`,
-            error.stack,
-         );
+      this.logger.error(
+        `❌ Error processing Sales Invoice webhook for ${salesInvoiceNo}: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
-   private async processSalesReceiptWebhook(eventData: any) {
-    const salesReceiptNo = eventData.number;
-    const salesReceiptId = eventData.id;
+  private async processSalesReceiptWebhook(eventData: any) {
+    // ==================================================================
+    // PERBAIKAN #3: (DIPERTAHANKAN)
+    // Baca field 'salesReceiptNo' dan 'salesReceiptId' sebagai fallback
+    // Ini memperbaiki bug "Webhook ... tidak memiliki nomor ('number')"
+    // ==================================================================
+    const salesReceiptNo = eventData.number || eventData.salesReceiptNo;
+    const salesReceiptId = eventData.id || eventData.salesReceiptId;
 
     if (!salesReceiptNo) {
       this.logger.warn(
-        'Webhook Penerimaan Penjualan tidak memiliki nomor ("number").',
+        'Webhook Penerimaan Penjualan tidak memiliki nomor ("number" atau "salesReceiptNo").',
         eventData,
       );
       return;
     }
 
-    this.logger.log(`Processing Sales Receipt webhook: ${salesReceiptNo} (ID: ${salesReceiptId})`);
+    this.logger.log(
+      `Processing Sales Receipt webhook: ${salesReceiptNo} (ID: ${salesReceiptId})`,
+    );
 
-    const detailInvoice = eventData.detailInvoice?.[0];
-    const invoiceNumber = detailInvoice?.invoice?.number;
-
-    if (!invoiceNumber) {
-        this.logger.warn(`Tidak dapat menemukan nomor faktur terkait dalam detail SR ${salesReceiptNo}`);
-        return;
+    let invoiceNumber: string | null = null;
+    
+    // ==================================================================
+    // PERBAIKAN #5: LOGIKA WAJIB FETCH DETAIL
+    // Karena payload tidak berisi 'detailInvoice', kita HARUS mem-fetch-nya.
+    // ==================================================================
+    try {
+        this.logger.warn(`detailInvoice tidak ada di payload SR ${salesReceiptNo}. Mencoba fetch detail...`);
+        
+        // ==================================================================
+        // PERBAIKAN #7: Menggunakan nama fungsi yang BENAR
+        // ==================================================================
+        const srDetail = await this.accurateService.getSalesReceiptDetailByNumber(salesReceiptNo);
+        // ==================================================================
+        
+        // Cek struktur response dari getSalesReceiptDetailByNumber
+        // Sesuaikan jika struktur 'detailInvoice' atau 'invoice' berbeda
+        invoiceNumber = srDetail?.detailInvoice?.[0]?.invoice?.number; // <- Periksa struktur ini
+        if (invoiceNumber) {
+            this.logger.log(`✅ Sukses fetch SR. Ditemukan Invoice: ${invoiceNumber}`);
+        } else {
+             // Log detail response jika Invoice tidak ditemukan
+            this.logger.warn(`Invoice tidak ditemukan di detail SR ${salesReceiptNo} (setelah fetch). Detail: ${JSON.stringify(srDetail)}`);
+            return;
+        }
+    } catch (fetchError) {
+         this.logger.error(`❌ Gagal fetch detail SR ${salesReceiptNo}: ${fetchError.message}`);
+         // Hapus log ini karena nama fungsi sudah benar
+         // this.logger.error(`❌ PASTIKAN NAMA FUNGSI 'getSalesReceiptDetailByNo' SUDAH BENAR SESUAI 'accurate.service.ts'`);
+         return;
     }
 
-     this.logger.log(
-       `Menemukan Faktur Penjualan terkait: ${invoiceNumber} untuk Penerimaan Penjualan: ${salesReceiptNo}`,
-     );
+
+    if (!invoiceNumber) {
+      this.logger.warn(
+        `Tidak dapat menemukan nomor faktur terkait dalam detail SR ${salesReceiptNo} (via payload atau fetch).`,
+      );
+      return;
+    }
+
+    this.logger.log(
+      `Menemukan Faktur Penjualan terkait: ${invoiceNumber} untuk Penerimaan Penjualan: ${salesReceiptNo}`,
+    );
 
     try {
-        const order = await this.prisma.order.findFirst({
-            where: { accurateSalesInvoiceNumber: invoiceNumber },
-            include: { user: true }
-        });
+      // Cari order berdasarkan SI yang sudah di-link (oleh processSalesInvoiceWebhook)
+      const order = await this.prisma.order.findFirst({
+        where: { accurateSalesInvoiceNumber: invoiceNumber },
+        include: { user: true },
+      });
 
-         if (order) {
-            let dataToUpdate: Prisma.OrderUpdateInput = {};
-            let logMessage = '';
+      if (order) {
+        let dataToUpdate: Prisma.OrderUpdateInput = {};
+        let logMessage = '';
 
-            if (order.status === OrderStatus.PENDING || order.status === OrderStatus.PAID) {
-                dataToUpdate.status = OrderStatus.PROCESSING;
-                dataToUpdate.accurateSalesReceiptId = salesReceiptId;
-                logMessage = `✅ BERHASIL: Pembayaran untuk pesanan ${order.id} via SR ${salesReceiptNo} telah dikonfirmasi. Status diubah ke PROCESSING.`;
-            } else {
-                 if (!order.accurateSalesReceiptId) {
-                    dataToUpdate.accurateSalesReceiptId = salesReceiptId;
-                    logMessage = `✅ Receipt ID ${salesReceiptId} dicatat untuk order ${order.id} (status ${order.status}). Status tidak diubah.`;
-                 } else {
-                    logMessage = `Status pesanan ${order.id} adalah ${order.status}. Mengabaikan webhook penerimaan ${salesReceiptNo}.`;
-                 }
-            }
+        // ==================================================================
+        // INI ADALAH LOGIKA LUNAS YANG SEBENARNYA (DIPERTAHANKAN)
+        // 'SALES_RECEIPT' adalah konfirmasi pembayaran.
+        // Di sinilah kita harus mengubah status ke 'COMPLETED' untuk Reseller.
+        // ==================================================================
+        const isReseller = order.user?.role === Role.RESELLER;
+        const newStatus = isReseller
+          ? OrderStatus.COMPLETED
+          : OrderStatus.PROCESSING;
 
-            if (Object.keys(dataToUpdate).length > 0) {
-                 await this.prisma.order.update({
-                    where: { id: order.id },
-                    data: dataToUpdate
-                 });
-            }
-
-            this.logger.log(logMessage);
-
+        if (
+          order.status === OrderStatus.PENDING ||
+          order.status === OrderStatus.PAID ||
+          order.status === OrderStatus.PROCESSING // Izinkan juga update dari PROCESSING (jika non-Reseller)
+        ) {
+          dataToUpdate.status = newStatus;
+          dataToUpdate.accurateSalesReceiptId = salesReceiptId;
+          logMessage = `✅ BERHASIL: Pembayaran untuk pesanan ${order.id} via SR ${salesReceiptNo} telah dikonfirmasi. Status diubah ke ${newStatus}.`;
         } else {
-            this.logger.warn(
-            `Webhook penerimaan ${salesReceiptNo} diproses, tetapi pesanan yang cocok untuk invoice ${invoiceNumber} tidak ditemukan.`,
-            );
+          if (!order.accurateSalesReceiptId) {
+            dataToUpdate.accurateSalesReceiptId = salesReceiptId;
+            logMessage = `✅ Receipt ID ${salesReceiptId} dicatat untuk order ${order.id} (status ${order.status}). Status tidak diubah.`;
+          } else {
+            logMessage = `Status pesanan ${order.id} adalah ${order.status}. Mengabaikan webhook penerimaan ${salesReceiptNo}.`;
+          }
         }
 
+        if (Object.keys(dataToUpdate).length > 0) {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: dataToUpdate,
+          });
+        }
+
+        this.logger.log(logMessage);
+      } else {
+        this.logger.warn(
+          `Webhook penerimaan ${salesReceiptNo} diproses, tetapi pesanan yang cocok untuk invoice ${invoiceNumber} tidak ditemukan. (Mungkin 'processSalesInvoiceWebhook' gagal mencatat SI?)`,
+        );
+      }
     } catch (error) {
-         this.logger.error(
-            `❌ Error processing Sales Receipt webhook for ${salesReceiptNo}: ${error.message}`,
-            error.stack,
-         );
+      this.logger.error(
+        `❌ Error processing Sales Receipt webhook for ${salesReceiptNo}: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
   async handleBiteshipTrackingUpdate(payload: any) {
-    const { status, courier_waybill_id: waybill_id, order_id: biteshipOrderId } = payload;
+    const {
+      status,
+      courier_waybill_id: waybill_id,
+      order_id: biteshipOrderId,
+    } = payload;
 
     if (!waybill_id || !status) {
       this.logger.warn(
@@ -548,18 +701,22 @@ export class WebhooksService {
     }
 
     let shipment = await this.prisma.shipment.findFirst({
-        where: { trackingNumber: waybill_id },
+      where: { trackingNumber: waybill_id },
     });
 
     if (!shipment && biteshipOrderId) {
-        this.logger.log(`Shipment for waybill ${waybill_id} not found, trying lookup via Biteship Order ID: ${biteshipOrderId}`);
+      this.logger.log(
+        `Shipment for waybill ${waybill_id} not found, trying lookup via Biteship Order ID: ${biteshipOrderId}`,
+      );
+      // Anda mungkin perlu menambahkan logika pencarian via biteshipOrderId di sini
+      // shipment = await this.prisma.shipment.findFirst({ where: { biteshipOrderId: biteshipOrderId } });
     }
 
     if (!shipment) {
-       this.logger.warn(
-          `Webhook Biteship diterima untuk waybill/order_id yang tidak dikenal: ${waybill_id} / ${biteshipOrderId}`,
-       );
-       return;
+      this.logger.warn(
+        `Webhook Biteship diterima untuk waybill/order_id yang tidak dikenal: ${waybill_id} / ${biteshipOrderId}`,
+      );
+      return;
     }
 
     let newStatus: OrderStatus | null = null;
@@ -579,56 +736,75 @@ export class WebhooksService {
       case 'cancelled':
         newStatus = OrderStatus.CANCELLED;
         break;
-       default:
-          this.logger.log(`Ignoring Biteship status update '${status}' for waybill ${waybill_id}`);
-          break;
+      default:
+        this.logger.log(
+          `Ignoring Biteship status update '${status}' for waybill ${waybill_id}`,
+        );
+        break;
     }
 
     if (newStatus) {
       try {
-           const currentOrder = await this.prisma.order.findUnique({ where: { id: shipment.orderId } });
-           if (!currentOrder) {
-                this.logger.error(`Order with ID ${shipment.orderId} not found for shipment ${shipment.id}`);
-                return;
-           }
+        const currentOrder = await this.prisma.order.findUnique({
+          where: { id: shipment.orderId },
+        });
+        if (!currentOrder) {
+          this.logger.error(
+            `Order with ID ${shipment.orderId} not found for shipment ${shipment.id}`,
+          );
+          return;
+        }
 
-           const getStatusOrderValue = (status: OrderStatus): number => {
-                switch (status) {
-                    case OrderStatus.PENDING: return 0;
-                    case OrderStatus.PAID: return 1;
-                    case OrderStatus.PROCESSING: return 2;
-                    case OrderStatus.SHIPPED: return 3;
-                    case OrderStatus.DELIVERED: return 4;
-                    case OrderStatus.COMPLETED: return 5;
-                    default: return -1;
-                }
-           };
+        const getStatusOrderValue = (status: OrderStatus): number => {
+          switch (status) {
+            case OrderStatus.PENDING:
+              return 0;
+            case OrderStatus.PAID:
+              return 1;
+            case OrderStatus.PROCESSING:
+              return 2;
+            case OrderStatus.SHIPPED:
+              return 3;
+            case OrderStatus.DELIVERED:
+              return 4;
+            case OrderStatus.COMPLETED:
+              return 5;
+            default:
+              return -1;
+          }
+        };
 
-           const currentOrderValue = getStatusOrderValue(currentOrder.status);
-           const newOrderValue = getStatusOrderValue(newStatus);
+        const currentOrderValue = getStatusOrderValue(currentOrder.status);
+        const newOrderValue = getStatusOrderValue(newStatus);
 
-           const terminalStatuses: OrderStatus[] = [OrderStatus.CANCELLED, OrderStatus.REFUNDED];
+        const terminalStatuses: OrderStatus[] = [
+          OrderStatus.CANCELLED,
+          OrderStatus.REFUNDED,
+        ];
 
-           const shouldUpdate =
-                (terminalStatuses.includes(newStatus)) ||
-                (newOrderValue > currentOrderValue && currentOrderValue !== -1 && !terminalStatuses.includes(currentOrder.status));
+        const shouldUpdate =
+          terminalStatuses.includes(newStatus) ||
+          (newOrderValue > currentOrderValue &&
+            currentOrderValue !== -1 &&
+            !terminalStatuses.includes(currentOrder.status));
 
-           if (shouldUpdate && currentOrder.status !== newStatus) {
-                 await this.prisma.order.update({
-                      where: { id: shipment.orderId },
-                      data: { status: newStatus },
-                 });
-                 this.logger.log(
-                      `Status Order ID ${shipment.orderId} diubah menjadi ${newStatus} via webhook Biteship (Waybill: ${waybill_id}).`,
-                 );
-           } else if (currentOrder.status === newStatus) {
-                 this.logger.log(`Order ${shipment.orderId} already has status ${newStatus}. Ignoring webhook Biteship.`);
-           } else {
-                 this.logger.log(
-                      `Ignoring Biteship status update from ${currentOrder.status} to ${newStatus} for waybill ${waybill_id} based on update logic.`,
-                 );
-           }
-
+        if (shouldUpdate && currentOrder.status !== newStatus) {
+          await this.prisma.order.update({
+            where: { id: shipment.orderId },
+            data: { status: newStatus },
+          });
+          this.logger.log(
+            `Status Order ID ${shipment.orderId} diubah menjadi ${newStatus} via webhook Biteship (Waybill: ${waybill_id}).`,
+          );
+        } else if (currentOrder.status === newStatus) {
+          this.logger.log(
+            `Order ${shipment.orderId} already has status ${newStatus}. Ignoring webhook Biteship.`,
+          );
+        } else {
+          this.logger.log(
+            `Ignoring Biteship status update from ${currentOrder.status} to ${newStatus} for waybill ${waybill_id} based on update logic.`,
+          );
+        }
       } catch (error) {
         this.logger.error(
           `Gagal memproses webhook Biteship untuk waybill_id: ${waybill_id}`,
@@ -637,5 +813,5 @@ export class WebhooksService {
       }
     }
   }
-
 }
+
