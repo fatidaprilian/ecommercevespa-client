@@ -131,13 +131,13 @@ export default function Navbar() {
                     <div className="container mx-auto px-6 h-14 flex items-center justify-between">
                         <div className="flex items-center space-x-6 text-sm font-medium">
                             <a
-                                href="https://wa.me/628159922321"
+                                href="https://wa.me/628131010025"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 hover:text-gray-300 transition-colors"
                             >
                                 <Phone size={32} />
-                                <span>+628159922321</span>
+                                <span>+628131010025</span>
                             </a>
                         </div>
                         <div className="flex items-center gap-1">

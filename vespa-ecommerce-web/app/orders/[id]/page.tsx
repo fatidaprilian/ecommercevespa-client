@@ -286,23 +286,31 @@ export default function OrderDetailPage() {
             className="lg:col-span-2 space-y-6"
           >
             
-            {/* Info untuk Reseller */}
-            {isReseller && order.status === 'PENDING' && (
-              <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-r-lg shadow">
-                <div className="flex">
-                  <div className="py-1">
-                    <Info className="h-6 w-6 text-blue-500 mr-4"/>
-                  </div>
-                  <div>
-                    <p className="font-bold">Menunggu Pembayaran Faktur</p>
-                    <p className="text-sm">
-                      Admin telah mengonfirmasi pesanan Anda. Silakan periksa komunikasi Anda 
-                      (misal: WhatsApp) untuk faktur dan lakukan pembayaran.
-                    </p>
-                  </div>
+          {/* Info untuk Reseller */}
+          {isReseller && order.status === 'PENDING' && (
+            <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-r-lg shadow">
+              <div className="flex">
+                <div className="py-1">
+                  <Info className="h-6 w-6 text-blue-500 mr-4"/>
+                </div>
+                <div>
+                  <p className="font-bold">Menunggu Pembayaran Faktur</p>
+                  <p className="text-sm">
+                    Admin telah mengonfirmasi pesanan Anda. Silakan{' '}
+                    <a 
+                      href="https://wa.me/628131010025" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 underline font-medium"
+                    >
+                      hubungi kami via WhatsApp
+                    </a>
+                    {' '}untuk faktur dan lakukan pembayaran.
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
             
             {isReseller && order.status === 'PROCESSING' && (
               <div className="bg-green-50 border-l-4 border-green-400 text-green-800 p-4 rounded-r-lg shadow">

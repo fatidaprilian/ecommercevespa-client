@@ -31,13 +31,13 @@ const Footer = () => {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 border-b border-gray-600 pb-6 mb-6 text-center">
             <h3 className="text-2xl font-semibold tracking-wider">Hubungi Kami</h3>
             <a
-                href="https://wa.me/628159922321"
+                href="https://wa.me/628131010025"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 hover:text-gray-300 transition-colors text-xl"
             >
                 <Phone size={26} />
-                <span>+628159922321</span>
+                <span>+628131010025</span>
             </a>
             <a
                 href="https://instagram.com/jakartascootershop"

@@ -13,11 +13,22 @@ import {
 } from '@/components/ui/carousel';
 import { useBanners } from '@/hooks/use-banners';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMemo } from 'react';
 
 const HeroCarousel = () => {
   const { data: banners, isLoading } = useBanners();
 
   const heroItems = banners?.filter((b) => b.type === 'HERO') || [];
+
+  // Duplikasi items jika kurang dari 3 untuk membuat loop bekerja
+  const displayItems = useMemo(() => {
+    if (heroItems.length === 0) return [];
+    if (heroItems.length >= 3) return heroItems;
+    
+    // Jika 1-2 items, duplikasi sampai minimal 3x
+    const multiplier = Math.ceil(3 / heroItems.length);
+    return Array(multiplier).fill(heroItems).flat();
+  }, [heroItems]);
 
   if (isLoading) {
     return (
@@ -35,8 +46,8 @@ const HeroCarousel = () => {
     <section className="w-full relative overflow-hidden">
       <Carousel opts={{ loop: true, align: 'center' }} className="w-full">
         <CarouselContent>
-          {heroItems.map((item, index) => (
-            <CarouselItem key={item.id} className="pl-0 basis-full md:basis-[85%] lg:basis-[80%]">
+          {displayItems.map((item, index) => (
+            <CarouselItem key={`${item.id}-${index}`} className="pl-0 basis-full md:basis-[85%] lg:basis-[80%]">
               <Link href={item.linkUrl || '#'}>
                 <div className="relative w-full h-56 md:h-96 lg:h-[500px]">
                   <Image
