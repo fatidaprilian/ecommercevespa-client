@@ -27,7 +27,7 @@ export class EmailService {
     });
   }
 
-  private async sendEmail(to: { email: string; name: string }, subject: string, htmlContent: string) {
+  public async sendEmail(to: { email: string; name: string }, subject: string, htmlContent: string) {
     const mailOptions = {
       from: `"${this.senderName}" <${this.senderEmail}>`,
       to: to.email,

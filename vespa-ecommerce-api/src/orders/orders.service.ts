@@ -20,6 +20,7 @@ import { AccurateSyncService } from 'src/accurate-sync/accurate-sync.service';
 import { SettingsService } from 'src/settings/settings.service';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { EmailService } from 'src/email/email.service'; // <--- 1. IMPORT EmailService
 
 @Injectable()
 export class OrdersService {
@@ -31,6 +32,7 @@ export class OrdersService {
     private discountsCalcService: DiscountsCalculationService,
     private accurateSyncService: AccurateSyncService,
     private settingsService: SettingsService,
+    private emailService: EmailService, // <--- 2. INJECT EmailService
   ) {}
 
   /**
@@ -171,6 +173,47 @@ export class OrdersService {
 
     // --- Logika Setelah Transaksi ---
 
+    // --- 3. TAMBAHKAN LOGIKA EMAIL NOTIFIKASI (DENGAN FIX) ---
+    try {
+      // 'user' sudah kita dapatkan di atas
+      const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+      if (adminEmail && user) {
+        const subject = `Pesanan Baru Diterima: ${createdOrder.orderNumber}`;
+        const html = `
+          <h1>Pesanan Baru Masuk</h1>
+          <p>Order <strong>${createdOrder.orderNumber}</strong> telah dibuat.</p>
+          <p>User: ${user.name} (${user.email})</p>
+          <p>Role: ${user.role}</p>
+          <p>Status: ${createdOrder.status}</p>
+          <p>Total: ${createdOrder.totalAmount.toLocaleString('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+          })}</p>
+          <p>Silakan cek panel admin untuk detailnya.</p>
+        `;
+
+        // Kirim email "tanpa menunggu" (fire-and-forget)
+        this.emailService
+          .sendEmail(
+            { email: adminEmail, name: 'Admin' }, // <--- FIX: Kirim sbg objek
+            subject,
+            html,
+          )
+          .catch((err) => {
+            this.logger.error(
+              `Gagal kirim email notif order: ${createdOrder.id}`,
+              err,
+            );
+          });
+      }
+    } catch (emailError) {
+      this.logger.error(
+        `Error saat persiapan kirim email: ${createdOrder.id}`,
+        emailError,
+      );
+    }
+    // --- AKHIR KODE TAMBAHAN ---
+
     // RESELLER: Alur tetap sama, langsung kirim job ke Accurate
     if (user.role === Role.RESELLER) {
       await this.accurateSyncService.addSalesOrderJobToQueue(createdOrder.id);
@@ -216,7 +259,9 @@ export class OrdersService {
             ...stockRestoreOperations,
             cancelOrderOperation,
           ]);
-          this.logger.log(`Rollback stok berhasil untuk order ${createdOrder.id}.`);
+          this.logger.log(
+            `Rollback stok berhasil untuk order ${createdOrder.id}.`,
+          );
         } catch (rollbackError) {
           this.logger.error(
             `FATAL: Gagal rollback stok untuk order ${createdOrder.id}. Perlu pengecekan manual!`,
@@ -513,7 +558,9 @@ export class OrdersService {
           `Gagal transaksi saat update order ${orderId} ke PROCESSING`,
           error,
         );
-        throw new InternalServerErrorException('Gagal memproses status pesanan.');
+        throw new InternalServerErrorException(
+          'Gagal memproses status pesanan.',
+        );
       }
     }
     // --- AKHIR BLOK YANG DIPERBAIKI ---
