@@ -189,16 +189,17 @@ export class WebhooksService {
       switch (eventType) {
         case 'SALES_INVOICE':
           // ==================================================================
-          // PERBAIKAN #1: (DIPERTAHANKAN)
-          // Hapus pengecekan 'status === LUNAS'. Payload SI tidak berisi 'status'.
-          // Pengecekan ini (eventDataRoot.status) selalu 'undefined' dan menyebabkan log "Mengabaikan... (undefined)"
-          // Biarkan 'processSalesInvoiceWebhook' selalu berjalan untuk mencatat nomor SI.
-          // Logika LUNAS akan ditangani oleh 'SALES_RECEIPT'.
+          // PERUBAHAN: Sekarang SALES_INVOICE yang akan handle status LUNAS/COMPLETED
+          // berdasarkan observasi user bahwa webhook ini yang trigger saat lunas.
           // ==================================================================
           await this.processSalesInvoiceWebhook(eventDataRoot);
           break;
 
         case 'SALES_RECEIPT':
+          // ==================================================================
+          // PERUBAHAN: SALES_RECEIPT sekarang hanya mencatat ID SR jika webhooknya masuk.
+          // Tidak lagi mengubah status order.
+          // ==================================================================
           await this.processSalesReceiptWebhook(eventDataRoot);
           break;
 
@@ -414,10 +415,6 @@ export class WebhooksService {
   }
 
   private async processSalesInvoiceWebhook(eventData: any) {
-    // ==================================================================
-    // PERBAIKAN #2: (DIPERTAHANKAN)
-    // Baca field 'salesInvoiceNo' dan 'salesInvoiceId' sebagai fallback dari 'number' dan 'id'
-    // ==================================================================
     const salesInvoiceNo = eventData.number || eventData.salesInvoiceNo;
     const salesInvoiceId = eventData.id || eventData.salesInvoiceId;
 
@@ -434,38 +431,43 @@ export class WebhooksService {
     );
 
     let orderNumberFromInvoice: string | null = null;
-    
-    // ==================================================================
-    // PERBAIKAN #4: LOGIKA WAJIB FETCH DETAIL
-    // Karena payload tidak berisi 'detailItem', kita HARUS mem-fetch-nya.
-    // ==================================================================
+    let siDetail: any = null; // Variable to store fetched SI detail
+
     try {
-        this.logger.log(`Payload SI ${salesInvoiceNo} minimal. Fetching details from Accurate...`);
-        
-        // ==================================================================
-        // PERBAIKAN #6: Menggunakan nama fungsi yang BENAR
-        // ==================================================================
-        const siDetail = await this.accurateService.getSalesInvoiceByNumber(salesInvoiceNo);
-        // ==================================================================
+      this.logger.log(
+        `Payload SI ${salesInvoiceNo} minimal. Fetching details from Accurate...`,
+      );
+      siDetail = await this.accurateService.getSalesInvoiceByNumber(
+        salesInvoiceNo,
+      );
 
-        // Cek struktur response dari getSalesInvoiceByNumber
-        // Sesuaikan jika struktur 'detailItem' atau 'salesOrder' berbeda
-        const soNumber = siDetail?.detailItem?.[0]?.salesOrder?.number; // <- Periksa struktur ini
-        if (soNumber) {
-            orderNumberFromInvoice = soNumber.replace(/^SO-/, '');
-            this.logger.log(`✅ Sukses fetch SI. Ditemukan SO: ${soNumber}. Ekstrak Order Number: ${orderNumberFromInvoice}`);
+      const soNumber = siDetail?.detailItem?.[0]?.salesOrder?.number;
+      if (soNumber) {
+        orderNumberFromInvoice = soNumber.replace(/^SO-/, '');
+        this.logger.log(
+          `✅ Sukses fetch SI. Ditemukan SO: ${soNumber}. Ekstrak Order Number: ${orderNumberFromInvoice}`,
+        );
+      } else {
+        this.logger.warn(
+          `SI ${salesInvoiceNo} tidak memiliki SO terkait di detailnya (setelah fetch). Detail: ${JSON.stringify(
+            siDetail,
+          )}`,
+        );
+        // Coba cari order berdasarkan nomor SI jika polanya INV-{orderNumber}
+        const potentialOrderNumber = salesInvoiceNo.replace(/^INV-/, '');
+        if(potentialOrderNumber !== salesInvoiceNo){
+           this.logger.log(`Mencoba fallback pencarian order berdasarkan pola INV-: ${potentialOrderNumber}`);
+           orderNumberFromInvoice = potentialOrderNumber;
         } else {
-            // Log detail response jika SO tidak ditemukan
-            this.logger.warn(`SI ${salesInvoiceNo} tidak memiliki SO terkait di detailnya (setelah fetch). Detail: ${JSON.stringify(siDetail)}`);
-            return;
+           return; // Tetap return jika tidak ada SO dan tidak cocok pola INV-
         }
+      }
     } catch (fetchError) {
-         this.logger.error(`❌ Gagal fetch detail SI ${salesInvoiceNo}: ${fetchError.message}`);
-         // Hapus log ini karena nama fungsi sudah benar
-         // this.logger.error(`❌ PASTIKAN NAMA FUNGSI 'getSalesInvoiceDetailByNo' SUDAH BENAR SESUAI 'accurate.service.ts'`);
-         return;
+      this.logger.error(
+        `❌ Gagal fetch detail SI ${salesInvoiceNo}: ${fetchError.message}`,
+      );
+      return;
     }
-
 
     if (!orderNumberFromInvoice) {
       this.logger.warn(
@@ -481,73 +483,55 @@ export class WebhooksService {
       });
 
       if (order) {
-        if (order.accurateSalesInvoiceNumber === salesInvoiceNo) {
+        if (order.accurateSalesInvoiceNumber === salesInvoiceNo && order.status === OrderStatus.COMPLETED) {
           this.logger.log(
-            `Invoice ${salesInvoiceNo} sudah tercatat untuk order ${order.orderNumber}. Mengabaikan.`,
+            `Invoice ${salesInvoiceNo} sudah tercatat dan order ${order.orderNumber} sudah COMPLETED. Mengabaikan.`,
           );
           return;
         }
 
         // ==================================================================
-        // PERBAIKAN: (DIPERTAHANKAN) eventData.status selalu undefined.
-        // Logika ini akan selalu 'true' (undefined !== 'LUNAS')
-        // Ini adalah perilaku yang BENAR. Kita hanya mencatat SI di sini.
-        // Logika LUNAS ada di SALES_RECEIPT.
+        // PERUBAHAN: Logika LUNAS/COMPLETED dipindah ke sini
+        // Kita ASUMSIKAN jika webhook SI ini masuk, berarti sudah LUNAS
+        // karena observasi user + webhook SR tidak masuk.
         // ==================================================================
-        if (eventData.status !== 'LUNAS') {
-          await this.prisma.order.update({
-            where: { id: order.id },
-            data: {
-              accurateSalesInvoiceNumber: salesInvoiceNo,
-              accurateSalesInvoiceId: salesInvoiceId,
-            },
-          });
-          this.logger.log(
-            `✅ Invoice ${salesInvoiceNo} (status: ${eventData.status}) dicatat untuk order ${order.orderNumber}. Status tidak diubah.`,
-          );
-          return;
-        }
+        const isReseller = order.user?.role === Role.RESELLER;
+        const newStatus = isReseller
+          ? OrderStatus.COMPLETED
+          : OrderStatus.PROCESSING; // Non-reseller tetap PROCESSING dulu
 
-        // Blok ini kemungkinan tidak akan pernah berjalan, karena SI tidak punya 'status'.
-        // Tapi kita biarkan sesuai permintaan "jangan ubah logika".
-        const newStatus =
-          order.user?.role === Role.RESELLER
-            ? OrderStatus.COMPLETED
-            : OrderStatus.PROCESSING;
+        let dataToUpdate: Prisma.OrderUpdateInput = {
+          accurateSalesInvoiceNumber: salesInvoiceNo,
+          accurateSalesInvoiceId: salesInvoiceId,
+        };
+        let logMessage = '';
 
         if (
           order.status === OrderStatus.PENDING ||
-          order.status === OrderStatus.PAID
+          order.status === OrderStatus.PAID ||
+          order.status === OrderStatus.PROCESSING // Izinkan update dari status sebelumnya
         ) {
-          await this.prisma.order.update({
-            where: { id: order.id },
-            data: {
-              accurateSalesInvoiceNumber: salesInvoiceNo,
-              accurateSalesInvoiceId: salesInvoiceId,
-              status: newStatus,
-            },
-          });
-          this.logger.log(
-            `✅ BERHASIL: Invoice ${salesInvoiceNo} (LUNAS) di-link ke order ${order.id} (${order.orderNumber}). Status diubah ke ${newStatus}.`,
-          );
+          dataToUpdate.status = newStatus;
+          logMessage = `✅ BERHASIL: Invoice ${salesInvoiceNo} (diasumsikan LUNAS) di-link ke order ${order.id} (${order.orderNumber}). Status diubah ke ${newStatus}.`;
+        } else if (order.status !== OrderStatus.COMPLETED) {
+            // Jika status sudah SHIPPED/DELIVERED dll tapi SI belum tercatat
+             logMessage = `✅ Invoice ${salesInvoiceNo} (diasumsikan LUNAS) dicatat untuk order ${order.orderNumber} (status ${order.status}). Status tidak diubah karena sudah lebih lanjut.`;
         } else {
-          if (!order.accurateSalesInvoiceNumber) {
+            // Jika sudah COMPLETED tapi SI beda (jarang terjadi)
+             logMessage = `✅ Invoice ${salesInvoiceNo} (diasumsikan LUNAS) dicatat untuk order ${order.orderNumber} yang sudah COMPLETED.`;
+        }
+        
+        // Hanya update jika ada perubahan
+        if(order.accurateSalesInvoiceNumber !== salesInvoiceNo || order.status !== newStatus) {
             await this.prisma.order.update({
               where: { id: order.id },
-              data: {
-                accurateSalesInvoiceNumber: salesInvoiceNo,
-                accurateSalesInvoiceId: salesInvoiceId,
-              },
+              data: dataToUpdate,
             });
-            this.logger.log(
-              `✅ Invoice ${salesInvoiceNo} (LUNAS) dicatat untuk order ${order.orderNumber} (status ${order.status}).`,
-            );
-          } else {
-            this.logger.log(
-              `Pesanan ${order.id} sudah dalam status ${order.status}. Mengabaikan update status dari webhook faktur lunas ${salesInvoiceNo}.`,
-            );
-          }
+            this.logger.log(logMessage);
+        } else {
+             this.logger.log(`Tidak ada perubahan data untuk order ${order.orderNumber} dari webhook SI ${salesInvoiceNo}.`);
         }
+        
       } else {
         this.logger.warn(
           `❌ Order tidak ditemukan untuk nomor: ${orderNumberFromInvoice} (dari Invoice ${salesInvoiceNo})`,
@@ -562,11 +546,6 @@ export class WebhooksService {
   }
 
   private async processSalesReceiptWebhook(eventData: any) {
-    // ==================================================================
-    // PERBAIKAN #3: (DIPERTAHANKAN)
-    // Baca field 'salesReceiptNo' dan 'salesReceiptId' sebagai fallback
-    // Ini memperbaiki bug "Webhook ... tidak memiliki nomor ('number')"
-    // ==================================================================
     const salesReceiptNo = eventData.number || eventData.salesReceiptNo;
     const salesReceiptId = eventData.id || eventData.salesReceiptId;
 
@@ -584,36 +563,32 @@ export class WebhooksService {
 
     let invoiceNumber: string | null = null;
     
-    // ==================================================================
-    // PERBAIKAN #5: LOGIKA WAJIB FETCH DETAIL
-    // Karena payload tidak berisi 'detailInvoice', kita HARUS mem-fetch-nya.
-    // ==================================================================
     try {
-        this.logger.warn(`detailInvoice tidak ada di payload SR ${salesReceiptNo}. Mencoba fetch detail...`);
-        
-        // ==================================================================
-        // PERBAIKAN #7: Menggunakan nama fungsi yang BENAR
-        // ==================================================================
-        const srDetail = await this.accurateService.getSalesReceiptDetailByNumber(salesReceiptNo);
-        // ==================================================================
-        
-        // Cek struktur response dari getSalesReceiptDetailByNumber
-        // Sesuaikan jika struktur 'detailInvoice' atau 'invoice' berbeda
-        invoiceNumber = srDetail?.detailInvoice?.[0]?.invoice?.number; // <- Periksa struktur ini
-        if (invoiceNumber) {
-            this.logger.log(`✅ Sukses fetch SR. Ditemukan Invoice: ${invoiceNumber}`);
-        } else {
-             // Log detail response jika Invoice tidak ditemukan
-            this.logger.warn(`Invoice tidak ditemukan di detail SR ${salesReceiptNo} (setelah fetch). Detail: ${JSON.stringify(srDetail)}`);
-            return;
-        }
+      this.logger.warn(
+        `detailInvoice tidak ada di payload SR ${salesReceiptNo}. Mencoba fetch detail...`,
+      );
+      const srDetail = await this.accurateService.getSalesReceiptDetailByNumber(
+        salesReceiptNo,
+      );
+      invoiceNumber = srDetail?.detailInvoice?.[0]?.invoice?.number;
+      if (invoiceNumber) {
+        this.logger.log(
+          `✅ Sukses fetch SR. Ditemukan Invoice: ${invoiceNumber}`,
+        );
+      } else {
+        this.logger.warn(
+          `Invoice tidak ditemukan di detail SR ${salesReceiptNo} (setelah fetch). Detail: ${JSON.stringify(
+            srDetail,
+          )}`,
+        );
+        return;
+      }
     } catch (fetchError) {
-         this.logger.error(`❌ Gagal fetch detail SR ${salesReceiptNo}: ${fetchError.message}`);
-         // Hapus log ini karena nama fungsi sudah benar
-         // this.logger.error(`❌ PASTIKAN NAMA FUNGSI 'getSalesReceiptDetailByNo' SUDAH BENAR SESUAI 'accurate.service.ts'`);
-         return;
+      this.logger.error(
+        `❌ Gagal fetch detail SR ${salesReceiptNo}: ${fetchError.message}`,
+      );
+      return;
     }
-
 
     if (!invoiceNumber) {
       this.logger.warn(
@@ -634,44 +609,26 @@ export class WebhooksService {
       });
 
       if (order) {
-        let dataToUpdate: Prisma.OrderUpdateInput = {};
-        let logMessage = '';
-
         // ==================================================================
-        // INI ADALAH LOGIKA LUNAS YANG SEBENARNYA (DIPERTAHANKAN)
-        // 'SALES_RECEIPT' adalah konfirmasi pembayaran.
-        // Di sinilah kita harus mengubah status ke 'COMPLETED' untuk Reseller.
+        // PERUBAHAN: Hanya mencatat SR ID, tidak mengubah status lagi.
+        // Status diubah oleh processSalesInvoiceWebhook.
         // ==================================================================
-        const isReseller = order.user?.role === Role.RESELLER;
-        const newStatus = isReseller
-          ? OrderStatus.COMPLETED
-          : OrderStatus.PROCESSING;
-
-        if (
-          order.status === OrderStatus.PENDING ||
-          order.status === OrderStatus.PAID ||
-          order.status === OrderStatus.PROCESSING // Izinkan juga update dari PROCESSING (jika non-Reseller)
-        ) {
-          dataToUpdate.status = newStatus;
-          dataToUpdate.accurateSalesReceiptId = salesReceiptId;
-          logMessage = `✅ BERHASIL: Pembayaran untuk pesanan ${order.id} via SR ${salesReceiptNo} telah dikonfirmasi. Status diubah ke ${newStatus}.`;
+        if (!order.accurateSalesReceiptId) {
+            await this.prisma.order.update({
+              where: { id: order.id },
+              data: { accurateSalesReceiptId: salesReceiptId },
+            });
+            this.logger.log(`✅ Receipt ID ${salesReceiptId} (SR ${salesReceiptNo}) dicatat untuk order ${order.id} (invoice ${invoiceNumber}). Status order (${order.status}) tidak diubah oleh SR.`);
+        } else if (order.accurateSalesReceiptId === salesReceiptId) {
+            this.logger.log(`Receipt ID ${salesReceiptId} sudah tercatat untuk order ${order.id}. Mengabaikan.`);
         } else {
-          if (!order.accurateSalesReceiptId) {
-            dataToUpdate.accurateSalesReceiptId = salesReceiptId;
-            logMessage = `✅ Receipt ID ${salesReceiptId} dicatat untuk order ${order.id} (status ${order.status}). Status tidak diubah.`;
-          } else {
-            logMessage = `Status pesanan ${order.id} adalah ${order.status}. Mengabaikan webhook penerimaan ${salesReceiptNo}.`;
-          }
+             this.logger.warn(`Order ${order.id} sudah memiliki Receipt ID ${order.accurateSalesReceiptId}, mencoba mencatat SR baru ${salesReceiptId} (SR ${salesReceiptNo}). Ini mungkin tidak diharapkan.`);
+              await this.prisma.order.update({
+                where: { id: order.id },
+                data: { accurateSalesReceiptId: salesReceiptId }, // Overwrite jika perlu
+              });
         }
-
-        if (Object.keys(dataToUpdate).length > 0) {
-          await this.prisma.order.update({
-            where: { id: order.id },
-            data: dataToUpdate,
-          });
-        }
-
-        this.logger.log(logMessage);
+        
       } else {
         this.logger.warn(
           `Webhook penerimaan ${salesReceiptNo} diproses, tetapi pesanan yang cocok untuk invoice ${invoiceNumber} tidak ditemukan. (Mungkin 'processSalesInvoiceWebhook' gagal mencatat SI?)`,
