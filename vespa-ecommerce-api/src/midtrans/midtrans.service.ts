@@ -24,10 +24,10 @@ export class MidtransService {
     'bca_va',
     'bni_va',
     'bri_va',
-    'echannel',
+    'mandiri_va',
+    'shopeepay',
+    'gopay',
     'permata_va',
-    'indomaret',
-    'alfamart',
     'qris',
   ];
 
