@@ -6,7 +6,8 @@ import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
+// HAPUS: import toast from 'react-hot-toast';
+import { toast } from 'sonner'; // <-- GANTI: Impor dari sonner
 import { ArrowLeft, UploadCloud, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -26,7 +27,7 @@ import { uploadImage } from '@/services/productService';
 
 const brandFormSchema = z.object({
   name: z.string().min(2, { message: 'Nama merek minimal 2 karakter.' }),
-  logoUrl: z.string().optional(),
+  logoUrl: z.string().min(1, { message: 'Logo merek wajib diunggah.' }),
 });
 
 type BrandFormValues = z.infer<typeof brandFormSchema>;
@@ -48,11 +49,12 @@ export default function NewBrandPage() {
     mutationFn: (data: BrandData) => createBrand(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['brands'] });
-      toast.success('Merek baru berhasil dibuat!');
+      toast.success('Data berhasil disimpan!'); // Panggilan ini seharusnya bekerja dengan Sonner
       router.push('/brands');
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.message || 'Gagal membuat merek.';
+      // Panggil toast.error dari sonner
       toast.error(errorMessage);
     },
   });
@@ -62,13 +64,16 @@ export default function NewBrandPage() {
     if (!file) return;
 
     setIsUploading(true);
+    // Panggil toast.loading dari sonner (Sonner mungkin mengembalikan ID atau tidak)
     const toastId = toast.loading('Mengunggah logo...');
 
     try {
       const response = await uploadImage(file);
       form.setValue('logoUrl', response.url, { shouldValidate: true });
+      // Panggil toast.success dari sonner, sertakan ID jika Sonner mendukungnya untuk dismiss loading
       toast.success('Logo berhasil diunggah!', { id: toastId });
     } catch (error) {
+       // Panggil toast.error dari sonner, sertakan ID jika Sonner mendukungnya untuk dismiss loading
       toast.error('Gagal mengunggah logo.', { id: toastId });
     } finally {
       setIsUploading(false);

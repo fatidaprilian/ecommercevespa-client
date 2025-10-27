@@ -1,6 +1,6 @@
 // file: src/categories/categories.service.ts
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'; // Ditambahkan ConflictException
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -11,10 +11,19 @@ import { QueryCategoryDto } from './dto/query-category.dto';
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
 
-  create(createCategoryDto: CreateCategoryDto): Promise<Category> {
-    return this.prisma.category.create({
-      data: createCategoryDto,
-    });
+  async create(createCategoryDto: CreateCategoryDto): Promise<Category> { // Ditambahkan async dan await
+    try {
+      return await this.prisma.category.create({
+        data: createCategoryDto,
+      });
+    } catch (error) {
+      // Menangani error duplikat (unique constraint)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Nama kategori sudah ada.');
+      }
+      // Lempar error lain jika bukan duplikat
+      throw error;
+    }
   }
 
   async findAll(queryDto: QueryCategoryDto) {
@@ -61,15 +70,28 @@ export class CategoriesService {
     return category;
   }
 
-  update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
-    return this.prisma.category.update({
-      where: { id },
-      data: updateCategoryDto,
-    });
+  async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> { // Ditambahkan async dan await
+    try {
+      return await this.prisma.category.update({
+        where: { id },
+        data: updateCategoryDto,
+      });
+    } catch (error) {
+       // Menangani error duplikat saat update
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Nama kategori sudah ada.');
+      }
+      // Menangani jika record tidak ditemukan (P2025)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`Kategori dengan ID ${id} tidak ditemukan.`);
+      }
+      // Lempar error lain
+      throw error;
+    }
   }
 
   async remove(id: string): Promise<Category> {
-    const category = await this.findOne(id);
+    const category = await this.findOne(id); // Memastikan kategori ada
     return this.prisma.category.delete({ where: { id: category.id } });
   }
 }

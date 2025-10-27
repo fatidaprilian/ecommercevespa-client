@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
+// import Image from 'next/image'; // Dihapus
 import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/button';
@@ -105,7 +105,7 @@ export default function CategoriesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">Gambar</TableHead>
+                  {/* <TableHead className="w-[80px]">Gambar</TableHead> -- Dihapus */}
                   <TableHead>Nama Kategori</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
@@ -120,20 +120,22 @@ export default function CategoriesPage() {
                 >
                   {isLoading ? (
                     <motion.tr variants={itemVariants}>
-                      <TableCell colSpan={3} className="text-center h-24">
+                      <TableCell colSpan={2} className="text-center h-24"> {/* colSpan diubah ke 2 */}
                         <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                       </TableCell>
                     </motion.tr>
                   ) : isError ? (
                     <motion.tr variants={itemVariants}>
-                      <TableCell colSpan={3} className="text-center h-24 text-red-500">{(error as Error).message}</TableCell>
+                      <TableCell colSpan={2} className="text-center h-24 text-red-500">{(error as Error).message}</TableCell> {/* colSpan diubah ke 2 */}
                     </motion.tr>
                   ) : categories?.length > 0 ? (
                     categories.map((category) => (
                       <motion.tr key={category.id} variants={itemVariants}>
-                        <TableCell>
-                           <Image src={category.imageUrl || '/placeholder.svg'} alt={category.name} width={48} height={48} className="rounded-md object-cover bg-muted" />
+                        {/* <TableCell>
+                          <Image src={category.imageUrl || '/placeholder.svg'} alt={category.name} width={48} height={48} className="rounded-md object-cover bg-muted" />
                         </TableCell>
+                        -- Dihapus
+                        */}
                         <TableCell className="font-medium">{category.name}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -165,7 +167,7 @@ export default function CategoriesPage() {
                     ))
                   ) : (
                     <motion.tr variants={itemVariants}>
-                      <TableCell colSpan={3} className="text-center h-24">Kategori tidak ditemukan.</TableCell>
+                      <TableCell colSpan={2} className="text-center h-24">Kategori tidak ditemukan.</TableCell> {/* colSpan diubah ke 2 */}
                     </motion.tr>
                   )}
                 </motion.tbody>
