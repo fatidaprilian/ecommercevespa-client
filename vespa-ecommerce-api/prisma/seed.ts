@@ -11,14 +11,14 @@ async function main() {
   // === SEED ADMIN USER (KODE ANDA YANG SUDAH ADA) ===
   // ============================================
   const saltRounds = 10;
-  const password = 'password'; 
+  const password = 'Xsv31&fhst19'; 
   const hashedPassword = await bcrypt.hash(password, saltRounds);
 
   const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@vespa.com' }, 
+    where: { email: 'Jakartascootershop@gmail.com' }, 
     update: {}, 
     create: {
-      email: 'admin@vespa.com',
+      email: 'Jakartascootershop@gmail.com',
       name: 'Super Admin',
       password: hashedPassword,
       role: Role.ADMIN,
