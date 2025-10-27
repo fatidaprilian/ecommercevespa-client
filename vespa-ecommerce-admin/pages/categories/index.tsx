@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { motion, AnimatePresence } from 'framer-motion';
-// import Image from 'next/image'; // Dihapus
 import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/button';

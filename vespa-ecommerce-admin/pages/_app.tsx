@@ -2,7 +2,7 @@ import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/sonner'; // <-- 1. DIUBAH: Impor Toaster dari Sonner
+import { Toaster } from '@/components/ui/sonner'; 
 
 import AdminLayout from '@/components/layouts/AdminLayout';
 import AuthGuard from '@/components/guards/AuthGuard';

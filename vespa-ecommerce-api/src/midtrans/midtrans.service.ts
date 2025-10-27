@@ -24,11 +24,9 @@ export class MidtransService {
     'bca_va',
     'bni_va',
     'bri_va',
-    'mandiri_va',
-    'shopeepay',
-    'gopay',
+    'echannel',
     'permata_va',
-    'qris',
+    'other_qris',
   ];
 
   constructor(private configService: ConfigService) {

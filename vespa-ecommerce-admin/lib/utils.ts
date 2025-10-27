@@ -5,7 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// --- TAMBAHKAN FUNGSI INI ---
 export function formatRupiah(amount: number) {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -14,4 +13,3 @@ export function formatRupiah(amount: number) {
     maximumFractionDigits: 0,
   }).format(amount);
 }
-// -----------------------------

@@ -7,8 +7,7 @@ import * as z from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-// HAPUS: import toast from 'react-hot-toast';
-import { toast } from 'sonner'; // <-- GANTI: Impor dari sonner
+import { toast } from 'sonner';
 import { ArrowLeft, Trash2, UploadCloud, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,6 @@ import { uploadImage } from '@/services/productService';
 
 const brandFormSchema = z.object({
   name: z.string().min(2, { message: 'Nama merek minimal 2 karakter.' }),
-  // DIUBAH: logoUrl menjadi wajib
   logoUrl: z.string().min(1, { message: 'Logo merek wajib diunggah.' }),
 });
 
@@ -58,7 +56,7 @@ export default function EditBrandPage() {
     if (brand) {
       form.reset({
         name: brand.name,
-        logoUrl: brand.logoUrl || '', // Tetap biarkan default jika tidak ada logoUrl
+        logoUrl: brand.logoUrl || '',
       });
     }
   }, [brand, form]);
@@ -67,11 +65,10 @@ export default function EditBrandPage() {
     mutationFn: (values: BrandFormValues) => updateBrand(brandId, values as BrandData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['brands'] });
-      toast.success('Data berhasil disimpan!'); // <-- GANTI pesan sukses
+      toast.success('Data berhasil disimpan!');
       router.push('/brands');
     },
     onError: (error: any) => {
-      // Panggil toast.error dari sonner
       toast.error(error.response?.data?.message || 'Gagal memperbarui merek.');
     },
   });
@@ -80,11 +77,10 @@ export default function EditBrandPage() {
     mutationFn: () => deleteBrand(brandId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['brands'] });
-      toast.success('Merek berhasil dihapus.'); // Panggil toast.success dari sonner
+      toast.success('Merek berhasil dihapus.');
       router.push('/brands');
     },
     onError: (error: any) => {
-       // Panggil toast.error dari sonner
       toast.error(error.response?.data?.message || 'Gagal menghapus merek.');
     },
   });
@@ -94,15 +90,12 @@ export default function EditBrandPage() {
     if (!file) return;
 
     setIsUploading(true);
-    // Panggil toast.loading dari sonner
     const toastId = toast.loading('Mengunggah logo...');
     try {
       const response = await uploadImage(file);
       form.setValue('logoUrl', response.url, { shouldValidate: true });
-      // Panggil toast.success dari sonner
       toast.success('Logo berhasil diunggah!', { id: toastId });
     } catch (error) {
-      // Panggil toast.error dari sonner
       toast.error('Gagal mengunggah logo.', { id: toastId });
     } finally {
       setIsUploading(false);
@@ -110,7 +103,6 @@ export default function EditBrandPage() {
   };
 
   const removeImage = () => {
-    // Validasi Zod .min(1) akan gagal saat submit jika string kosong
     form.setValue('logoUrl', '', { shouldValidate: true });
   };
 
@@ -174,7 +166,7 @@ export default function EditBrandPage() {
                               type="button"
                               onClick={removeImage}
                               className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              disabled={isUploading || updateMutation.isPending} // Tambahkan disable saat submitting
+                              disabled={isUploading || updateMutation.isPending}
                             >
                               <X size={16} />
                             </button>
@@ -187,7 +179,7 @@ export default function EditBrandPage() {
                               type="file"
                               className="hidden"
                               onChange={handleImageUpload}
-                              disabled={isUploading || updateMutation.isPending} // Tambahkan disable saat submitting
+                              disabled={isUploading || updateMutation.isPending}
                               accept="image/png, image/jpeg, image/webp, image/svg+xml"
                             />
                           </label>
@@ -203,7 +195,7 @@ export default function EditBrandPage() {
                   type="button" 
                   variant="destructive" 
                   onClick={handleDelete}
-                  disabled={deleteMutation.isPending || updateMutation.isPending} // Disable saat update juga
+                  disabled={deleteMutation.isPending || updateMutation.isPending}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}

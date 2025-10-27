@@ -8,7 +8,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-// ✅ 1. Import Loader2
 import { ArrowLeft, UploadCloud, X, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';

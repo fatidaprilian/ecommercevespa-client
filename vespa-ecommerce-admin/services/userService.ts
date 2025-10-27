@@ -13,7 +13,6 @@ export interface User {
   email: string;
   name: string;
   role: Role;
-  // Tambahkan field ini agar datanya bisa diterima dari API
   accurateCustomerNo?: string | null; 
 }
 
@@ -34,12 +33,10 @@ export const getUserById = async (id: string): Promise<User> => {
   return data;
 };
 
-// ### FUNGSI BARU DI SINI ###
 export const updateUser = async (id: string, userData: UpdateUserData): Promise<User> => {
   const { data } = await api.patch(`/users/${id}`, userData);
   return data;
 };
-// ### SELESAI ###
 
 export const updateUserRole = async ({ id, role }: { id: string, role: Role }): Promise<User> => {
   const { data } = await api.patch(`/users/${id}/role`, { role });

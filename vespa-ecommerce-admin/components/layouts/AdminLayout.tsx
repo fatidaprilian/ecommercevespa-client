@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Sidebar */}
       <aside className="hidden w-64 flex-col border-r bg-card p-4 sm:flex">
         <Link href="/" className="mb-8 flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Vespa Admin</h1>
+            <h1 className="text-2xl font-bold text-foreground">Jakartascootershop</h1>
         </Link>
         <nav className="flex flex-col gap-1">
           {navItems.map((item) => (

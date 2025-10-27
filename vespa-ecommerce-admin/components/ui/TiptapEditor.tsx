@@ -175,7 +175,7 @@ interface TiptapEditorProps {
 // Main TiptapEditor Component
 export function TiptapEditor({ value, onChange, placeholder }: TiptapEditorProps) {
   const editor = useEditor({
-    immediatelyRender: false, // ✅ Perbaikan untuk SSR di Next.js
+    immediatelyRender: false,
     extensions: [StarterKit, TextStyle, FontSize],
     content: value,
     editorProps: {

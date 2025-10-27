@@ -83,7 +83,6 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
       router.push('/products');
     },
     onError: (error: any) => {
-      // <-- DIUBAH: Menggunakan sintaks sonner
       toast.error('Gagal Menghapus Produk', {
         description: error.response?.data?.message || 'Terjadi kesalahan tidak diketahui.',
       });

@@ -99,7 +99,6 @@ export default function PageEditor({ slug, pageTitle, pageDescription }: PageEdi
       const response = await api.post('/upload/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      // ✅ PERBAIKAN: Akses response.data.url, bukan response.url
       form.setValue('bannerImageUrl', response.data.url, { shouldValidate: true });
       toast.success('Gambar berhasil diunggah!');
     } catch (error: any) {

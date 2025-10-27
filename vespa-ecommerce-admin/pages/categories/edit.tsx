@@ -1,16 +1,14 @@
-'use client'; // Pastikan ini ada jika menggunakan App Router
+'use client';
 
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/router'; // Gunakan next/router untuk Pages Router
+import { useRouter } from 'next/router';
 import Link from 'next/link';
-// HAPUS: import toast from 'react-hot-toast';
-import { toast } from 'sonner'; // <-- GANTI: Impor dari sonner
+import { toast } from 'sonner';
 import { ArrowLeft, Trash2 } from 'lucide-react';
-// Hapus import yang tidak terpakai jika ada (seperti UploadCloud, X, useState)
 
 import { Button } from '@/components/ui/button';
 import {
@@ -23,9 +21,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getCategoryById, updateCategory, deleteCategory, CategoryData } from '@/services/categoryService'; // Pastikan path ini benar
+import { getCategoryById, updateCategory, deleteCategory, CategoryData } from '@/services/categoryService';
 
-// Skema tanpa imageUrl
 const categoryFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama kategori minimal 3 karakter.' }),
 });
@@ -41,7 +38,7 @@ export default function EditCategoryPage() {
   const { data: category, isLoading: isLoadingQuery, isError } = useQuery({
     queryKey: ['category', categoryId],
     queryFn: () => getCategoryById(categoryId),
-    enabled: !!categoryId, // Hanya fetch jika categoryId ada
+    enabled: !!categoryId,
   });
 
   const form = useForm<CategoryFormValues>({
@@ -55,7 +52,6 @@ export default function EditCategoryPage() {
     if (category) {
       form.reset({
         name: category.name,
-        // imageUrl tidak ada lagi
       });
     }
   }, [category, form]);
@@ -64,14 +60,13 @@ export default function EditCategoryPage() {
     mutationFn: (values: CategoryFormValues) => updateCategory(categoryId, values as CategoryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      queryClient.invalidateQueries({ queryKey: ['category', categoryId] }); // Invalidate detail juga
-      toast.success('Data berhasil disimpan!'); // <-- GANTI pesan sukses
+      queryClient.invalidateQueries({ queryKey: ['category', categoryId] });
+      toast.success('Data berhasil disimpan!');
       router.push('/categories');
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.message || 'Gagal memperbarui kategori.';
-      // Panggil toast.error dari sonner
-      toast.error(errorMessage); // Ini akan menampilkan pesan duplikat
+      toast.error(errorMessage);
     },
   });
 
@@ -79,12 +74,11 @@ export default function EditCategoryPage() {
     mutationFn: () => deleteCategory(categoryId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast.success('Kategori berhasil dihapus.'); // Panggil toast.success dari sonner
+      toast.success('Kategori berhasil dihapus.');
       router.push('/categories');
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.message || 'Gagal menghapus kategori.';
-       // Panggil toast.error dari sonner
       toast.error(errorMessage);
     },
   });

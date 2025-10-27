@@ -1,15 +1,13 @@
-'use client'; // Pastikan ini ada jika menggunakan App Router
+'use client';
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/router'; // Gunakan next/router untuk Pages Router
+import { useRouter } from 'next/router';
 import Link from 'next/link';
-// HAPUS: import toast from 'react-hot-toast';
-import { toast } from 'sonner'; // <-- GANTI: Impor dari sonner
+import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
-// Hapus import yang tidak terpakai jika ada (seperti UploadCloud, X, useState)
 
 import { Button } from '@/components/ui/button';
 import {
@@ -22,9 +20,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createCategory, CategoryData } from '@/services/categoryService'; // Pastikan path ini benar
+import { createCategory, CategoryData } from '@/services/categoryService';
 
-// Skema tanpa imageUrl (sesuai permintaan awal Anda)
 const categoryFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama kategori minimal 3 karakter.' }),
 });
@@ -43,11 +40,10 @@ export default function NewCategoryPage() {
   });
 
   const mutation = useMutation({
-    // Pastikan CategoryData di service sesuai dengan data yang dikirim
     mutationFn: (data: CategoryFormValues) => createCategory(data as CategoryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast.success('Data berhasil disimpan!'); // <-- GANTI pesan sukses
+      toast.success('Data berhasil disimpan!');
       router.push('/categories');
     },
     onError: (error: any) => {
