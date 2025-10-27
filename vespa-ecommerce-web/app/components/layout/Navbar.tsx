@@ -113,6 +113,8 @@ export default function Navbar() {
     const handleSearchSelect = (productId: string) => {
         router.push(`/products/${productId}`);
         setIsSearchOpen(false);
+        setSearchQuery('');
+        setSearchResults([]);
     };
 
     const navigationLinks = [
@@ -250,7 +252,7 @@ export default function Navbar() {
             {/* Mobile Menu */}
             <AnimatePresence>
                 {isOpen && (
-                    <div className="md:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
+                    <div className="md:hidden fixed inset-0 z-60 bg-black/30 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
                         <motion.div
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
@@ -267,6 +269,32 @@ export default function Navbar() {
                             </div>
 
                             <div className="flex-grow p-6 space-y-2 overflow-y-auto">
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (searchQuery.length > 1) {
+                                            router.push(`/products?search=${searchQuery}`);
+                                            setIsOpen(false); // Tutup menu setelah search
+                                        }
+                                    }}
+                                    className="relative w-full mb-4"
+                                >
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Cari produk..."
+                                        className="w-full h-11 pl-4 pr-10 rounded-full text-base border transition-colors bg-gray-100 border-gray-200 text-black placeholder-gray-400 focus:ring-primary/50 focus:outline-none focus:ring-2"
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="absolute top-0 right-0 h-full flex items-center pr-4"
+                                    >
+                                        <Search className="w-5 h-5 text-gray-400" />
+                                    </button>
+                                </form>
+                                <Separator className="mb-2" />
+                                
                                 {navigationLinks.map((link) => (
                                     <div key={link.name}>
                                         {link.hasDropdown ? (

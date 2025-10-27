@@ -73,8 +73,8 @@ export function BrandShowcase() {
                                 </CarouselItem>
                             ))}
                         </CarouselContent>
-                        <CarouselPrevious className="ml-12 hidden md:flex" />
-                        <CarouselNext className="mr-12 hidden md:flex" />
+                        <CarouselPrevious className="ml-12 flex" />
+                        <CarouselNext className="mr-12 flex" />
                     </Carousel>
                 )}
             </div>

@@ -45,22 +45,22 @@ export class EmailService {
   }
 
   async sendVerificationEmail(to: string, name: string, token: string) {
-    const subject = 'Konfirmasi Pendaftaran Akun VespaParts Anda';
+    const subject = 'Konfirmasi Pendaftaran Akun JakartaScooterShop Anda';
     const htmlContent = `
-      <h1>Selamat Datang di VespaParts, ${name}!</h1>
+      <h1>Selamat Datang di JakartaScooterShop, ${name}!</h1>
       <p>Terima kasih telah mendaftar. Hanya satu langkah lagi untuk mengaktifkan akun Anda.</p>
       <p>Silakan masukkan kode verifikasi di bawah ini pada halaman pendaftaran:</p>
       <h2 style="font-size: 28px; letter-spacing: 4px; text-align: center; margin: 20px 0;">${token}</h2>
       <p>Kode ini akan kedaluwarsa dalam 10 menit.</p>
       <br>
       <p>Jika Anda tidak merasa mendaftar, abaikan email ini.</p>
-      <p>Salam,<br>Tim VespaParts</p>
+      <p>Salam,<br>Tim JakartaScooterShop</p>
     `;
     await this.sendEmail({ email: to, name }, subject, htmlContent);
   }
 
   async sendPasswordResetEmail(to: string, name: string, token: string) {
-    const subject = 'Permintaan Reset Password Akun VespaParts';
+    const subject = 'Permintaan Reset Password Akun JakartaScooterShop';
     const htmlContent = `
        <h1>Reset Password</h1>
        <p>Halo ${name},</p>
@@ -68,7 +68,7 @@ export class EmailService {
        <h2 style="font-size: 28px; letter-spacing: 4px; text-align: center; margin: 20px 0;">${token}</h2>
        <p>Kode ini akan kedaluwarsa dalam 10 menit.</p>
        <p>Jika Anda tidak merasa meminta ini, abaikan email ini.</p>
-       <p>Salam,<br>Tim VespaParts</p>
+       <p>Salam,<br>Tim JakartaScooterShop</p>
    `;
     await this.sendEmail({ email: to, name }, subject, htmlContent);
   }

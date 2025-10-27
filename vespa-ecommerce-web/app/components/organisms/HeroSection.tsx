@@ -81,8 +81,8 @@ const HeroCarousel = () => {
             </CarouselItem>
           ))}
         </CarouselContent>
-        <CarouselPrevious className="absolute top-1/2 -translate-y-1/2 left-4 md:left-[4%] lg:left-[7%] hidden md:flex text-white border-white/30 bg-black/20 hover:bg-black/40" />
-        <CarouselNext className="absolute top-1/2 -translate-y-1/2 right-4 md:right-[5%] lg:right-[8%] hidden md:flex text-white border-white/30 bg-black/20 hover:bg-black/40" />
+        <CarouselPrevious className="absolute top-1/2 -translate-y-1/2 left-4 md:left-[4%] lg:left-[7%] flex text-white border-white/30 bg-black/20 hover:bg-black/40" />
+        <CarouselNext className="absolute top-1/2 -translate-y-1/2 right-4 md:right-[5%] lg:right-[8%] flex text-white border-white/30 bg-black/20 hover:bg-black/40" />
       </Carousel>
     </section>
   );
