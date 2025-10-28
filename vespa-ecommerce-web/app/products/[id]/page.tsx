@@ -365,8 +365,15 @@ export default function ProductDetailPage() {
                         </div>
                         
                         {product.brand && product.brand.logoUrl && (
-                            <Link href={`/products?brandId=${product.brand.id}`} className="block mt-6 w-25 transition-opacity hover:opacity-70">
-                                <img src={product.brand.logoUrl} alt={product.brand.name} className="w-full object-contain" />
+                            <Link 
+                                href={`/products?brandId=${product.brand.id}`} 
+                                className="block mt-6 transition-opacity hover:opacity-70"
+                            >
+                                <img 
+                                    src={product.brand.logoUrl} 
+                                    alt={product.brand.name} 
+                                    className="w-20 h-auto object-contain" // <-- UBAH DI SINI
+                                />
                             </Link>
                         )}
                     </motion.div>
