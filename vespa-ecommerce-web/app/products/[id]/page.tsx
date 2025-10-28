@@ -372,7 +372,7 @@ export default function ProductDetailPage() {
                                 <img 
                                     src={product.brand.logoUrl} 
                                     alt={product.brand.name} 
-                                    className="w-20 h-auto object-contain" // <-- UBAH DI SINI
+                                    className="w-12 h-auto object-contain" // <-- UBAH DI SINI
                                 />
                             </Link>
                         )}
