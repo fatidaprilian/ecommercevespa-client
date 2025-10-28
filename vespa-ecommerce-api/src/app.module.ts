@@ -5,6 +5,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+// --- Throttler Imports ---
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+// --- End Throttler Imports ---
+
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -84,6 +89,14 @@ import { CmsPagesModule } from './cms-pages/cms-pages.module';
       }),
     }),
 
+    // --- Throttler Configuration ---
+    // Konfigurasi rate limit global.
+    // Anda bisa men-tweak angka 'ttl' (waktu) dan 'limit' (jumlah request)
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 60 detik (dalam milidetik)
+      limit: 20,  // 20 request per IP per 60 detik
+    }]),
+
     PrismaModule,
     DiscountsModule,
     AuthModule,
@@ -113,6 +126,15 @@ import { CmsPagesModule } from './cms-pages/cms-pages.module';
     
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // --- Throttler Global Guard ---
+    // Menerapkan rate limiting ke SEMUA endpoint di aplikasi Anda
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    // --- End Throttler Global Guard ---
+  ],
 })
 export class AppModule {}

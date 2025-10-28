@@ -8,6 +8,9 @@ import { LogIn, Mail, KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
+// --- TAMBAHAN ---
+import Turnstile from 'react-turnstile'; // Import komponen CAPTCHA
+
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { ForgotPasswordDialog } from '../_components/ForgotPasswordDialog';
@@ -27,39 +30,59 @@ export default function LoginPage() {
   const [isForgotPassOpen, setIsForgotPassOpen] = useState(false);
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
 
+  // --- TAMBAHAN ---
+  // State untuk menyimpan token dari Cloudflare Turnstile
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
+
+    // --- TAMBAHAN ---
+    // Validasi token CAPTCHA di frontend sebelum kirim
+    if (!turnstileToken) {
+      setError("Silakan verifikasi bahwa Anda bukan robot.");
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
-      // 1. Login untuk mendapatkan token
-      const { data } = await api.post('/auth/login', { email, password });
+      // 1. Login (dengan token CAPTCHA)
+      const { data } = await api.post('/auth/login', { 
+        email, 
+        password,
+        turnstileToken // --- TAMBAHAN: Kirim token ke backend ---
+      });
       
-      // 2. Simpan token ke state. Biarkan komponen lain yang mengambil profil.
+      // 2. Simpan token ke state (Logika Asli)
       setAuth(null, data.access_token);
       
-      // 3. Invalidate query agar data baru di-fetch jika perlu
+      // 3. Invalidate query (Logika Asli)
       await queryClient.invalidateQueries();
 
       setSuccessMessage('Login berhasil! Anda akan dialihkan...');
 
-      // 4. Arahkan ke halaman utama
       setTimeout(() => {
         router.push('/');
       }, 1500);
       
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Email atau password salah.';
-      
-      if (errorMessage.includes('belum terverifikasi')) {
-        toast.error(errorMessage); 
-        setIsVerificationOpen(true); 
-        setError(null); 
+
+      if (err.response?.status === 429) {
+        setError('Terlalu banyak percobaan. Silakan coba lagi dalam satu menit.');
       } else {
-        setError(errorMessage);
+        const errorMessage = err.response?.data?.message || 'Email atau password salah.';
+        
+        if (errorMessage.includes('belum terverifikasi')) {
+          toast.error(errorMessage); 
+          setIsVerificationOpen(true); 
+          setError(null); 
+        } else {
+          setError(errorMessage);
+        }
       }
 
     } finally {
@@ -130,6 +153,15 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="flex justify-center">
+              <Turnstile
+                sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                onVerify={(token) => setTurnstileToken(token)}
+                onError={() => setError("Gagal memuat CAPTCHA. Coba refresh halaman.")}
+                onExpire={() => setTurnstileToken(null)}
+              />
+            </div>
+
             {error && (
               <motion.p 
                 initial={{ opacity: 0, y: 10 }}
@@ -155,7 +187,7 @@ export default function LoginPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !turnstileToken}
               className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-bold text-white bg-[#52616B] hover:bg-[#1E2022] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#52616B] transition-all disabled:bg-gray-400"
             >
               {isLoading ? <Loader2 className="animate-spin"/> : <LogIn size={20} />}

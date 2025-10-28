@@ -8,8 +8,11 @@ import toast from 'react-hot-toast';
 import { Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { searchAreas, AreaData } from '@/services/shippingService';
-import { Address, createAddress, updateAddress, CreateAddressData } from '@/services/addressService';
+// --- PERBAIKAN: Mengubah alias path ke relative path ---
+import { searchAreas, AreaData } from '../../../services/shippingService';
+import { Address, createAddress, updateAddress, CreateAddressData } from '../../../services/addressService';
+// --- AKHIR PERBAIKAN ---
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +22,10 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+
+// --- PERBAIKAN: Mengubah alias path ke relative path ---
+import { useDebounce } from '../../../hooks/useDebounce'; // Path diubah ke relative
+// --- AKHIR PERBAIKAN ---
 
 
 const phoneRegex = new RegExp(
@@ -115,12 +122,19 @@ export function AddressDialog({ initialData, onSave, onClose }: AddressDialogPro
     mutation.mutate(payload);
   };
 
+  // --- REVISI DEBOUNCE ---
+  // 1. State 'areaQuery' tetap untuk input (real-time)
   const [areaQuery, setAreaQuery] = useState('');
+  // 2. Buat value 'debounced' yang akan menunda 500ms
+  const debouncedAreaQuery = useDebounce(areaQuery, 500);
+
+  // 3. Gunakan value 'debounced' untuk useQuery
   const { data: areaOptions, isLoading: isLoadingAreas } = useQuery({
-      queryKey: ['areas', areaQuery],
-      queryFn: () => searchAreas(areaQuery),
-      enabled: areaQuery.length >= 3,
+      queryKey: ['areas', debouncedAreaQuery], // <-- Diganti
+      queryFn: () => searchAreas(debouncedAreaQuery), // <-- Diganti
+      enabled: debouncedAreaQuery.length >= 3, // <-- Diganti
   });
+  // --- AKHIR REVISI ---
 
   return (
     <DialogContent className="sm:max-w-[425px]">
@@ -142,7 +156,9 @@ export function AddressDialog({ initialData, onSave, onClose }: AddressDialogPro
           <FormField control={form.control} name="area" render={({ field }) => (
               <FormItem><FormLabel>Kecamatan/Area</FormLabel>
                 <AreaCombobox
+                    // Input tetap menggunakan 'areaQuery' (real-time)
                     query={areaQuery}
+                    // Input tetap menggunakan 'setAreaQuery' (real-time)
                     onQueryChange={setAreaQuery}
                     options={areaOptions}
                     onSelect={(area: AreaData) => {
@@ -219,3 +235,4 @@ function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, 
         </Popover>
     );
 }
+

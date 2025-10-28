@@ -12,6 +12,8 @@ import {
   Loader2,
 } from 'lucide-react';
 
+import Turnstile from 'react-turnstile';
+
 import api from '@/lib/api';
 import { VerificationDialog } from '../_components/VerificationDialog';
 
@@ -24,27 +26,56 @@ export default function RegisterPage() {
 
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
 
+  // --- TAMBAHAN ---
+  // State untuk menyimpan token dari Cloudflare Turnstile
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    // (Logika Asli)
     if (password.length < 8) {
       setError('Password minimal harus 8 karakter.');
       return;
     }
+
+    // --- TAMBAHAN ---
+    // Validasi token CAPTCHA di frontend sebelum kirim
+    if (!turnstileToken) {
+      setError("Silakan verifikasi bahwa Anda bukan robot.");
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
-      await api.post('/auth/register', { name, email, password });
+      // (Logika Asli dimodifikasi untuk mengirim token)
+      await api.post('/auth/register', { 
+        name, 
+        email, 
+        password,
+        turnstileToken // --- TAMBAHAN: Kirim token ke backend ---
+      });
       
+      // (Logika Asli)
       toast.success('Email verifikasi telah dikirim!');
       setIsVerificationOpen(true);
 
     } catch (err: any) {
-      const errorMessage = Array.isArray(err.response?.data?.message)
-        ? err.response.data.message.join(', ')
-        : err.response?.data?.message;
-      setError(errorMessage || 'Terjadi kesalahan saat mendaftar.');
+
+      // --- TAMBAHAN: Cek error 429 (Rate Limit) ---
+      if (err.response?.status === 429) {
+        setError('Terlalu banyak percobaan. Silakan coba lagi dalam satu menit.');
+      } else {
+        // --- Logika Error Asli Anda ---
+        const errorMessage = Array.isArray(err.response?.data?.message)
+          ? err.response.data.message.join(', ')
+          : err.response?.data?.message;
+        setError(errorMessage || 'Terjadi kesalahan saat mendaftar.');
+        // --- Akhir Logika Error Asli ---
+      }
+
     } finally {
         setIsLoading(false);
     }
@@ -111,6 +142,16 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* --- TAMBAHAN: Komponen Cloudflare Turnstile --- */}
+            <div className="flex justify-center">
+              <Turnstile
+                sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!} // Pastikan ini ada di .env.local
+                onVerify={(token) => setTurnstileToken(token)}
+                onError={() => setError("Gagal memuat CAPTCHA. Coba refresh halaman.")}
+                onExpire={() => setTurnstileToken(null)} // Reset token jika expired
+              />
+            </div>
+
             {error && (
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
@@ -125,7 +166,8 @@ export default function RegisterPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              disabled={isLoading}
+              // --- TAMBAHAN: Disable tombol jika CAPTCHA belum selesai ---
+              disabled={isLoading || !turnstileToken}
               className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-bold text-white bg-[#52616B] hover:bg-[#1E2022] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#52616B] transition-all disabled:bg-gray-400"
             >
               {isLoading ? (

@@ -20,6 +20,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 
+// --- TAMBAHAN: Import hook useDebounce ---
+import { useDebounce } from '@/hooks/useDebounce'; // Pastikan path ini benar
+
 
 const phoneRegex = new RegExp(
   /^(\+62|62|0)8[1-9][0-9]{6,9}$/
@@ -74,12 +77,19 @@ export function NewAddressForm({ initialData, onSuccess, closeModal }: NewAddres
         }
     }, [isEditing, initialData, form]);
 
+    // --- REVISI DEBOUNCE ---
+    // 1. State 'areaQuery' tetap untuk input (real-time)
     const [areaQuery, setAreaQuery] = useState('');
+    // 2. Buat value 'debounced' yang akan menunda 500ms
+    const debouncedAreaQuery = useDebounce(areaQuery, 500);
+
+    // 3. Gunakan value 'debounced' untuk useQuery
     const { data: areaOptions, isLoading: isLoadingAreas } = useQuery({
-        queryKey: ['areas', areaQuery],
-        queryFn: () => searchAreas(areaQuery),
-        enabled: areaQuery.length >= 3,
+        queryKey: ['areas', debouncedAreaQuery], // <-- Diganti
+        queryFn: () => searchAreas(debouncedAreaQuery), // <-- Diganti
+        enabled: debouncedAreaQuery.length >= 3, // <-- Diganti
     });
+    // --- AKHIR REVISI ---
 
     const mutation = useMutation({
         mutationFn: (data: CreateAddressData) => 
@@ -123,7 +133,9 @@ export function NewAddressForm({ initialData, onSuccess, closeModal }: NewAddres
                 <FormField control={form.control} name="area" render={({ field }) => (
                     <FormItem><FormLabel>Kecamatan/Area</FormLabel>
                       <AreaCombobox
+                          // Input tetap menggunakan 'areaQuery' (real-time)
                           query={areaQuery}
+                          // Input tetap menggunakan 'setAreaQuery' (real-time)
                           onQueryChange={setAreaQuery}
                           options={areaOptions}
                           onSelect={(area: AreaData) => {
@@ -178,6 +190,7 @@ function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, 
                           <div className="flex-1">
                             <p className="text-sm">{option.label}</p>
                             <p className="text-xs text-muted-foreground">Kode Pos: {option.postalCode}</p>
+
                           </div>
                       </CommandItem>
                       ))}
