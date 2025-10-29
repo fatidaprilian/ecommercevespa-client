@@ -438,9 +438,17 @@ async syncProductsFromAccurate() {
           fields: 'no,name,itemType,unitPrice,quantity,averageCost',
           'sp.page': page,
           'sp.pageSize': pageSize,
+          // ========================================================
+          // REVISI 1: Menambahkan filter 'suspended: false'
+          // Ini untuk memaksa API mengambil 889 produk Aktif Anda,
+          // bukan hanya 65.
+          // ========================================================
+          'filter.suspended.op': 'EQUAL',
+          'filter.suspended.val': false
         },
       });
 
+      // Log diagnostik ini masih ada dari file Anda
       this.logger.log(`WORKER: API Response 'm' object: ${JSON.stringify(response.data.m)}`);
       this.logger.log(`WORKER: API Response returned ${response.data.d?.length || 0} items on page ${page}.`);
 
@@ -461,7 +469,7 @@ async syncProductsFromAccurate() {
           const stockFromAccurate = item.quantity || 0;
           
           // ========================================================
-          // LOGIC BARU: Hitung Reserved Stock
+          // LOGIC BARU: Hitung Reserved Stock (TIDAK DIUBAH)
           // ========================================================
           
           // 1. Cari product dan hitung reserved stock
@@ -527,7 +535,7 @@ async syncProductsFromAccurate() {
             },
           });
           // ========================================================
-          // AKHIR LOGIC BARU
+          // AKHIR LOGIC BARU (TIDAK DIUBAH)
           // ========================================================
           
           pageSyncedCount++;
@@ -544,7 +552,13 @@ async syncProductsFromAccurate() {
       );
       totalSyncedCount += pageSyncedCount;
 
-      hasMore = response.data.m?.next || false;
+      // ========================================================
+      // REVISI 2: Mengganti logika paginasi 'hasMore'
+      // Kita tidak lagi bergantung pada 'response.data.m' yang undefined.
+      // Logika baru: Lanjut jika jumlah item == 100 (pageSize).
+      // ========================================================
+      hasMore = itemsFromAccurate.length === pageSize;
+      
       page++;
 
       if (hasMore) {
