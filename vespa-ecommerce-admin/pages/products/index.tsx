@@ -1,6 +1,6 @@
 // pages/products/index.tsx
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react'; // <-- MODIFIKASI: Tambahkan useEffect dan useRef
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -58,11 +58,28 @@ export default function ProductsPage() {
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
   const queryClient = useQueryClient();
 
+  // <-- TAMBAHAN: ref untuk melacak mount awal
+  const isInitialMount = useRef(true);
+
   const { data: productsResponse, isLoading, isError, error } = useQuery<PaginatedProducts, Error>({
     queryKey: ['products', page, debouncedSearchTerm],
     queryFn: () => getProducts({ page, search: debouncedSearchTerm }),
     keepPreviousData: true,
   });
+
+  // <-- TAMBAHAN: useEffect untuk reset halaman saat search
+  useEffect(() => {
+    // Jangan reset halaman saat komponen pertama kali mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    } else {
+      // Jika search term berubah (dan bukan mount awal),
+      // reset ke halaman 1
+      if (page !== 1) {
+        setPage(1);
+      }
+    }
+  }, [debouncedSearchTerm]); // <-- Dependensi HANYA pada debouncedSearchTerm
 
   const products = productsResponse?.data;
   const meta = productsResponse?.meta;
@@ -101,6 +118,8 @@ export default function ProductsPage() {
   };
 
   const handleDelete = (id: string) => {
+    // Ganti window.confirm dengan dialog kustom jika ada, 
+    // tapi untuk sekarang ini fungsional
     if (window.confirm('Anda yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.')) {
         deleteMutation.mutate(id);
     }
@@ -258,3 +277,4 @@ export default function ProductsPage() {
     </motion.div>
   );
 }
+

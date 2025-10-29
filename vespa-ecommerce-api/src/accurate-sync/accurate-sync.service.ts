@@ -441,6 +441,9 @@ async syncProductsFromAccurate() {
         },
       });
 
+      this.logger.log(`WORKER: API Response 'm' object: ${JSON.stringify(response.data.m)}`);
+      this.logger.log(`WORKER: API Response returned ${response.data.d?.length || 0} items on page ${page}.`);
+
       const itemsFromAccurate = response.data.d;
       if (!itemsFromAccurate || itemsFromAccurate.length === 0) {
         this.logger.warn(
