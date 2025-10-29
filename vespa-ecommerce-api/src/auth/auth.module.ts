@@ -10,12 +10,14 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LocalStrategy } from './strategies/local.strategy';
 import { EmailModule } from 'src/email/email.module';
+import { AdminLocalStrategy } from './strategies/admin-local.strategy'; // <-- Import Strategy Admin
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     EmailModule,
+    ConfigModule, // Pastikan ConfigModule diimpor jika belum
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -28,6 +30,11 @@ import { EmailModule } from 'src/email/email.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    LocalStrategy, // Strategy untuk user biasa
+    AdminLocalStrategy, // <-- Tambahkan Strategy Admin di sini
+  ],
 })
 export class AuthModule {}

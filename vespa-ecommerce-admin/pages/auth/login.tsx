@@ -1,12 +1,14 @@
+// pages/auth/login.tsx
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import api from '@/lib/api';
+import api from '@/lib/api'; // Ensure this path points to your API client instance
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"; // Ensure path is correct
 import {
   Form,
   FormControl,
@@ -14,15 +16,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+} from "@/components/ui/form"; // Ensure path is correct
+import { Input } from "@/components/ui/input"; // Ensure path is correct
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/card"; // Ensure path is correct
 
 const formSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid." }),
@@ -46,26 +48,31 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.post('/auth/login', values);
+      // --- THE ONLY CHANGE IS HERE ---
+      // Changed the endpoint from '/auth/login' to '/auth/admin/login'
+      const response = await api.post('/auth/admin/login', values);
+      // -----------------------------
+
       const { access_token } = response.data;
       if (access_token) {
-
-        localStorage.setItem('admin-token', access_token);
-
+        // Store the token (e.g., in localStorage or context/state management)
+        localStorage.setItem('admin-token', access_token); // Or your preferred storage method
         console.log("Admin Login: Token disimpan.");
-        router.push("/");
+        router.push("/"); // Redirect to the admin dashboard
       } else {
         throw new Error("Token tidak diterima dari server.");
       }
 
     } catch (err: any) {
       console.error("Admin Login failed:", err);
+      // Display error message from backend or a generic one
       setError(err.response?.data?.message || "Login gagal. Periksa kembali kredensial Anda.");
     } finally {
       setIsLoading(false);
     }
   }
 
+  // Keep the original JSX structure
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-sm">
@@ -78,7 +85,6 @@ export default function LoginPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* ... FormField email dan password (tidak berubah) ... */}
               <FormField
                 control={form.control}
                 name="email"
