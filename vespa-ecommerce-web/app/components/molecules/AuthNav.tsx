@@ -178,14 +178,14 @@ export default function AuthNav() {
           className="flex items-center gap-2 bg-[#52616B] text-white hover:bg-[#1E2022] px-3 py-1.5 rounded-full text-sm font-semibold transition-all transform hover:scale-105"
         >
             <User className="w-4 h-4" />
-            Login
+            Masuk
         </Link>
         <Link
           href="/register"
           className="hidden sm:flex items-center gap-2 bg-[#52616B] text-white hover:bg-[#1E2022] px-3 py-1.5 rounded-full text-sm font-semibold transition-all transform hover:scale-105"
         >
             <UserPlus className="w-4 h-4" />
-            Register
+            Daftar
         </Link>
     </div>
   );

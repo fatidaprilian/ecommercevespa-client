@@ -89,7 +89,7 @@ const BestSellerProducts = () => {
                     </div>
                     <Button asChild variant="link" className="text-[#f04e23] hover:text-[#e03e1a] p-0 h-auto font-medium">
                         <Link href="/products">
-                            View All →
+                            Lihat Semua →
                         </Link>
                     </Button>
                 </div>
