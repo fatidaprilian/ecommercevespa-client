@@ -64,6 +64,7 @@ model User {
   tier                      ResellerTier?            @relation(fields: [resellerTierId], references: [id])
   resellerTierId            String?
   accurateCustomerNo        String?                  @unique
+  isActive                  Boolean                  @default(true)
 
   @@index([resellerTierId])
 }
