@@ -12,49 +12,75 @@ import { QueryProductDto } from './dto/query-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { DiscountsCalculationService } from 'src/discounts/discounts-calculation.service';
 import { UserPayload } from 'src/auth/interfaces/jwt.payload';
+// Import Service Kalkulator Baru
+import { PriceCalculatorService } from './price-calculator.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private discountsCalcService: DiscountsCalculationService,
+    // private readonly accuratePricingService: AccuratePricingService, // Opsional, bisa dihapus jika tidak ada logic lain yg butuh
+    private priceCalculator: PriceCalculatorService, // <-- INJECT SERVICE BARU
   ) {}
 
+  // 👇👇👇 METHOD YANG SUDAH DI-REVISI TOTAL MENGGUNAKAN CALCULATOR SERVICE 👇👇👇
   public async processProductWithPrice(product: any, user?: UserPayload) {
-    if (user && user.role === Role.RESELLER) {
+    // 1. Cek apakah user login dan punya kategori harga Accurate
+    let accuratePriceCategoryId: number | null = null;
+    if (user?.id) {
+      // Tips Optimasi: Jika ID Kategori Harga sudah ada di payload JWT,
+      // kita bisa pakai langsung tanpa query ke DB lagi.
+      // Untuk sekarang kita query dulu biar aman.
       const fullUser = await this.prisma.user.findUnique({
         where: { id: user.id },
+        select: { accuratePriceCategoryId: true, role: true, id: true },
       });
-      if (!fullUser) {
+      accuratePriceCategoryId = fullUser?.accuratePriceCategoryId || null;
+
+      // FALLBACK LAMA: Jika tidak ada kategori Accurate, tapi dia Reseller,
+      // gunakan logic diskon lama (opsional, bisa dihapus jika ingin full Accurate)
+      if (!accuratePriceCategoryId && fullUser?.role === Role.RESELLER) {
+        const priceInfo = await this.discountsCalcService.calculatePrice(
+          fullUser as any, // Casting sementara karena kita cuma select sebagian field
+          product,
+        );
         return {
           ...product,
+          price: priceInfo.finalPrice,
           priceInfo: {
             originalPrice: product.price,
-            discountPercentage: 0,
-            finalPrice: product.price,
-            appliedRule: 'NONE',
+            discountPercentage: 0, // Disederhanakan sesuai request klien
+            finalPrice: priceInfo.finalPrice,
+            appliedRule: priceInfo.appliedRule,
           },
         };
       }
-      const priceInfo = await this.discountsCalcService.calculatePrice(
-        fullUser,
-        product,
-      );
-      return { ...product, price: priceInfo.finalPrice, priceInfo };
     }
+
+    // 2. Panggil Calculator Service untuk hitung harga
+    const finalPrice = this.priceCalculator.calculateFinalPrice(
+      product,
+      accuratePriceCategoryId,
+    );
+
+    // 3. Kembalikan data produk dengan harga final yang sudah dihitung
     return {
       ...product,
+      price: finalPrice, // <-- HARGA FINAL LANGSUNG DI SINI
+      // Opsi tambahan jika frontend butuh detail (tapi klien minta simple)
       priceInfo: {
         originalPrice: product.price,
-        discountPercentage: 0,
-        finalPrice: product.price,
-        appliedRule: 'NONE',
+        finalPrice: finalPrice,
+        // appliedRule: 'CALCULATED_BY_TIER_AND_RULES',
       },
     };
   }
+  // 👆👆👆 AKHIR REVISI 👆👆👆
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
-    const { categoryId, brandId, images, sku, ...productData } =
+    const { categoryId, brandId, images, sku, isVisible, ...productData } =
+      // <-- Destructure isVisible
       createProductDto;
 
     let finalSku = sku;
@@ -67,6 +93,7 @@ export class ProductsService {
     const data: Prisma.ProductCreateInput = {
       ...productData,
       sku: finalSku,
+      isVisible: isVisible, // <-- Tambahkan isVisible di data create
       category: { connect: { id: categoryId } },
       ...(brandId && { brand: { connect: { id: brandId } } }),
       ...(images && { images: { create: images } }),
@@ -78,11 +105,18 @@ export class ProductsService {
         category: true,
         brand: true,
         images: true,
+        // Sertakan relasi rules kosong saat create
+        priceTiers: true,
+        priceAdjustmentRules: true,
       },
     });
   }
 
-  async findAll(queryDto: QueryProductDto, user?: UserPayload) {
+  // ✅✅✅ HANYA BAGIAN INI YANG DIUBAH (FIX TS ERROR) ✅✅✅
+  async findAll(
+    queryDto: QueryProductDto,
+    user?: UserPayload,
+  ) {
     const {
       page = 1,
       limit = 10,
@@ -91,11 +125,42 @@ export class ProductsService {
       sortBy = 'createdAt',
       sortOrder = 'desc',
       search,
+      includeHidden, // string | undefined
+      isVisible,     // string | undefined
     } = queryDto;
 
     const skip = (Number(page) - 1) * Number(limit);
 
     const conditions: Prisma.ProductWhereInput[] = [];
+
+    const isAdmin = user?.role === Role.ADMIN;
+
+    // 🔥🔥🔥 REVISI ULTRA-SAFE & TS-FRIENDLY 🔥🔥🔥
+    // Kita gunakan (isVisible as any) untuk membungkam error TS2367
+    // karena kita menangani kemungkinan runtime value berupa boolean ATAU string.
+    let finalIsVisible: boolean | undefined = undefined;
+    if ((isVisible as any) === true || isVisible === 'true') {
+      finalIsVisible = true;
+    } else if ((isVisible as any) === false || isVisible === 'false') {
+      finalIsVisible = false;
+    }
+
+    // Handle includeHidden juga jika perlu (sama-sama string dari DTO baru)
+    const includeHiddenBool = (includeHidden as any) === true || includeHidden === 'true';
+
+    if (finalIsVisible !== undefined) {
+      // Jika user mengirim filter ?isVisible=true atau ?isVisible=false
+      conditions.push({ isVisible: finalIsVisible });
+    } else {
+      // Default behavior jika filter TIDAK dikirim:
+      // - User biasa -> Hanya tampilkan yang aktif (isVisible: true)
+      // - Admin TANPA includeHidden=true -> Hanya tampilkan yang aktif
+      // - (Admin DENGAN includeHidden=true akan melewati blok ini dan menampilkan semua)
+      if (!isAdmin || !includeHiddenBool) {
+        conditions.push({ isVisible: true });
+      }
+    }
+    // ✅✅✅ AKHIR PERUBAHAN ULTRA-SAFE ✅✅✅
 
     if (search) {
       conditions.push({
@@ -105,30 +170,31 @@ export class ProductsService {
         ],
       });
     }
-    
+
     if (categoryId && categoryId.length > 0) {
       const hasNullCategory = categoryId.includes('__null__');
-      const regularCategoryIds = categoryId.filter(id => id !== '__null__');
-      
+      const regularCategoryIds = categoryId.filter((id) => id !== '__null__');
+
       const categoryConditions: Prisma.ProductWhereInput[] = [];
 
-      if(regularCategoryIds.length > 0) {
+      if (regularCategoryIds.length > 0) {
         categoryConditions.push({ categoryId: { in: regularCategoryIds } });
       }
-      if(hasNullCategory) {
+      if (hasNullCategory) {
         categoryConditions.push({ categoryId: null });
       }
 
-      if(categoryConditions.length > 0) {
-          conditions.push({ OR: categoryConditions });
+      if (categoryConditions.length > 0) {
+        conditions.push({ OR: categoryConditions });
       }
     }
 
     if (brandId && brandId.length > 0) {
-        conditions.push({ brandId: { in: brandId } });
+      conditions.push({ brandId: { in: brandId } });
     }
 
-    const where: Prisma.ProductWhereInput = conditions.length > 0 ? { AND: conditions } : {};
+    const where: Prisma.ProductWhereInput =
+      conditions.length > 0 ? { AND: conditions } : {};
 
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
@@ -139,8 +205,13 @@ export class ProductsService {
           category: true,
           brand: true,
           images: true,
+          priceTiers: true,
+          priceAdjustmentRules: { where: { isActive: true } },
         },
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: [
+          { isFeatured: 'desc' },
+          { [sortBy]: sortOrder },
+        ],
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -159,21 +230,23 @@ export class ProductsService {
       },
     };
   }
-  
+
   async findFeatured(user?: UserPayload) {
     const featuredProducts = await this.prisma.product.findMany({
-      where: { isFeatured: true },
+      where: { isFeatured: true, isVisible: true },
       take: 5,
       include: {
         images: true,
         category: true,
         brand: true,
+        priceTiers: true,
+        priceAdjustmentRules: { where: { isActive: true } },
       },
       orderBy: {
         updatedAt: 'desc',
       },
     });
-    
+
     return Promise.all(
       featuredProducts.map((p) => this.processProductWithPrice(p, user)),
     );
@@ -186,11 +259,18 @@ export class ProductsService {
         category: true,
         brand: true,
         images: true,
+        priceTiers: true,
+        priceAdjustmentRules: { where: { isActive: true } },
       },
     });
     if (!product) {
       throw new NotFoundException(`Produk dengan ID ${id} tidak ditemukan`);
     }
+
+    if (!product.isVisible && user?.role !== Role.ADMIN) {
+      throw new NotFoundException(`Produk dengan ID ${id} tidak ditemukan`);
+    }
+
     return this.processProductWithPrice(product, user);
   }
 
@@ -204,11 +284,14 @@ export class ProductsService {
     });
 
     if (!product) {
-      throw new NotFoundException(`Produk dengan ID ${productId} tidak ditemukan`);
+      throw new NotFoundException(
+        `Produk dengan ID ${productId} tidak ditemukan`,
+      );
     }
 
     let where: Prisma.ProductWhereInput = {
       id: { not: productId },
+      isVisible: true,
     };
 
     if (type === 'brand' && product.brandId) {
@@ -226,6 +309,8 @@ export class ProductsService {
         images: true,
         category: true,
         brand: true,
+        priceTiers: true,
+        priceAdjustmentRules: { where: { isActive: true } },
       },
     });
 
@@ -233,26 +318,36 @@ export class ProductsService {
       relatedProducts.map((p) => this.processProductWithPrice(p, user)),
     );
   }
-  
+
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
   ): Promise<Product> {
-    const { categoryId, brandId, images, isFeatured, ...productData } = updateProductDto;
+    const {
+      categoryId,
+      brandId,
+      images,
+      isFeatured,
+      isVisible,
+      ...productData
+    } = updateProductDto;
 
     if (isFeatured === true) {
       const featuredCount = await this.prisma.product.count({
         where: { isFeatured: true, NOT: { id } },
       });
       if (featuredCount >= 5) {
-        throw new BadRequestException('Maksimal 5 produk yang bisa diunggulkan.');
+        throw new BadRequestException(
+          'Maksimal 5 produk yang bisa diunggulkan.',
+        );
       }
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const dataToUpdate: any = { 
+      const dataToUpdate: any = {
         ...productData,
         ...(isFeatured !== undefined && { isFeatured }),
+        ...(isVisible !== undefined && { isVisible }),
       };
 
       if (categoryId) {
@@ -281,6 +376,8 @@ export class ProductsService {
           category: true,
           brand: true,
           images: true,
+          priceTiers: true,
+          priceAdjustmentRules: true,
         },
       });
     });
@@ -295,30 +392,29 @@ export class ProductsService {
         reviews: { take: 1 },
       },
     });
-  
+
     if (!product) {
       throw new NotFoundException(`Produk dengan ID ${id} tidak ditemukan`);
     }
-  
+
     if (product.orderItems.length > 0) {
       throw new BadRequestException(
-        `Produk "${product.name}" tidak dapat dihapus karena sudah menjadi bagian dari pesanan.`
+        `Produk "${product.name}" tidak dapat dihapus karena sudah menjadi bagian dari pesanan.`,
       );
     }
-  
+
     if (product.wishlists.length > 0) {
       throw new BadRequestException(
-        `Produk "${product.name}" tidak dapat dihapus karena masih ada di wishlist pengguna.`
+        `Produk "${product.name}" tidak dapat dihapus karena masih ada di wishlist pengguna.`,
       );
     }
-  
+
     if (product.reviews.length > 0) {
       throw new BadRequestException(
-        `Produk "${product.name}" tidak dapat dihapus karena sudah memiliki ulasan.`
+        `Produk "${product.name}" tidak dapat dihapus karena sudah memiliki ulasan.`,
       );
     }
-    
-    // Jika semua pengecekan lolos, baru hapus
+
     return this.prisma.product.delete({
       where: { id },
     });
@@ -330,6 +426,7 @@ export class ProductsService {
     }
     return this.prisma.product.findMany({
       where: {
+        isVisible: true,
         OR: [
           { name: { contains: term, mode: 'insensitive' } },
           { sku: { contains: term, mode: 'insensitive' } },

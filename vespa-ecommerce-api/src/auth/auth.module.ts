@@ -11,6 +11,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LocalStrategy } from './strategies/local.strategy';
 import { EmailModule } from 'src/email/email.module';
 import { AdminLocalStrategy } from './strategies/admin-local.strategy'; // <-- Import Strategy Admin
+// 👇👇 TAMBAHKAN IMPORT INI 👇👇
+import { AccuratePricingModule } from '../accurate-pricing/accurate-pricing.module';
+// 👆👆 --------------------- 👆👆
 
 @Module({
   imports: [
@@ -28,6 +31,9 @@ import { AdminLocalStrategy } from './strategies/admin-local.strategy'; // <-- I
         },
       }),
     }),
+    // 👇👇 DAFTARKAN DI SINI 👇👇
+    AccuratePricingModule,
+    // 👆👆 ------------------ 👆👆
   ],
   controllers: [AuthController],
   providers: [

@@ -2,7 +2,6 @@
 
 import api from '@/lib/api'; 
 
-
 export interface Product {
   id: string;
   name: string;
@@ -16,6 +15,7 @@ export interface Product {
   images?: { url: string }[];
   createdAt: string;
   updatedAt: string;
+  isVisible: boolean; 
 }
 
 export interface PaginatedProducts {
@@ -38,9 +38,8 @@ export interface ProductData {
   brandId?: string;
   images?: { url: string }[];
   sku?: string;
+  isVisible?: boolean;
 }
-
-
 
 /**
  * Mengirim data produk baru ke API backend.
@@ -59,7 +58,7 @@ export const uploadImage = async (file: File) => {
 
   const { data } = await api.post<{ url: string; public_id: string }>('/upload/image', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      'Content-Type': 'multipart/form-data', // <-- TYPO FIXED
     },
   });
   return data;
@@ -69,13 +68,25 @@ export const uploadImage = async (file: File) => {
  * Mengambil produk dari API dengan paginasi dan pencarian.
  * @param page - Nomor halaman yang ingin diambil.
  * @param search - Kata kunci pencarian (opsional).
+ * @param includeHidden - Menyertakan produk yang disembunyikan (hanya untuk Admin).
+ * @param isVisible - Filter spesifik untuk produk aktif/non-aktif.
  */
-export const getProducts = async ({ page, search }: { page: number; search: string }): Promise<PaginatedProducts> => {
+interface GetProductsParams {
+    page: number;
+    search?: string;
+    includeHidden?: boolean;
+    isVisible?: boolean; // 👈 DITAMBAHKAN
+}
+
+export const getProducts = async ({ page, search, includeHidden, isVisible }: GetProductsParams): Promise<PaginatedProducts> => {
   const { data } = await api.get<PaginatedProducts>('/products', {
     params: {
       page,
       limit: 10, 
       search: search || undefined, 
+      includeHidden: includeHidden || undefined,
+      // 💡 FIX: Konversi isVisible ke string secara eksplisit.
+      isVisible: isVisible !== undefined ? String(isVisible) : undefined, // 👈 DIUBAH
     },
   });
   return data;

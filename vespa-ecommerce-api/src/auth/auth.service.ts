@@ -24,6 +24,9 @@ import { EmailVerificationDto } from './dto/email-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ValidateResetTokenDto } from './dto/validate-reset-token.dto';
+// 👇👇 TAMBAHKAN IMPORT INI 👇👇
+import { AccuratePricingService } from '../accurate-pricing/accurate-pricing.service';
+// 👆👆 --------------------- 👆👆
 
 @Injectable()
 export class AuthService {
@@ -39,6 +42,9 @@ export class AuthService {
     private prisma: PrismaService,
     // Inject ConfigService only if needed (e.g., for turnstileSecretKey)
     private configService: ConfigService,
+    // 👇👇 INJECT DI SINI 👇👇
+    private readonly accuratePricingService: AccuratePricingService,
+    // 👆👆 -------------- 👆👆
   ) {
     // Get Turnstile secret key only if the env var exists
     this.turnstileSecretKey = this.configService.get<string>(
@@ -206,6 +212,27 @@ export class AuthService {
         verificationTokenExpires,
       },
     });
+
+    // 👇👇👇 MULAI TAMBAHAN INTEGRASI ACCURATE 👇👇👇
+    try {
+        // 1. Buat customer di Accurate
+        const customerNo = await this.accuratePricingService.createCustomer({
+            name: newUser.name || newUser.email,
+            email: newUser.email
+        });
+        
+        // 2. Simpan nomor pelanggan Accurate ke user kita
+        await this.prisma.user.update({
+            where: { id: newUser.id },
+            data: { accurateCustomerNo: customerNo }
+        });
+        this.logger.log(`Accurate customer created for user ${newUser.email}: ${customerNo}`);
+    } catch (error) {
+        // PENTING: Kita wrap dengan try-catch agar jika Accurate error (misal down),
+        // user TETAP BISA register di web kita. Errornya cukup di-log saja.
+        this.logger.error(`Gagal membuat customer Accurate saat register untuk ${newUser.email}: ${error.message}`);
+    }
+    // 👆👆👆 AKHIR TAMBAHAN INTEGRASI ACCURATE 👆👆👆
 
     try {
       await this.emailService.sendVerificationEmail(

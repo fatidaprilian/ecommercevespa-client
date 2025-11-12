@@ -64,6 +64,7 @@ model User {
   tier                      ResellerTier?            @relation(fields: [resellerTierId], references: [id])
   resellerTierId            String?
   accurateCustomerNo        String?                  @unique
+  accuratePriceCategoryId   Int?
   isActive                  Boolean                  @default(true)
 
   @@index([resellerTierId])
@@ -124,6 +125,7 @@ model Product {
   models               String?
   isFeatured           Boolean                 @default(false)
   images               ProductImage[]
+  accurateItemId       String?                 @unique
   category             Category?               @relation(fields: [categoryId], references: [id])
   categoryId           String?
   brand                Brand?                  @relation(fields: [brandId], references: [id])
@@ -133,7 +135,10 @@ model Product {
   wishlists            Wishlist[]
   erpSyncLog           ErpSyncLog[]
   cartItems            CartItem[]
+  isVisible            Boolean                 @default(true)
   userProductDiscounts UserProductDiscount[]
+  priceAdjustmentRules PriceAdjustmentRule[]
+  priceTiers           ProductPriceTier[]
 
   @@index([categoryId])
   @@index([brandId])
@@ -400,4 +405,48 @@ model CmsPage {
   bannerImageUrl String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+model PriceAdjustmentRule {
+  id                     String    @id @default(cuid())
+  accurateRuleId         String    @unique // ID unik dari Accurate untuk mencegah duplikasi
+  name                   String?   // Nama aturan, misal "Diskon Member 1"
+  
+  // Target Aturan
+  accuratePriceCategoryId Int?     // ID Kategori Harga di Accurate (misal ID untuk "Member 1")
+  
+  // Scope Produk (Bisa berlaku untuk semua, per kategori, atau per item)
+  accurateItemCategoryId String?   // Opsional: Jika aturan berlaku untuk satu kategori barang
+  accurateItemId         String?   // Opsional: Jika aturan berlaku spesifik satu barang
+  product                Product?  @relation(fields: [productId], references: [id])
+  productId              String?
+
+  // Detail Diskon
+  discountType           String    // 'PERCENTAGE' atau 'FIXED_PRICE' atau 'FIXED_DISCOUNT'
+  discountValue          Float     // Nilai diskonnya
+  
+  // Masa Berlaku
+  startDate              DateTime?
+  endDate                DateTime?
+  
+  isActive               Boolean   @default(true)
+  lastSyncedAt           DateTime  @default(now()) // Untuk tahu kapan terakhir update
+  priority                Int      @default(0)
+
+  @@index([accuratePriceCategoryId])
+  @@index([productId])
+  @@index([accurateItemId])
+}
+
+model ProductPriceTier {
+  id                      String   @id @default(cuid())
+  productId               String
+  product                 Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  accuratePriceCategoryId Int      // ID Kategori Harga dari Accurate (misal: 1 = Member, 2 = Reseller)
+  price                   Float    // Harga dasar khusus untuk kategori ini
+  lastSyncedAt            DateTime @default(now())
+
+  @@unique([productId, accuratePriceCategoryId]) // Satu produk hanya punya 1 harga khusus per kategori user
+  @@index([productId])
+  @@index([accuratePriceCategoryId])
 }

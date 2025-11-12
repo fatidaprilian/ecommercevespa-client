@@ -17,6 +17,9 @@ export interface User {
   role: Role;
   createdAt: string; // Added createdAt based on previous frontend code
   accurateCustomerNo?: string | null;
+  // 👇👇 TAMBAHKAN FIELD BARU INI 👇👇
+  accuratePriceCategoryId?: number | null;
+  // 👆👆 AKHIR TAMBAHAN 👆👆
   isActive: boolean; // Make sure this is present
 }
 
@@ -25,6 +28,9 @@ interface UpdateUserData {
   name?: string; // Made optional as per backend DTO
   role?: Role; // Made optional as per backend DTO
   accurateCustomerNo?: string | null; // Keep null possibility
+  // 👇👇 TAMBAHKAN FIELD BARU INI 👇👇
+  accuratePriceCategoryId?: number | null;
+  // 👆👆 AKHIR TAMBAHAN 👆👆
   isActive?: boolean; // Allow updating isActive via the general update endpoint if needed
 }
 

@@ -94,7 +94,7 @@ import { CmsPagesModule } from './cms-pages/cms-pages.module';
     // Anda bisa men-tweak angka 'ttl' (waktu) dan 'limit' (jumlah request)
     ThrottlerModule.forRoot([{
       ttl: 60000, // 60 detik (dalam milidetik)
-      limit: 20,  // 20 request per IP per 60 detik
+      limit: 150,  // 150 request per IP per 60 detik
     }]),
 
     PrismaModule,

@@ -1,5 +1,6 @@
 // file: vespa-ecommerce-admin/pages/users/edit.tsx
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -9,10 +10,11 @@ import { toast } from 'react-hot-toast';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 
 import { getUserById, updateUser, User } from '@/services/userService';
+import { getPriceCategories, PriceCategory } from '@/services/accurateService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
@@ -20,11 +22,11 @@ const formSchema = z.object({
   email: z.string().email('Email tidak valid'),
   role: z.enum(['ADMIN', 'RESELLER', 'MEMBER']),
   accurateCustomerNo: z.string().optional(),
+  accuratePriceCategoryId: z.coerce.number().optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-// Komponen utama yang bertugas memuat data
 export default function EditUserPage() {
     const router = useRouter();
     const { id } = router.query;
@@ -38,27 +40,46 @@ export default function EditUserPage() {
     if (isLoading) return <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin h-8 w-8 text-muted-foreground" /></div>;
     if (isError) return <div className="text-red-500 text-center">Gagal memuat data pengguna.</div>;
     
-    // Form hanya akan di-render jika data 'user' sudah ada
     return user ? <EditUserForm user={user} /> : null;
 }
 
-// Komponen baru yang khusus menangani logika dan tampilan form
 function EditUserForm({ user }: { user: User }) {
     const router = useRouter();
     const { id } = router.query;
     const queryClient = useQueryClient();
 
+    const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
+    const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
-        // Data 'user' dijamin ada di sini, sehingga `defaultValues` akan selalu benar
-        // pada render pertama komponen ini. Tidak perlu lagi `useEffect`.
         defaultValues: {
             name: user.name,
             email: user.email,
             role: user.role,
             accurateCustomerNo: user.accurateCustomerNo || '',
+            accuratePriceCategoryId: user.accuratePriceCategoryId || null,
         },
     });
+
+    const currentRole = form.watch('role');
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            setIsLoadingCategories(true);
+            try {
+                const categories = await getPriceCategories();
+                setPriceCategories(categories);
+            } catch (error) {
+                console.error('Gagal mengambil kategori harga:', error);
+                toast.error('Gagal memuat daftar kategori harga dari Accurate.');
+            } finally {
+                setIsLoadingCategories(false);
+            }
+        };
+
+        fetchCategories();
+    }, []);
 
     const mutation = useMutation({
         mutationFn: (values: Omit<FormValues, 'email'>) => updateUser(id as string, values),
@@ -75,6 +96,10 @@ function EditUserForm({ user }: { user: User }) {
 
     const onSubmit = (values: FormValues) => {
         const { email, ...updateData } = values;
+        
+        if (!updateData.accurateCustomerNo) updateData.accurateCustomerNo = null;
+        if (!updateData.accuratePriceCategoryId) updateData.accuratePriceCategoryId = null;
+        
         mutation.mutate(updateData);
     };
 
@@ -106,6 +131,7 @@ function EditUserForm({ user }: { user: User }) {
                                     <FormMessage />
                                 </FormItem>
                             )} />
+                            
                             <FormField name="email" control={form.control} render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Email</FormLabel>
@@ -137,6 +163,41 @@ function EditUserForm({ user }: { user: User }) {
                                 <FormItem>
                                     <FormLabel>Nomor Pelanggan Accurate</FormLabel>
                                     <FormControl><Input placeholder="Contoh: C.0001" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+
+                            <FormField name="accuratePriceCategoryId" control={form.control} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Kategori Penjualan (Harga)</FormLabel>
+                                    <Select 
+                                        onValueChange={(value) => {
+                                            field.onChange(value === 'auto' ? null : Number(value));
+                                        }} 
+                                        value={field.value?.toString() || 'auto'} 
+                                        disabled={isLoadingCategories}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={isLoadingCategories ? "Memuat..." : "Pilih Kategori Harga"} />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="auto">-- Otomatis Berdasarkan Role --</SelectItem>
+                                            {priceCategories.map((category) => (
+                                                <SelectItem key={category.id} value={category.id.toString()}>
+                                                    {category.name} {category.isDefault ? '(Default)' : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormDescription className="text-xs">
+                                        {currentRole === 'MEMBER' 
+                                            ? "Untuk MEMBER, biasanya menggunakan kategori 'Umum'."
+                                            : currentRole === 'RESELLER'
+                                            ? "Pilih level harga untuk Reseller ini (misal: Member-1, Member-2)."
+                                            : "Kategori harga khusus untuk user ini."}
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )} />

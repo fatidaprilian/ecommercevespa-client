@@ -472,10 +472,6 @@ export default function OrderDetailPage() {
                 <span>{formatPrice(order.subtotal)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Diskon:</span>
-                <span>- {formatPrice(order.discountAmount)}</span>
-              </div>
-              <div className="flex justify-between">
                 <span>PPN:</span>
                 <span>{formatPrice(order.taxAmount)}</span>
               </div>

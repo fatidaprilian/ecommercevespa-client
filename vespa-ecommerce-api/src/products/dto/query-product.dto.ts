@@ -1,4 +1,5 @@
 // src/products/dto/query-product.dto.ts
+
 import { Transform } from 'class-transformer';
 import { IsString, IsOptional, IsIn, IsEnum, IsArray } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -37,4 +38,12 @@ export class QueryProductDto extends PaginationDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
+
+  // 🔥 UBAH KE STRING AGAR TIDAK OTOMATIS DICONVERT SALAH OLEH NESTJS 🔥
+  @IsOptional()
+  includeHidden?: string;
+
+  // 🔥 UBAH KE STRING AGAR TIDAK OTOMATIS DICONVERT SALAH OLEH NESTJS 🔥
+  @IsOptional()
+  isVisible?: string;
 }

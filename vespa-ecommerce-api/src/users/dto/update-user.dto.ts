@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsInt } from 'class-validator';
 import { Role } from '@prisma/client';
 
 export class UpdateUserDto {
@@ -13,4 +13,8 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   accurateCustomerNo?: string | null;
+
+  @IsInt()
+  @IsOptional()
+  accuratePriceCategoryId?: number;
 }

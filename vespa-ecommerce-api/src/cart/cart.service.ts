@@ -1,4 +1,4 @@
-// file: vespa-ecommerce-api/src/cart/cart.service.ts
+// file: src/cart/cart.service.ts
 
 import {
   Injectable,
@@ -10,13 +10,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AddItemDto } from './dto/add-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { DiscountsCalculationService } from 'src/discounts/discounts-calculation.service';
-import { Role } from '@prisma/client';
+import { ProductsService } from 'src/products/products.service';
 
 @Injectable()
 export class CartService {
   constructor(
     private prisma: PrismaService,
     private discountsCalcService: DiscountsCalculationService,
+    private productsService: ProductsService,
   ) {}
 
   private async findOrCreateCart(userId: string) {
@@ -34,7 +35,7 @@ export class CartService {
   async getCart(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-        throw new NotFoundException('User tidak ditemukan.');
+      throw new NotFoundException('User tidak ditemukan.');
     }
 
     const cart = await this.prisma.cart.findUnique({
@@ -45,6 +46,8 @@ export class CartService {
             product: {
               include: {
                 images: true,
+                priceTiers: true,
+                priceAdjustmentRules: { where: { isActive: true } },
               },
             },
           },
@@ -66,26 +69,27 @@ export class CartService {
 
     const processedItems = await Promise.all(
       cart.items.map(async (item) => {
-        let priceInfo;
-        if (user.role === Role.RESELLER) {
-          priceInfo = await this.discountsCalcService.calculatePrice(user, item.product);
-        } else {
-          priceInfo = {
-            originalPrice: item.product.price,
-            discountPercentage: 0,
-            finalPrice: item.product.price,
-            appliedRule: 'NONE',
-          };
-        }
-        
-        item.product.price = priceInfo.finalPrice;
-        (item.product as any).priceInfo = priceInfo;
-        return item;
-      })
-    );
-    cart.items = processedItems;
+        const processedProduct = await this.productsService.processProductWithPrice(
+          item.product,
+          { 
+              id: user.id, 
+              email: user.email, 
+              role: user.role,
+              name: user.name || '' 
+          }
+        );
 
-    return cart;
+        return {
+            ...item,
+            product: processedProduct
+        };
+      }),
+    );
+
+    return {
+        ...cart,
+        items: processedItems
+    };
   }
 
   async addItem(userId: string, addItemDto: AddItemDto) {
@@ -137,16 +141,16 @@ export class CartService {
 
     const item = await this.prisma.cartItem.findFirst({
       where: { id: cartItemId, cart: { userId } },
-      include: { product: true }
+      include: { product: true },
     });
     if (!item) {
       throw new ForbiddenException(
         'Akses ditolak. Item keranjang tidak ditemukan atau bukan milik Anda.',
       );
     }
-    
-    if(item.product.stock < quantity){
-      throw new UnprocessableEntityException(`Stok untuk produk ${item.product.name} tidak mencukupi.`)
+
+    if (item.product.stock < quantity) {
+      throw new UnprocessableEntityException(`Stok untuk produk ${item.product.name} tidak mencukupi.`);
     }
 
     await this.prisma.cartItem.update({
@@ -163,6 +167,7 @@ export class CartService {
     });
 
     if (!item) {
+      // Menggunakan console.warn standar saja jika Logger tidak diinisialisasi di versi bersih
       console.warn(
         `Upaya menghapus item keranjang yang tidak ada: ${cartItemId} untuk user: ${userId}`,
       );

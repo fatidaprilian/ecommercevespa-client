@@ -26,11 +26,23 @@ export default function CartPage() {
   const { cart, isLoading, updateItemQuantity, removeItem, selectedItems, toggleItemSelected, toggleSelectAll, fetchCart } = useCartStore();
   const { isAuthenticated } = useAuthStore();
   
+  // 👇 REVISI BAGIAN INI: Tambahkan polling interval 👇
   useEffect(() => {
     if (isAuthenticated) {
+      // 1. Fetch awal saat halaman dimuat (akan menampilkan loading spinner jika belum ada data)
       fetchCart();
+
+      // 2. Pasang interval untuk melakukan silent refresh setiap 5 detik
+      // 'true' artinya mode silent (tanpa loading spinner)
+      const intervalId = setInterval(() => {
+        fetchCart(true); 
+      }, 5000);
+
+      // 3. Bersihkan interval saat komponen di-unmount agar tidak memory leak
+      return () => clearInterval(intervalId);
     }
   }, [isAuthenticated, fetchCart]);
+  // 👆 AKHIR REVISI 👆
   
   const items = cart?.items || [];
   const isAllSelected = items.length > 0 && selectedItems.size === items.length;
@@ -63,7 +75,6 @@ export default function CartPage() {
     );
   }
   
-  // <-- PERUBAHAN KONDISI LOADING
   if (isLoading && !cart) {
     return (
       <div className="flex justify-center items-center min-h-screen">

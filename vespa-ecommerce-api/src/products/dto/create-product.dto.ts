@@ -1,6 +1,17 @@
 // File: src/products/dto/create-product.dto.ts
 
-import { IsString, IsNotEmpty, IsNumber, IsInt, IsOptional, Min, IsArray, ValidateNested, IsUrl } from 'class-validator';
+import { 
+  IsString, 
+  IsNotEmpty, 
+  IsNumber, 
+  IsInt, 
+  IsOptional, 
+  Min, 
+  IsArray, 
+  ValidateNested, 
+  IsUrl, 
+  IsBoolean // <-- DITAMBAHKAN
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ProductImageDto {
@@ -40,6 +51,12 @@ export class CreateProductDto {
   models?: string;
   // ---------------------------------
 
+  // 👇 PENAMBAHAN FIELD isVisible 👇
+  @IsBoolean()
+  @IsOptional()
+  isVisible?: boolean; 
+  // -------------------------------
+  
   @IsString()
   @IsNotEmpty()
   categoryId: string;

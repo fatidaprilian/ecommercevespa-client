@@ -1,4 +1,4 @@
-// src/orders/orders.module.ts
+// file: src/orders/orders.module.ts
 
 import { Module } from '@nestjs/common';
 import { OrdersService } from './orders.service';
@@ -9,7 +9,10 @@ import { AccurateSyncModule } from 'src/accurate-sync/accurate-sync.module';
 import { SettingsModule } from 'src/settings/settings.module';
 import { OrderCompletionService } from './order-completion.service';
 import { OrderExpirationService } from './order-expiration.service';
-import { EmailModule } from 'src/email/email.module'; 
+import { EmailModule } from 'src/email/email.module';
+// 👇👇 UBAH INI: Ganti AccuratePricingModule dengan ProductsModule 👇👇
+import { ProductsModule } from 'src/products/products.module';
+// 👆👆 AKHIR UBAHAN 👆👆
 
 @Module({
   imports: [
@@ -18,6 +21,9 @@ import { EmailModule } from 'src/email/email.module';
     AccurateSyncModule,
     SettingsModule,
     EmailModule,
+    // 👇👇 DAFTARKAN MODULE BARU DI SINI 👇👇
+    ProductsModule,
+    // 👆👆 ------------------------------- 👆👆
   ],
   controllers: [OrdersController],
   providers: [

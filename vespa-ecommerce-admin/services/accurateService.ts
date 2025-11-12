@@ -14,6 +14,14 @@ export interface AccurateBankAccount {
   accountType: string;
 }
 
+// 👇👇 TAMBAHKAN INTERFACE BARU INI 👇👇
+export interface PriceCategory {
+  id: number;
+  name: string;
+  isDefault: boolean;
+}
+// 👆👆 AKHIR TAMBAHAN 👆👆
+
 export const getAccurateStatus = async (): Promise<AccurateStatus> => {
   const { data } = await api.get('/accurate/status');
   return data;
@@ -33,3 +41,10 @@ export const getAccurateBankAccounts = async (): Promise<AccurateBankAccount[]> 
   const { data } = await api.get('/accurate/bank-accounts');
   return data;
 };
+
+// 👇👇 TAMBAHKAN FUNCTION BARU INI 👇👇
+export const getPriceCategories = async (): Promise<PriceCategory[]> => {
+  const { data } = await api.get('/accurate-pricing/categories');
+  return data;
+};
+// 👆👆 AKHIR TAMBAHAN 👆👆

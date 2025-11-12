@@ -3,8 +3,8 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-// Impor ikon yang mungkin diperlukan (pastikan Loader2 ada jika ingin menampilkan loading)
-import { User, LogOut, UserPlus, Archive, Settings, Heart, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query'; // <-- TAMBAHAN 1: Import ini
+import { User, LogOut, UserPlus, Archive, Settings, Heart } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
@@ -20,111 +20,89 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function AuthNav() {
-  // --- 👇 AMBIL _hasHydrated DARI STORE ---
-  // Kita tambahkan _hasHydrated di sini
+  // Ambil _hasHydrated dari store untuk pengecekan
   const { user, isAuthenticated, setAuth, _hasHydrated } = useAuthStore();
   const { fetchCart, clearClientCart } = useCartStore();
   const { fetchWishlistIds, clearWishlist } = useWishlistStore();
+  
+  // <-- TAMBAHAN 2: Inisialisasi queryClient
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    // --- 👇 TAMBAHKAN PENGECEKAN HIDRASI DI AWAL ---
     // Jika state belum selesai dimuat dari localStorage, jangan lakukan apa-apa dulu
     if (!_hasHydrated) {
-      console.log("AuthNav: Menunggu hidrasi Zustand..."); // Pesan log untuk debugging
-      return; // Keluar dari useEffect lebih awal
+      return;
     }
-    // ---------------------------------------------
-
-    // Log ini akan muncul setelah hidrasi selesai
-    console.log("AuthNav: State terhidrasi. Memeriksa status autentikasi...");
 
     const syncUserAndData = async () => {
       // Hanya jalankan jika state (dari localStorage) bilang user terautentikasi
       if (isAuthenticated) {
-        console.log("AuthNav: Terautentikasi (berdasarkan state). Memvalidasi sesi ke backend...");
         try {
-          // --- 👇 PERBAIKI LOGIKA FETCH PROFILE ---
           // Cek apakah data 'user' di state masih kosong, meskipun 'isAuthenticated' true
-          const token = useAuthStore.getState().token; // Ambil token saat ini
+          const token = useAuthStore.getState().token;
           if (!useAuthStore.getState().user && token) {
-              console.log("AuthNav: User belum ada di state, mencoba fetch profile...");
-              // Panggil API untuk mendapatkan data profil, ini sekaligus memvalidasi token
+              // Panggil API untuk mendapatkan data profil sekaligus memvalidasi token
               const profileRes = await api.get('/users/profile');
-              console.log("AuthNav: Profile berhasil di-fetch.");
               // Jika berhasil, simpan data user ke state ZUSTAND
-              setAuth(profileRes.data, token); // Simpan user & token yang masih valid
-          } else if (useAuthStore.getState().user) {
-              // Jika data user sudah ada di state, tidak perlu fetch ulang
-              console.log("AuthNav: User sudah ada di state.");
+              setAuth(profileRes.data, token);
           }
-          // -------------------------------------
 
-          // Setelah memastikan user ada (baik dari state atau hasil fetch),
-          // baru ambil data keranjang dan wishlist
-          console.log("AuthNav: Fetching cart dan wishlist...");
+          // Setelah memastikan user ada, ambil data keranjang dan wishlist
           await Promise.all([
-            fetchCart(),       // Fungsi ini sudah punya pengecekan hidrasi internal
-            fetchWishlistIds() // Pastikan fungsi ini juga aman jika dipanggil sebelum hidrasi (atau andalkan AuthNav)
+            fetchCart(),
+            fetchWishlistIds()
           ]);
-          console.log("AuthNav: Cart dan wishlist selesai di-fetch.");
 
         } catch (error: any) {
-          // Jika fetch profile gagal (error 401), berarti token tidak valid/kedaluwarsa
-          console.error("AuthNav: Gagal sync/fetch profile (kemungkinan token kedaluwarsa):", error.response?.data || error.message);
-          // Interceptor Axios di api.ts *seharusnya* menangani error 401 dan redirect,
-          // tapi ini sebagai langkah pengaman tambahan untuk membersihkan state.
-          setAuth(null, null);      // Hapus user dan token dari state
-          clearClientCart();        // Bersihkan data keranjang di client
-          clearWishlist();          // Bersihkan data wishlist di client
+          console.error("AuthNav: Gagal sync/fetch profile:", error.message);
+          // Jika gagal (misal token expired), bersihkan state
+          setAuth(null, null);
+          clearClientCart();
+          clearWishlist();
         }
       } else {
-         // --- 👇 BERSIHKAN STATE JIKA TIDAK LOGIN ---
-         // Jika setelah hidrasi ternyata user tidak terautentikasi
-         console.log("AuthNav: Tidak terautentikasi. Membersihkan cart/wishlist client.");
+         // Bersihkan state jika tidak terautentikasi setelah hidrasi
          clearClientCart();
          clearWishlist();
-         // ----------------------------------------
       }
     };
 
-    syncUserAndData(); // Jalankan fungsi validasi
-    // --- 👇 TAMBAHKAN _hasHydrated SEBAGAI DEPENDENCY ---
-    // useEffect ini akan dijalankan lagi jika salah satu nilai ini berubah
+    syncUserAndData();
   }, [isAuthenticated, setAuth, fetchCart, fetchWishlistIds, clearClientCart, clearWishlist, _hasHydrated]);
 
-  // Fungsi logout tidak berubah signifikan, tapi bisa dibuat async jika memanggil API
   const handleLogout = async () => {
     try {
       // Opsional: Panggil endpoint logout di backend jika ada
       // await api.post('/auth/logout');
+      
       console.log("AuthNav: Melakukan logout...");
+      
+      // Bersihkan state auth dan store lokal
       setAuth(null, null);
       clearClientCart();
       clearWishlist();
-      // Opsional: Redirect ke halaman login setelah logout
-      // window.location.href = '/login';
+
+      // <-- TAMBAHAN 3: Bersihkan semua cache React Query
+      // Ini akan memaksa semua komponen (termasuk produk) untuk fetch ulang data segar (harga publik)
+      queryClient.clear();
+
     } catch (error) {
        console.error("AuthNav: Gagal logout:", error);
        // Tetap bersihkan state di frontend meskipun backend gagal
        setAuth(null, null);
        clearClientCart();
        clearWishlist();
+       queryClient.clear(); // Tetap clear cache meskipun error
     }
   };
 
-  // --- 👇 TAMPILKAN PLACEHOLDER SELAMA HIDRASI (OPSIONAL) ---
-  // Selama state belum siap (_hasHydrated false), tampilkan UI loading sederhana
+  // Tampilkan placeholder sederhana selama hidrasi (opsional, sesuaikan dengan desain)
   if (!_hasHydrated) {
-      // Ganti ini dengan komponen Skeleton jika Anda punya
       return <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>;
-      // Atau bisa juga: return null; jika tidak ingin menampilkan apa-apa
   }
-  // --------------------------------------------------------
-
 
   // Tampilkan dropdown jika user sudah login (setelah hidrasi)
   if (isAuthenticated && user) {
-    // ... (Kode JSX untuk Dropdown menu tidak berubah) ...
       return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -170,7 +148,7 @@ export default function AuthNav() {
     );
   }
 
-  // Tampilkan tombol Login/Register jika sudah terhidrasi dan user tidak login
+  // Tampilkan tombol Login/Register jika user tidak login
   return (
     <div className="flex items-center space-x-1">
         <Link

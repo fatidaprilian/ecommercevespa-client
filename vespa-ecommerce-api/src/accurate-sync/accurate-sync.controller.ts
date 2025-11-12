@@ -1,8 +1,8 @@
-import { Controller, Post, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, UseGuards } from '@nestjs/common';
 import { AccurateSyncService } from './accurate-sync.service';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard'; 
+import { RolesGuard } from '../common/guards/roles.guard';
 import { Role } from '@prisma/client';
 
 /**
@@ -22,4 +22,13 @@ export class AccurateSyncController {
     async triggerProductSync() {
         return this.accurateSyncService.syncProductsFromAccurate();
     }
+
+    // 👇👇 TAMBAHAN BARU UNTUK TESTING 👇👇
+    @Post('sync-rules')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles(Role.ADMIN)
+    async syncPriceRules() {
+        return this.accurateSyncService.syncPriceAdjustmentRules();
+    }
+    // 👆👆 ----------------------------- 👆👆
 }
