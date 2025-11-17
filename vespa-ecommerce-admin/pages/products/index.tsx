@@ -1,12 +1,15 @@
 // pages/products/index.tsx
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react'; // <-- useMemo ditambahkan
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { 
   PlusCircle, MoreHorizontal, Edit, Trash2, Search, 
   ChevronLeft, ChevronRight, Loader2, RefreshCw, 
-  CheckCircle, XCircle, Package, Tag
+  CheckCircle, XCircle, Package, Tag,
+  EyeOff, // <-- Icon baru
+  Eye, // <-- Icon baru
+  X // <-- Icon baru untuk Batal
 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,8 +29,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox'; // <-- Pastikan ini ada
 
-import { getProducts, updateProduct, deleteProduct, PaginatedProducts, Product } from '@/services/productService';
+import { 
+  getProducts, 
+  updateProduct, 
+  deleteProduct, 
+  PaginatedProducts, 
+  Product,
+  bulkUpdateProductVisibility // <-- Pastikan ini ada
+} from '@/services/productService';
 
 // --- Framer Motion Variants (Sama seperti UsersPage) ---
 const pageVariants = {
@@ -47,6 +58,10 @@ export default function ProductsPage() {
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
   const [activeTab, setActiveTab] = useState<"active" | "inactive">("active");
   
+  // --- STATE UNTUK BULK ACTION (Sekarang Persisten) ---
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  // --- END ---
+
   const queryClient = useQueryClient();
   const [isSyncingRules, setIsSyncingRules] = useState(false);
 
@@ -56,10 +71,9 @@ export default function ProductsPage() {
     queryFn: () => getProducts({ 
         page, 
         search: debouncedSearchTerm,
-        // KUNCI PERBAIKAN: Pastikan boolean ini dikirim dengan benar ke service
         isVisible: activeTab === 'active' 
     }),
-    placeholderData: (previousData) => previousData, // Pengganti keepPreviousData di TanStack Query v5
+    placeholderData: (previousData) => previousData,
   });
 
   // Reset halaman ke 1 saat search term berubah
@@ -67,8 +81,19 @@ export default function ProductsPage() {
     setPage(1);
   }, [debouncedSearchTerm]);
 
+  // !! EFEK YANG MERESET SELEKSI TELAH DIHAPUS !!
+
   const products = productsResponse?.data || [];
   const meta = productsResponse?.meta;
+
+  // --- HELPERS BARU UNTUK SELEKSI (HANYA MEMPENGARUHI HALAMAN SAAT INI) ---
+  const currentPageIds = useMemo(() => products.map((p) => p.id), [products]);
+  const isAllPageSelected = useMemo(() => {
+    if (currentPageIds.length === 0) return false;
+    // Cek apakah semua ID di halaman ini ada di dalam state seleksi
+    return currentPageIds.every((id) => selectedProductIds.includes(id));
+  }, [currentPageIds, selectedProductIds]);
+  // --- END ---
 
   // Mutation untuk Update (Featured / Visibility)
   const updateProductMutation = useMutation({
@@ -84,7 +109,7 @@ export default function ProductsPage() {
     },
   });
   
-  // Mutation untuk Soft Delete (Menonaktifkan) atau Hard Delete jika diperlukan
+  // Mutation untuk Hard Delete
   const deleteMutation = useMutation({
     mutationFn: deleteProduct,
     onSuccess: () => {
@@ -97,6 +122,22 @@ export default function ProductsPage() {
         });
     }
   });
+
+  // Mutation untuk BULK UPDATE VISIBILITY
+  const bulkUpdateVisibilityMutation = useMutation({
+    mutationFn: bulkUpdateProductVisibility,
+    onSuccess: (data) => {
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setSelectedProductIds([]); // Kosongkan pilihan HANYA setelah sukses
+    },
+    onError: (error: any) => {
+      toast.error("Gagal Memperbarui Produk", {
+        description: error.response?.data?.message || 'Terjadi kesalahan.',
+      });
+    },
+  });
+  // --- END ---
 
   // Mutation untuk Sync Harga Accurate
   const handleSyncRules = async () => {
@@ -121,7 +162,6 @@ export default function ProductsPage() {
   };
 
   const handleVisibilityToggle = (product: Product) => {
-      // Jika di tab inactive, kita "Aktifkan". Jika di tab active, kita "Sembunyikan".
       const newVisibility = !product.isVisible;
       updateProductMutation.mutate({ id: product.id, data: { isVisible: newVisibility } });
   };
@@ -130,6 +170,42 @@ export default function ProductsPage() {
     if (window.confirm('Yakin ingin menghapus produk ini secara permanen?')) {
         deleteMutation.mutate(id);
     }
+  };
+
+  // --- HANDLER SELEKSI BARU (LEBIH PINTAR) ---
+  const handleSelectAll = () => {
+    if (isAllPageSelected) {
+      // Jika semua di halaman ini sudah terpilih, deselect HANYA halaman ini
+      setSelectedProductIds((prev) => prev.filter((id) => !currentPageIds.includes(id)));
+    } else {
+      // Jika belum, select semua di halaman ini (tambahkan ke state, hindari duplikat)
+      setSelectedProductIds((prev) => [...new Set([...prev, ...currentPageIds])]);
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((pid) => pid !== id) // Hapus
+        : [...prev, id], // Tambah
+    );
+  };
+  
+  // HANDLER TOMBOL BATAL
+  const handleClearSelection = () => {
+    setSelectedProductIds([]);
+  };
+
+  // HANDLER TOMBOL BULK ACTION
+  const handleBulkAction = (isVisible: boolean) => {
+    const actionText = isVisible ? 'aktifkan' : 'sembunyikan';
+    if (!confirm(`Yakin ingin ${actionText} ${selectedProductIds.length} produk yang dipilih?`)) {
+      return;
+    }
+    bulkUpdateVisibilityMutation.mutate({
+      productIds: selectedProductIds,
+      isVisible,
+    });
   };
 
   return (
@@ -141,6 +217,67 @@ export default function ProductsPage() {
           <p className="text-muted-foreground">Kelola katalog, harga, dan stok produk Anda.</p>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* --- REVISI TOMBOL BULK ACTION DENGAN TOMBOL BATAL --- */}
+            {selectedProductIds.length > 0 && (
+              <AnimatePresence>
+                <motion.div 
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto', transition: { duration: 0.3 } }}
+                  exit={{ opacity: 0, width: 0, transition: { duration: 0.2 } }}
+                  className="flex items-center gap-2 overflow-hidden"
+                >
+                  {/* TAMPILKAN TOMBOL HIDE HANYA JIKA DI TAB AKTIF */}
+                  {activeTab === 'active' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkAction(false)}
+                      disabled={bulkUpdateVisibilityMutation.isPending}
+                      className="text-orange-600 border-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                    >
+                      {bulkUpdateVisibilityMutation.isPending && !bulkUpdateVisibilityMutation.variables?.isVisible ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <EyeOff className="mr-2 h-4 w-4" />
+                      )}
+                      Hide Selected ({selectedProductIds.length})
+                    </Button>
+                  )}
+                  
+                  {/* TAMPILKAN TOMBOL UNHIDE HANYA JIKA DI TAB NON-AKTIF */}
+                  {activeTab === 'inactive' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkAction(true)}
+                      disabled={bulkUpdateVisibilityMutation.isPending}
+                      className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"
+                    >
+                      {bulkUpdateVisibilityMutation.isPending && bulkUpdateVisibilityMutation.variables?.isVisible ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Eye className="mr-2 h-4 w-4" />
+                      )}
+                      Unhide Selected ({selectedProductIds.length})
+                    </Button>
+                  )}
+
+                  {/* TOMBOL BATAL BARU */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearSelection}
+                    className="text-muted-foreground"
+                    title="Batalkan semua pilihan"
+                  >
+                     <X className="mr-1 h-4 w-4" /> Batal ({selectedProductIds.length})
+                  </Button>
+
+                </motion.div>
+              </AnimatePresence>
+            )}
+            {/* --- END REVISI TOMBOL BULK ACTION --- */}
+
             <Button onClick={handleSyncRules} disabled={isSyncingRules} variant="outline" size="sm">
               {isSyncingRules ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Sync Harga
@@ -192,7 +329,13 @@ export default function ProductsPage() {
                             onFeatureToggle={handleFeatureToggle}
                             onVisibilityToggle={handleVisibilityToggle}
                             onDelete={handleDelete}
-                            isMutationPending={updateProductMutation.isPending || deleteMutation.isPending}
+                            isMutationPending={updateProductMutation.isPending || deleteMutation.isPending || bulkUpdateVisibilityMutation.isPending}
+                            // --- PROPS SELEKSI BARU ---
+                            selectedProductIds={selectedProductIds}
+                            onSelectAll={handleSelectAll}
+                            onSelectRow={handleSelectRow}
+                            isAllSelected={isAllPageSelected} // <-- Kirim status halaman ini
+                            // --- END ---
                         />
                     </CardContent>
                 </Card>
@@ -203,7 +346,7 @@ export default function ProductsPage() {
                     <CardHeader className="pb-3">
                         <CardTitle>Daftar Produk Non-Aktif</CardTitle>
                         <CardDescription>
-                             Menampilkan {meta?.total || 0} produk yang disembunyikan dari katalog.
+                            Menampilkan {meta?.total || 0} produk yang disembunyikan dari katalog.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-0 sm:p-6 sm:pt-0">
@@ -219,7 +362,13 @@ export default function ProductsPage() {
                             onFeatureToggle={handleFeatureToggle}
                             onVisibilityToggle={handleVisibilityToggle}
                             onDelete={handleDelete}
-                            isMutationPending={updateProductMutation.isPending || deleteMutation.isPending}
+                            isMutationPending={updateProductMutation.isPending || deleteMutation.isPending || bulkUpdateVisibilityMutation.isPending}
+                            // --- PROPS SELEKSI BARU ---
+                            selectedProductIds={selectedProductIds}
+                            onSelectAll={handleSelectAll}
+                            onSelectRow={handleSelectRow}
+                            isAllSelected={isAllPageSelected} // <-- Kirim status halaman ini
+                            // --- END ---
                         />
                     </CardContent>
                 </Card>
@@ -245,11 +394,20 @@ interface ProductTableProps {
     onVisibilityToggle: (product: Product) => void;
     onDelete: (id: string) => void;
     isMutationPending: boolean;
+    // --- PROPS SELEKSI (Nama tetap sama) ---
+    selectedProductIds: string[];
+    onSelectAll: () => void;
+    onSelectRow: (id: string) => void;
+    isAllSelected: boolean;
+    // --- END ---
 }
 
 function ProductTable({
     products, isLoading, isError, error, activeTab, meta, page, setPage,
-    onFeatureToggle, onVisibilityToggle, onDelete, isMutationPending
+    onFeatureToggle, onVisibilityToggle, onDelete, isMutationPending,
+    // --- PROPS SELEKSI ---
+    selectedProductIds, onSelectAll, onSelectRow, isAllSelected
+    // --- END ---
 }: ProductTableProps) {
     const isInactiveView = activeTab === 'inactive';
 
@@ -259,6 +417,16 @@ function ProductTable({
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
+                            {/* --- CHECKBOX HEADER --- */}
+                            <TableHead className="w-[40px] px-4">
+                              <Checkbox
+                                checked={isAllSelected}
+                                onCheckedChange={onSelectAll}
+                                aria-label="Select all on this page"
+                                disabled={isLoading || products.length === 0}
+                              />
+                            </TableHead>
+                            {/* --- END --- */}
                             <TableHead className="w-[80px] text-center">Unggulan</TableHead>
                             <TableHead>Info Produk</TableHead>
                             <TableHead className="hidden md:table-cell">Kategori</TableHead>
@@ -270,17 +438,17 @@ function ProductTable({
                     </TableHeader>
                     <AnimatePresence mode="wait">
                         <motion.tbody
-                            key={page + activeTab} // Kunci penting untuk animasi saat tab/halaman berubah
+                            key={page + activeTab + (isLoading ? 'loading' : 'loaded')} // Kunci di-update agar animasi lebih baik
                             initial="hidden" animate="visible" exit="exit"
                             variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
                         >
                             {isLoading ? (
-                                <TableRow><TableCell colSpan={7} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></TableCell></TableRow>
                             ) : isError ? (
-                                <TableRow><TableCell colSpan={7} className="h-32 text-center text-red-500">{error?.message || "Terjadi kesalahan"}</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="h-32 text-center text-red-500">{error?.message || "Terjadi kesalahan"}</TableCell></TableRow>
                             ) : products.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center justify-center gap-2">
                                             <Package className="h-8 w-8 opacity-50" />
                                             <p>Tidak ada produk {isInactiveView ? 'non-aktif' : 'aktif'} ditemukan.</p>
@@ -289,7 +457,24 @@ function ProductTable({
                                 </TableRow>
                             ) : (
                                 products.map((product) => (
-                                    <motion.tr key={product.id} variants={itemVariants} className="group">
+                                    <motion.tr 
+                                      key={product.id} 
+                                      variants={itemVariants} 
+                                      className="group"
+                                      // Terapkan style 'selected' jika ID ada di state
+                                      data-state={selectedProductIds.includes(product.id) ? 'selected' : ''}
+                                      // Anda bisa tambahkan style di CSS/globals.css:
+                                      // .table-row[data-state="selected"] { background-color: theme(colors.blue.50); }
+                                    >
+                                        {/* --- CHECKBOX ROW --- */}
+                                        <TableCell className="px-4">
+                                          <Checkbox
+                                            checked={selectedProductIds.includes(product.id)}
+                                            onCheckedChange={() => onSelectRow(product.id)}
+                                            aria-label="Select row"
+                                          />
+                                        </TableCell>
+                                        {/* --- END --- */}
                                         <TableCell className="text-center">
                                             <Switch
                                                 checked={product.isFeatured}
@@ -325,7 +510,7 @@ function ProductTable({
                                             </span>
                                         </TableCell>
                                         <TableCell>
-                                             <div className="flex items-center space-x-2">
+                                            <div className="flex items-center space-x-2">
                                                 <Switch
                                                     id={`visibility-${product.id}`}
                                                     checked={product.isVisible}
@@ -357,7 +542,7 @@ function ProductTable({
                                                             <CheckCircle className="mr-2 h-4 w-4" /> Aktifkan Kembali
                                                         </DropdownMenuItem>
                                                     ) : (
-                                                         <DropdownMenuItem onClick={() => onVisibilityToggle(product)} className="text-orange-600 focus:text-orange-600 cursor-pointer">
+                                                        <DropdownMenuItem onClick={() => onVisibilityToggle(product)} className="text-orange-600 focus:text-orange-600 cursor-pointer">
                                                             <XCircle className="mr-2 h-4 w-4" /> Sembunyikan
                                                         </DropdownMenuItem>
                                                     )}

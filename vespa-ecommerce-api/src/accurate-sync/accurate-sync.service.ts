@@ -1203,144 +1203,169 @@ export class AccurateSyncService {
 
   // 👇👇👇 TAMBAHAN METHOD BARU - syncPriceAdjustmentRules 👇👇👇
 @Cron(CronExpression.EVERY_HOUR)
-  async syncPriceAdjustmentRules() {
-    this.logger.log('WORKER: Memulai sinkronisasi Aturan Harga (Tiers & Rules)...');
-    // 1. Catat waktu mulai untuk penanda cleaning nanti
-    const syncStartTime = new Date();
+async syncPriceAdjustmentRules() {
+  this.logger.log('WORKER: Memulai sinkronisasi Aturan Harga (Tiers & Rules)...');
+  // 1. Catat waktu mulai untuk penanda cleaning nanti
+  const syncStartTime = new Date();
 
-    try {
-      const apiClient = await this.accurateService.getAccurateApiClient();
+  try {
+    const apiClient = await this.accurateService.getAccurateApiClient();
 
-      // 2. Ambil Daftar ID Dokumen Aktif
-      const listResponse = await apiClient.get('/accurate/api/sellingprice-adjustment/list.do', {
+    // 2. Ambil Daftar ID Dokumen Aktif
+    const listResponse = await apiClient.get(
+      '/accurate/api/sellingprice-adjustment/list.do',
+      {
         params: {
           fields: 'id,number',
           'filter.suspended.op': 'EQUAL',
           'filter.suspended.val': false,
         },
-      });
+      },
+    );
 
-      if (!listResponse.data?.s) throw new Error('Gagal mengambil daftar sellingprice-adjustment.');
-      const documentList = listResponse.data.d;
-      this.logger.log(`Ditemukan ${documentList.length} dokumen penyesuaian aktif.`);
+    if (!listResponse.data?.s) {
+      throw new Error('Gagal mengambil daftar sellingprice-adjustment.');
+    }
 
-      let tiersSynced = 0;
-      let rulesSynced = 0;
+    // ======================= PERUBAHAN DI SINI =======================
+    // Sortir terlebih dahulu berdasarkan nomor dokumen.
+    // Tujuan: dokumen dengan nomor paling besar diproses TERAKHIR,
+    // sehingga harga/set terbaru yang menang (override yang lama).
+    const documentList = (listResponse.data.d || []).sort((a, b) =>
+      (a.number || '').localeCompare(b.number || ''),
+    );
+    // ===================== AKHIR PERUBAHAN =========================
 
-      // 3. Loop Dokumen & Update Data
-      for (const doc of documentList) {
-        // Delay sedikit agar tidak memberondong server Accurate
-        await new Promise((resolve) => setTimeout(resolve, 300));
+    this.logger.log(`Ditemukan ${documentList.length} dokumen penyesuaian aktif.`);
 
-        const detailResponse = await apiClient.get('/accurate/api/sellingprice-adjustment/detail.do', {
-          params: { id: doc.id },
+    let tiersSynced = 0;
+    let rulesSynced = 0;
+
+    // 3. Loop Dokumen & Update Data (Sekarang sudah terurut)
+    for (const doc of documentList) {
+      // Delay sedikit agar tidak memberondong server Accurate
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const detailResponse = await apiClient.get(
+        '/accurate/api/sellingprice-adjustment/detail.do',
+        { params: { id: doc.id } },
+      );
+
+      if (!detailResponse.data?.s || !detailResponse.data?.d) continue;
+      const adj = detailResponse.data.d;
+
+      // Pastikan ada target kategori pelanggan
+      if (!adj.priceCategory?.id) continue;
+      const customerCategoryId = adj.priceCategory.id;
+
+      // Tanggal efektif
+      const startDate = adj.transDate
+        ? new Date(adj.transDate.split('/').reverse().join('-'))
+        : new Date();
+
+      if (!adj.detailItem) continue;
+
+      for (const detail of adj.detailItem) {
+        const accurateItemId = detail.item?.id?.toString();
+        if (!accurateItemId) continue;
+
+        // Cari ID produk lokal berdasarkan accurateItemId
+        const localProduct = await this.prisma.product.findUnique({
+          where: { accurateItemId },
+          select: { id: true },
         });
+        if (!localProduct) continue;
 
-        if (!detailResponse.data?.s || !detailResponse.data?.d) continue;
-        const adj = detailResponse.data.d;
-
-        // Pastikan ada target kategori pelanggan
-        if (!adj.priceCategory?.id) continue;
-        const customerCategoryId = adj.priceCategory.id;
-        
-        // Tanggal efektif
-        let startDate = adj.transDate ? new Date(adj.transDate.split('/').reverse().join('-')) : new Date();
-
-        if (!adj.detailItem) continue;
-
-        for (const detail of adj.detailItem) {
-          const accurateItemId = detail.item?.id?.toString();
-          if (!accurateItemId) continue;
-
-          // Cari ID produk lokal berdasarkan accurateItemId
-          const localProduct = await this.prisma.product.findUnique({
-            where: { accurateItemId: accurateItemId },
-            select: { id: true }
+        // === KASUS A: Harga Tetap (Tier) ===
+        // (Sudah pakai >= 0 dan simpan nama promo + lastSyncedAt)
+        if (adj.salesAdjustmentType === 'ITEM_PRICE_TYPE' && detail.price >= 0) {
+          await this.prisma.productPriceTier.upsert({
+            where: {
+              productId_accuratePriceCategoryId: {
+                productId: localProduct.id,
+                accuratePriceCategoryId: customerCategoryId,
+              },
+            },
+            update: {
+              price: detail.price,
+              name: `Promo ${adj.number}`, // Simpan nomor SPA sebagai nama promo
+              lastSyncedAt: new Date(),    // Tandai waktu sync
+            },
+            create: {
+              productId: localProduct.id,
+              accuratePriceCategoryId: customerCategoryId,
+              price: detail.price,
+              name: `Promo ${adj.number}`,
+              lastSyncedAt: new Date(),
+            },
           });
-          if (!localProduct) continue;
+          tiersSynced++;
+        }
 
-          // === KASUS A: Harga Tetap (Tier) ===
-          // Contoh: "Set harga jadi Rp 130.000"
-          if (adj.salesAdjustmentType === 'ITEM_PRICE_TYPE' && detail.price > 0) {
-             await this.prisma.productPriceTier.upsert({
-               where: {
-                 productId_accuratePriceCategoryId: {
-                   productId: localProduct.id,
-                   accuratePriceCategoryId: customerCategoryId,
-                 }
-               },
-               update: { 
-                   price: detail.price,
-                   // Note: Jika ingin auto-cleaning Tiers, tambahkan field 'lastSyncedAt' di schema ProductPriceTier
-                   // lastSyncedAt: new Date(), 
-               },
-               create: {
-                 productId: localProduct.id,
-                 accuratePriceCategoryId: customerCategoryId,
-                 price: detail.price,
-                 // lastSyncedAt: new Date(),
-               }
-             });
-             tiersSynced++;
-          } 
-          // === KASUS B: Diskon Persen (Rule) ===
-          // Contoh: "Diskon 10% dari harga dasar"
-          else if (detail.itemDiscPercent && parseFloat(detail.itemDiscPercent) > 0) {
-             const uniqueRuleId = `RULE-${adj.id}-${accurateItemId}`;
-             await this.prisma.priceAdjustmentRule.upsert({
-               where: { accurateRuleId: uniqueRuleId },
-               update: {
-                  name: `Promo ${adj.number} (${adj.priceCategory.name})`,
-                  accuratePriceCategoryId: customerCategoryId,
-                  productId: localProduct.id,
-                  accurateItemId: accurateItemId,
-                  discountType: 'PERCENTAGE',
-                  discountValue: parseFloat(detail.itemDiscPercent),
-                  startDate: startDate,
-                  isActive: !adj.suspended,
-                  lastSyncedAt: new Date(), // Update waktu sync agar tidak terhapus saat cleaning
-                  priority: 1,
-               },
-               create: {
-                  accurateRuleId: uniqueRuleId,
-                  name: `Promo ${adj.number} (${adj.priceCategory.name})`,
-                  accuratePriceCategoryId: customerCategoryId,
-                  productId: localProduct.id,
-                  accurateItemId: accurateItemId,
-                  discountType: 'PERCENTAGE',
-                  discountValue: parseFloat(detail.itemDiscPercent),
-                  startDate: startDate,
-                  isActive: !adj.suspended,
-                  lastSyncedAt: new Date(),
-                  priority: 1,
-               }
-             });
-             rulesSynced++;
-          }
+        // === KASUS B: Diskon Persen (Rule) ===
+        else if (
+          detail.itemDiscPercent !== null &&
+          detail.itemDiscPercent !== undefined &&
+          parseFloat(detail.itemDiscPercent) >= 0
+        ) {
+          const uniqueRuleId = `RULE-${adj.id}-${accurateItemId}`;
+
+          await this.prisma.priceAdjustmentRule.upsert({
+            where: { accurateRuleId: uniqueRuleId },
+            update: {
+              name: `Promo ${adj.number} (${adj.priceCategory.name})`,
+              accuratePriceCategoryId: customerCategoryId,
+              productId: localProduct.id,
+              accurateItemId,
+              discountType: 'PERCENTAGE',
+              discountValue: parseFloat(detail.itemDiscPercent),
+              startDate,
+              isActive: !adj.suspended,
+              lastSyncedAt: new Date(), // supaya nggak ikut kehapus saat cleaning
+              priority: 1,
+            },
+            create: {
+              accurateRuleId: uniqueRuleId,
+              name: `Promo ${adj.number} (${adj.priceCategory.name})`,
+              accuratePriceCategoryId: customerCategoryId,
+              productId: localProduct.id,
+              accurateItemId,
+              discountType: 'PERCENTAGE',
+              discountValue: parseFloat(detail.itemDiscPercent),
+              startDate,
+              isActive: !adj.suspended,
+              lastSyncedAt: new Date(),
+              priority: 1,
+            },
+          });
+          rulesSynced++;
         }
       }
-
-      // 4. AUTO-CLEANING RULES
-      // Hapus rules yang waktu sync-nya lebih lama dari waktu mulai job ini
-      const deletedRules = await this.prisma.priceAdjustmentRule.deleteMany({
-          where: {
-              lastSyncedAt: {
-                  lt: syncStartTime 
-              }
-          }
-      });
-
-      this.logger.log(`✅ SYNC SELESAI: ${tiersSynced} Tiers diupdate, ${rulesSynced} Rules diupdate.`);
-      if (deletedRules.count > 0) {
-          this.logger.log(`🧹 CLEANING: ${deletedRules.count} rules usang berhasil dihapus.`);
-      }
-
-      return { tiers: tiersSynced, rules: rulesSynced, cleanedRules: deletedRules.count };
-
-    } catch (error) {
-      this.logger.error(`Gagal sinkronisasi pricing: ${error.message}`, error.stack);
-      return { error: error.message };
     }
+
+    // 4. AUTO-CLEANING RULES
+    // Hapus rules yang waktu sync-nya lebih lama dari waktu mulai job ini
+    const deletedRules = await this.prisma.priceAdjustmentRule.deleteMany({
+      where: {
+        lastSyncedAt: {
+          lt: syncStartTime,
+        },
+      },
+    });
+
+    this.logger.log(
+      `✅ SYNC SELESAI: ${tiersSynced} Tiers diupdate, ${rulesSynced} Rules diupdate.`,
+    );
+    if (deletedRules.count > 0) {
+      this.logger.log(`🧹 CLEANING: ${deletedRules.count} rules usang berhasil dihapus.`);
+    }
+
+    return { tiers: tiersSynced, rules: rulesSynced, cleanedRules: deletedRules.count };
+  } catch (error: any) {
+    this.logger.error(`Gagal sinkronisasi pricing: ${error.message}`, error.stack);
+    return { error: error.message };
   }
-  // 👆👆👆 AKHIR TAMBAHAN METHOD BARU 👆👆👆
+}
+
+
 }

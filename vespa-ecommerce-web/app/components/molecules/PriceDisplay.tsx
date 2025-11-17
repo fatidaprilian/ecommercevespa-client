@@ -18,8 +18,8 @@ interface PriceDisplayProps {
 
 export default function PriceDisplay({
   priceInfo,
-  className = 'text-2xl',
-  originalPriceClassName = 'text-lg',
+  className = 'text-[22px]', // <-- DIUBAH: Asli 24px, dikecilkan 2px (~1.5pt)
+  originalPriceClassName = 'text-base', // <-- Disesuaikan jadi 16px
 }: PriceDisplayProps) {
 
   if (!priceInfo) {

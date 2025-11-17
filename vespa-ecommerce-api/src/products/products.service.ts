@@ -14,6 +14,8 @@ import { DiscountsCalculationService } from 'src/discounts/discounts-calculation
 import { UserPayload } from 'src/auth/interfaces/jwt.payload';
 // Import Service Kalkulator Baru
 import { PriceCalculatorService } from './price-calculator.service';
+// <-- IMPORT DTO BARU UNTUK BULK UPDATE
+import { BulkUpdateVisibilityDto } from './dto/bulk-update-visibility.dto';
 
 @Injectable()
 export class ProductsService {
@@ -419,6 +421,30 @@ export class ProductsService {
       where: { id },
     });
   }
+
+  // +++ METHOD BARU UNTUK BULK UPDATE +++
+  async bulkUpdateVisibility(
+    bulkUpdateVisibilityDto: BulkUpdateVisibilityDto,
+  ) {
+    const { productIds, isVisible } = bulkUpdateVisibilityDto;
+
+    const result = await this.prisma.product.updateMany({
+      where: {
+        id: {
+          in: productIds,
+        },
+      },
+      data: {
+        isVisible: isVisible,
+      },
+    });
+
+    return {
+      message: `Successfully updated visibility for ${result.count} products.`,
+      count: result.count,
+    };
+  }
+  // +++ AKHIR METHOD BARU +++
 
   async search(term: string) {
     if (!term || term.trim() === '') {

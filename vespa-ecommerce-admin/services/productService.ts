@@ -128,3 +128,16 @@ export const updateProduct = async (id: string, productData: Partial<ProductData
 export const deleteProduct = async (id: string) => {
   await api.delete(`/products/${id}`);
 };
+
+// +++ FUNGSI BARU UNTUK BULK UPDATE +++
+/**
+ * Memperbarui visibilitas beberapa produk sekaligus.
+ */
+export const bulkUpdateProductVisibility = async (data: {
+  productIds: string[];
+  isVisible: boolean;
+}): Promise<{ message: string; count: number }> => {
+  const response = await api.patch('/products/bulk-visible', data);
+  return response.data;
+};
+// +++ AKHIR FUNGSI BARU +++

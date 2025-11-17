@@ -14,17 +14,23 @@ export class PriceCalculatorService {
     let finalPrice = Number(product.price);
 
     // LAYER 1: Base Price Override (Tier)
-    // Hanya berjalan jika user punya kategori spesifik dari Accurate
+    // ======================= PERUBAHAN DI SINI =======================
+    // Diubah untuk sorting berdasarkan 'name' (SPA...) agar mengambil tier terbaru
     if (accuratePriceCategoryId && product.priceTiers && product.priceTiers.length > 0) {
-      const tierMatch = product.priceTiers.find(
-        (tier) => tier.accuratePriceCategoryId === accuratePriceCategoryId
-      );
-      if (tierMatch) {
-        finalPrice = Number(tierMatch.price);
+      
+      const applicableTiers = product.priceTiers
+        .filter((tier) => tier.accuratePriceCategoryId === accuratePriceCategoryId)
+        .sort((a, b) => (b.name || '').localeCompare(a.name || '')); // Urutkan terbaru
+
+      // Ambil tier terbaru (indeks 0)
+      if (applicableTiers.length > 0) {
+        finalPrice = Number(applicableTiers[0].price);
       }
     }
+    // ===================== AKHIR PERUBAHAN LAYER 1 =====================
 
-    // LAYER 2: Diskon Tambahan (Rules) - OPSI A: NILAI TERBAIK (TIDAK STACKING)
+
+    // LAYER 2: Diskon Tambahan (Rules) - LOGIKA BARU: ATURAN TERBARU
     if (product.priceAdjustmentRules && product.priceAdjustmentRules.length > 0) {
       const now = new Date();
 
@@ -37,17 +43,18 @@ export class PriceCalculatorService {
             // FIX: Pastikan tanggal mulai sudah lewat (jika diset)
             (!rule.startDate || new Date(rule.startDate) <= now)
         )
-        // FIX: Sorting berdasarkan NILAI diskon terbesar (descending) agar yang terbaik ada di urutan pertama
-        .sort((a, b) => Number(b.discountValue) - Number(a.discountValue));
+        // (Ini sudah benar dari fix kita sebelumnya)
+        .sort((a, b) => (b.name || '').localeCompare(a.name || ''));
 
-      // FIX OPSI A: Hanya ambil SATU rule terbaik (indeks 0 setelah sorting)
+
+      // Ambil SATU rule terbaru (indeks 0 setelah sorting)
       if (applicableRules.length > 0) {
-        const bestRule = applicableRules[0];
+        const latestRule = applicableRules[0]; // Diganti nama dari bestRule -> latestRule
 
-        if (bestRule.discountType === 'PERCENTAGE') {
-          finalPrice -= finalPrice * (Number(bestRule.discountValue) / 100);
-        } else if (bestRule.discountType === 'FIXED_DISCOUNT') {
-          finalPrice -= Number(bestRule.discountValue);
+        if (latestRule.discountType === 'PERCENTAGE') {
+          finalPrice -= finalPrice * (Number(latestRule.discountValue) / 100);
+        } else if (latestRule.discountType === 'FIXED_DISCOUNT') {
+          finalPrice -= Number(latestRule.discountValue);
         }
       }
     }

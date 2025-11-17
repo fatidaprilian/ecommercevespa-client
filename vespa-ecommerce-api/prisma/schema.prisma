@@ -442,11 +442,12 @@ model ProductPriceTier {
   id                      String   @id @default(cuid())
   productId               String
   product                 Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  accuratePriceCategoryId Int      // ID Kategori Harga dari Accurate (misal: 1 = Member, 2 = Reseller)
-  price                   Float    // Harga dasar khusus untuk kategori ini
-  lastSyncedAt            DateTime @default(now())
+  accuratePriceCategoryId Int
+  price                   Float
+  name                    String?
+  lastSyncedAt            DateTime @default(now()) @updatedAt
 
-  @@unique([productId, accuratePriceCategoryId]) // Satu produk hanya punya 1 harga khusus per kategori user
+  @@unique([productId, accuratePriceCategoryId])
   @@index([productId])
   @@index([accuratePriceCategoryId])
 }

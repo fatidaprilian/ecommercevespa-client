@@ -12,6 +12,8 @@ import { Public } from 'src/auth/decorators/public.decorator';
 import { QueryProductDto } from './dto/query-product.dto';
 import { SearchProductDto } from './dto/search-product.dto';
 import { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
+// <-- IMPORT DTO BARU
+import { BulkUpdateVisibilityDto } from './dto/bulk-update-visibility.dto';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard)
@@ -61,6 +63,17 @@ export class ProductsController {
   ) {
     return this.productsService.findRelated(id, type, req.user);
   }
+
+  // +++ ENDPOINT BARU UNTUK BULK UPDATE +++
+  @Patch('bulk-visible')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  bulkUpdateVisibility(
+    @Body() bulkUpdateVisibilityDto: BulkUpdateVisibilityDto,
+  ) {
+    return this.productsService.bulkUpdateVisibility(bulkUpdateVisibilityDto);
+  }
+  // +++ AKHIR ENDPOINT BARU +++
 
   @Patch(':id')
   @UseGuards(RolesGuard)
