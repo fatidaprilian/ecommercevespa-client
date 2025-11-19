@@ -44,23 +44,21 @@ const ProductDetailSkeleton = () => (
     <div className="bg-white min-h-screen pt-28 animate-pulse">
         <div className="container mx-auto px-4 py-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-                {/* Skeleton Kiri */}
                 <div className="flex flex-row-reverse gap-4">
-                    <div className="flex-grow bg-gray-200 h-[450px] rounded-xl"></div>
-                    <div className="flex flex-col gap-3 w-20 flex-shrink-0">
-                        <div className="bg-gray-200 h-20 w-20 rounded-lg"></div>
-                        <div className="bg-gray-200 h-20 w-20 rounded-lg"></div>
-                        <div className="bg-gray-200 h-20 w-20 rounded-lg"></div>
+                    <div className="flex-grow bg-gray-200 h-[350px] lg:h-[450px] rounded-xl"></div>
+                    <div className="flex flex-col gap-3 w-16 lg:w-20 flex-shrink-0">
+                        <div className="bg-gray-200 h-16 lg:h-20 w-full rounded-lg"></div>
+                        <div className="bg-gray-200 h-16 lg:h-20 w-full rounded-lg"></div>
+                        <div className="bg-gray-200 h-16 lg:h-20 w-full rounded-lg"></div>
                     </div>
                 </div>
-                {/* Skeleton Kanan */}
                 <div className="flex flex-col space-y-4">
-                    <div className="h-10 w-3/4 bg-gray-300 rounded"></div>
-                    <div className="h-6 w-1/3 bg-gray-300 rounded"></div>
-                    <div className="h-12 w-1/2 bg-gray-300 rounded my-4"></div>
-                    <div className="flex gap-4">
-                        <div className="h-14 w-1/3 bg-gray-200 rounded-lg"></div>
-                        <div className="h-14 flex-grow bg-gray-300 rounded-lg"></div>
+                    <div className="h-8 lg:h-10 w-3/4 bg-gray-300 rounded"></div>
+                    <div className="h-5 lg:h-6 w-1/3 bg-gray-300 rounded"></div>
+                    <div className="h-10 lg:h-12 w-1/2 bg-gray-300 rounded my-4"></div>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="h-12 lg:h-14 w-full sm:w-1/3 bg-gray-200 rounded-lg"></div>
+                        <div className="h-12 lg:h-14 flex-grow bg-gray-300 rounded-lg"></div>
                     </div>
                     <div className="h-10 w-full bg-gray-200 rounded"></div>
                 </div>
@@ -107,10 +105,10 @@ export default function ProductDetailPage() {
     const startPos = useRef({ x: 0, y: 0 });
     const imageRef = useRef<HTMLDivElement>(null);
 
-    // Thumbnail scroll states
+    // Thumbnail scroll states (Logic Desktop)
     const [scrollPosition, setScrollPosition] = useState(0);
     const thumbnailContainerRef = useRef<HTMLDivElement>(null);
-    const THUMBNAIL_HEIGHT = 108; // 96px + 12px gap
+    const THUMBNAIL_HEIGHT = 108; 
     const MAX_VISIBLE_THUMBNAILS = 5;
 
     useEffect(() => {
@@ -209,7 +207,7 @@ export default function ProductDetailPage() {
         isDragging.current = false;
     };
 
-    // Thumbnail scroll functions
+    // Thumbnail scroll functions (Hanya untuk Desktop)
     const scrollThumbnails = (direction: 'up' | 'down') => {
         const container = thumbnailContainerRef.current;
         if (!container || !product?.images) return;
@@ -236,21 +234,29 @@ export default function ProductDetailPage() {
             <BrandShowcase />
 
             <div className="container mx-auto px-4 py-5">
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-6">
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4 lg:mb-6">
                     <Button onClick={() => router.back()} variant="ghost" className="pl-0 text-gray-600 hover:text-gray-900">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Kembali
                     </Button>
                 </motion.div>
             
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start mb-10">
-                    <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="lg:sticky lg:top-28 self-start">
-                        <div className="flex flex-row-reverse gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start mb-10">
+                    
+                    {/* GALLERY SECTION */}
+                    {/* LOGIKA LAYOUT:
+                        Mobile: flex-col (Main Image diatas, Thumbnail dibawah)
+                        Desktop (lg): flex-row-reverse (Main Image kanan, Thumbnail kiri - preserved)
+                    */}
+                    <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="lg:sticky lg:top-28 self-start w-full">
+                        <div className="flex flex-col lg:flex-row-reverse gap-3 lg:gap-4">
+                            
+                            {/* Main Image Area */}
                             <Dialog open={isZoomOpen} onOpenChange={handleOpenChange}>
                                 <DialogTrigger asChild>
                                     <motion.div
                                         key={selectedImage}
-                                        className="relative flex-grow flex items-center justify-center bg-gray-100 aspect-square rounded-2xl overflow-hidden cursor-pointer group"
+                                        className="relative flex-grow flex items-center justify-center bg-gray-100 aspect-square rounded-xl lg:rounded-2xl overflow-hidden cursor-pointer group w-full"
                                     >
                                         <img
                                             src={selectedImage || 'https://placehold.co/600x600'} alt={product.name}
@@ -268,18 +274,14 @@ export default function ProductDetailPage() {
                                 >
                                     <DialogHeader className="sr-only">
                                         <DialogTitle>{product.name}</DialogTitle>
-                                        <DialogDescription>
-                                            Image viewer for {product.name}. You can zoom with the mouse wheel and pan by dragging.
-                                        </DialogDescription>
+                                        <DialogDescription>Image viewer for {product.name}</DialogDescription>
                                     </DialogHeader>
 
                                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 p-2 rounded-lg z-20">
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.max(prev / 1.2, 1))}><ZoomOut /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={resetImageState}><RefreshCw size={18} /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.min(prev * 1.2, 5))}><ZoomIn /></Button>
-                                        <Button onClick={() => handleOpenChange(false)} variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20">
-                                            <X className="h-5 w-5"/>
-                                        </Button>
+                                        <Button onClick={() => handleOpenChange(false)} variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20"><X className="h-5 w-5"/></Button>
                                     </div>
                                     
                                     <div
@@ -307,116 +309,127 @@ export default function ProductDetailPage() {
                                 </DialogContent>
                             </Dialog>
 
-                            <div className="relative flex flex-col w-24 flex-shrink-0">
+                            {/* THUMBNAILS WRAPPER 
+                            */}
+                            
+                            {/* 1. DESKTOP VERSION (Hidden on Mobile) */}
+                            {/* Menggunakan logika scroll vertikal asli & tombol panah */}
+                            <div className="hidden lg:flex relative flex-col w-24 flex-shrink-0">
                                 {showScrollButtons && canScrollUp && (
-                                    <button
-                                        onClick={() => scrollThumbnails('up')}
-                                        className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm"
-                                    >
+                                    <button onClick={() => scrollThumbnails('up')} className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm">
                                         <ChevronUp size={20} className="text-gray-800" strokeWidth={2.5} />
                                     </button>
                                 )}
 
-
                                 <div 
                                     ref={thumbnailContainerRef}
                                     className="flex flex-col gap-3 overflow-hidden relative p-2"
-                                    style={{ 
-                                        height: showScrollButtons ? `${MAX_VISIBLE_THUMBNAILS * THUMBNAIL_HEIGHT - 12}px` : 'auto'
-                                    }}
+                                    style={{ height: showScrollButtons ? `${MAX_VISIBLE_THUMBNAILS * THUMBNAIL_HEIGHT - 12}px` : 'auto' }}
                                 >
-                                    
                                     <div 
                                         className="flex flex-col gap-3 transition-transform duration-300 ease-out"
-                                        style={{ 
-                                            transform: `translateY(-${scrollPosition}px)`
-                                        }}
+                                        style={{ transform: `translateY(-${scrollPosition}px)` }}
                                     >
                                         {product.images?.map((image) => (
                                             <button 
-                                                key={image.id} 
+                                                key={`desktop-${image.id}`} 
                                                 onClick={() => setSelectedImage(image.url)} 
                                                 className={cn(
                                                     'aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
-                                                    selectedImage === image.url 
-                                                        ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' 
-                                                        : 'ring-0'
+                                                    selectedImage === image.url ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' : 'ring-0'
                                                 )}
                                             >
-                                                <img 
-                                                    src={image.url} 
-                                                    alt={`Thumbnail ${product.name}`} 
-                                                    className="w-full h-full object-cover"
-                                                />
+                                                <img src={image.url} alt={`Thumbnail ${product.name}`} className="w-full h-full object-cover"/>
                                             </button>
                                         ))}
                                     </div>
-
                                 </div>
 
                                 {showScrollButtons && canScrollDown && (
-                                    <button
-                                        onClick={() => scrollThumbnails('down')}
-                                        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm"
-                                    >
+                                    <button onClick={() => scrollThumbnails('down')} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm">
                                         <ChevronDown size={20} className="text-gray-800" strokeWidth={2.5} />
                                     </button>
                                 )}
                             </div>
+
+                            {/* 2. MOBILE VERSION (Hidden on Desktop) */}
+                            {/* Tampilan Horizontal dibawah gambar, Swipe native (tanpa tombol panah) */}
+                            <div className="flex lg:hidden w-full overflow-x-auto gap-3 pb-2 scrollbar-hide">
+                                {product.images?.map((image) => (
+                                    <button 
+                                        key={`mobile-${image.id}`} 
+                                        onClick={() => setSelectedImage(image.url)} 
+                                        className={cn(
+                                            'flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200',
+                                            selectedImage === image.url ? 'ring-2 ring-orange-400 ring-offset-1' : 'ring-0'
+                                        )}
+                                    >
+                                        <img src={image.url} alt={`Thumbnail ${product.name}`} className="w-full h-full object-cover"/>
+                                    </button>
+                                ))}
+                            </div>
+
                         </div>
                         
                         {product.brand && product.brand.logoUrl && (
-                            <Link 
-                                href={`/products?brandId=${product.brand.id}`} 
-                                className="block mt-6 transition-opacity hover:opacity-70"
-                            >
-                                <img 
-                                    src={product.brand.logoUrl} 
-                                    alt={product.brand.name} 
-                                    className="w-12 h-auto object-contain" 
-                                />
+                            <Link href={`/products?brandId=${product.brand.id}`} className="block mt-4 lg:mt-6 transition-opacity hover:opacity-70">
+                                <img src={product.brand.logoUrl} alt={product.brand.name} className="w-10 lg:w-12 h-auto object-contain" />
                             </Link>
                         )}
                     </motion.div>
 
+                    {/* PRODUCT INFO SECTION */}
                     <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col">
-                        <motion.h1 variants={itemVariants} className="text-4xl lg:text-5xl font-bold text-gray-800 mb-2">{product.name}</motion.h1>
+                        <motion.h1 variants={itemVariants} className="text-2xl sm:text-3xl lg:text-5xl font-bold text-gray-800 mb-2 leading-tight">
+                            {product.name}
+                        </motion.h1>
                         
-                        <motion.div variants={itemVariants} className="space-y-3 mt-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                            {product.piaggioCode && (
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                                    <span className="text-gray-500 font-medium text-lg">Piaggio Code:</span>
-                                    <span className="font-bold text-gray-900 text-xl tracking-wide select-all">
-                                        {product.piaggioCode}
-                                    </span>
-                                </div>
-                            )}
+                        {/* GRID UNTUK ALIGNMENT LABEL (Titik Dua Rapi) */}
+                        <motion.div variants={itemVariants} className="mt-3 lg:mt-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                            {/* Menggunakan grid dengan kolom kiri fixed width (130px) agar rapi di semua ukuran */}
+                            <div className="grid grid-cols-[130px_1fr] gap-y-3 text-sm lg:text-base">
+                                {product.piaggioCode && (
+                                    <>
+                                        <div className="text-gray-500 font-medium flex items-center h-full">Piaggio Code:</div>
+                                        <div className="font-bold text-gray-900 text-base lg:text-xl tracking-wide select-all flex items-center">
+                                            {product.piaggioCode}
+                                        </div>
+                                    </>
+                                )}
 
-                            {product.category && (
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                                    <span className="text-gray-500 font-medium text-lg">Kategori:</span>
-                                    <Link 
-                                        // 👇 URL DIPERBAIKI: menggunakan format query param
-                                        href={`/products?categoryId=${product.category.id}`} 
-                                        className="font-bold text-orange-600 text-xl hover:underline hover:text-orange-700 transition-colors flex items-center gap-2"
-                                    >
-                                        {product.category.name}
-                                    </Link>
-                                </div>
-                            )}
+                                {product.category && (
+                                    <>
+                                        <div className="text-gray-500 font-medium flex items-center h-full">Kategori:</div>
+                                        <div className="flex items-center">
+                                            <Link 
+                                                href={`/products?categoryId=${product.category.id}`} 
+                                                className="font-bold text-orange-600 text-base lg:text-xl hover:underline hover:text-orange-700 transition-colors"
+                                            >
+                                                {product.category.name}
+                                            </Link>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </motion.div>
                         
-                        <Separator className="my-4" />
-                        <motion.div variants={itemVariants} className="mb-6"><PriceDisplay priceInfo={product.priceInfo} className="text-4xl" /></motion.div>
-                        <motion.div variants={itemVariants} className="flex items-center gap-4 mb-6">
-                            <div className="flex items-center justify-center border rounded-lg">
-                                <Button variant="ghost" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-4 h-12" disabled={quantity <= 1}><Minus size={16} /></Button>
+                        <Separator className="my-2 lg:my-4" />
+                        
+                        <motion.div variants={itemVariants} className="mb-6">
+                            <PriceDisplay priceInfo={product.priceInfo} className="text-3xl lg:text-4xl" />
+                        </motion.div>
+
+                        {/* Tombol Stack Vertikal di Mobile */}
+                        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-6">
+                            <div className="flex items-center justify-between sm:justify-center border rounded-lg h-12">
+                                <Button variant="ghost" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-4 h-full" disabled={quantity <= 1}><Minus size={16} /></Button>
                                 <span className="px-4 font-bold text-lg w-12 text-center">{quantity}</span>
-                                <Button variant="ghost" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} className="px-4 h-12" disabled={quantity >= product.stock}><Plus size={16} /></Button>
+                                <Button variant="ghost" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} className="px-4 h-full" disabled={quantity >= product.stock}><Plus size={16} /></Button>
                             </div>
+                            
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button size="lg" className="h-12 flex-grow text-base bg-orange-500 hover:bg-orange-600 text-white" disabled={isAdded || product.stock === 0 || isCartLoading}>
+                                    <Button size="lg" className="h-12 flex-grow text-base bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto" disabled={isAdded || product.stock === 0 || isCartLoading}>
                                         {isAdded ? <><Check size={20} className="mr-2"/> Ditambahkan</> : <><ShoppingCart size={20} className="mr-2"/><span>{product.stock > 0 ? 'Masukkan ke Keranjang' : 'Stok Habis'}</span></>}
                                     </Button>
                                 </AlertDialogTrigger>
@@ -426,6 +439,7 @@ export default function ProductDetailPage() {
                                 </AlertDialogContent>
                             </AlertDialog>
                         </motion.div>
+
                         <motion.div variants={itemVariants} className="text-sm text-gray-600 space-y-2">
                             <div className="flex items-center gap-2"><Package size={16}/><span>Stok: <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}</span></span></div>
                             <div className="flex items-center gap-2"><Ruler size={16}/><span>Berat: <span className="font-semibold text-gray-800">{product.weight || 'N/A'} gram</span></span></div>
@@ -440,19 +454,23 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="mb-24">
-                    <Separator className="my-16"/>
-                    <h2 className="text-3xl font-bold text-center mb-8">DESKRIPSI PRODUK</h2>
-                    <div className="max-w-4xl mx-auto text-gray-700 space-y-4 prose lg:prose-lg bg-gray-50 p-8 rounded-lg">
-                        {product.description ? (
-                            <div dangerouslySetInnerHTML={{ __html: product.description }} />
-                        ) : (
-                            <p>Tidak ada deskripsi untuk produk ini.</p>
-                        )}
-                        {product.models && (
-                                <p className="font-semibold">
+                    <Separator className="my-8 lg:my-16"/>
+                    <h2 className="text-2xl lg:text-3xl font-bold text-center mb-6 lg:mb-8">DESKRIPSI PRODUK</h2>
+                    <div className="w-full max-w-none lg:max-w-4xl mx-auto bg-gray-50 p-4 lg:p-8 rounded-lg overflow-hidden">
+                        <div className="prose prose-sm sm:prose-base lg:prose-lg text-gray-700 max-w-full break-words">
+                            {product.description ? (
+                                <div className="w-full overflow-x-auto">
+                                    <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                                </div>
+                            ) : (
+                                <p>Tidak ada deskripsi untuk produk ini.</p>
+                            )}
+                            {product.models && (
+                                <p className="font-semibold mt-4">
                                     MODELS: <span className="font-normal">{product.models}</span>
                                 </p>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -461,7 +479,7 @@ export default function ProductDetailPage() {
                     {product.category && <RelatedProducts productId={product.id} type="category" value={product.category.id} title={`Anda Mungkin Juga Suka`} />}
                 </div>
 
-                <Separator className="my-16"/>
+                <Separator className="my-8 lg:my-16"/>
                 <RecentlyViewed currentProductId={productId} />
             </div>
         </div>

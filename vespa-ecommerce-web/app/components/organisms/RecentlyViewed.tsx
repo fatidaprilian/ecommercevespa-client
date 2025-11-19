@@ -1,12 +1,9 @@
-// app/components/organisms/RecentlyViewed.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
-import { useProductsByIds } from '@/hooks/use-products-by-ids'; // <-- Gunakan hook baru
+import { useProductsByIds } from '@/hooks/use-products-by-ids'; 
 import { ProductCard } from '../molecules/ProductCard';
-import { Product } from '@/types';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Skeleton } from '../ui/skeleton';
 
@@ -34,7 +31,6 @@ export const RecentlyViewed = ({ currentProductId }: { currentProductId: string 
         setViewedProductIds(filteredIds);
     }, [getProductIds, currentProductId]);
 
-    // Ambil data lengkap dari server berdasarkan ID
     const { products, isLoading } = useProductsByIds(viewedProductIds);
 
     if (!isLoading && products.length === 0) {
@@ -43,7 +39,7 @@ export const RecentlyViewed = ({ currentProductId }: { currentProductId: string 
 
     return (
         <div className="py-16">
-            <h2 className="text-3xl font-bold text-center mb-8">Produk Yang Pernah Dilihat</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8">Produk Yang Pernah Dilihat</h2>
             {isLoading ? <RecentlyViewedSkeleton /> : (
                 <Carousel
                     opts={{ align: "start", loop: false }}
@@ -51,16 +47,21 @@ export const RecentlyViewed = ({ currentProductId }: { currentProductId: string 
                 >
                     <CarouselContent>
                         {products.map((product) => (
-                            <CarouselItem key={product.id} className="md:basis-1/3 lg:basis-1/5">
+                            /* PERUBAHAN DI SINI:
+                                basis-1/2 -> Membuat item mengambil 50% lebar layar (2 item per view) di Mobile.
+                                md:basis-1/3 -> 3 item per view di Tablet.
+                                lg:basis-1/5 -> 5 item per view di Desktop (tetap).
+                            */
+                            <CarouselItem key={product.id} className="basis-1/2 md:basis-1/3 lg:basis-1/5">
                                 <div className="p-1">
-                                    {/* Sekarang ProductCard menerima data lengkap */}
                                     <ProductCard product={product} />
                                 </div>
                             </CarouselItem>
                         ))}
                     </CarouselContent>
-                    <CarouselPrevious className="ml-12" />
-                    <CarouselNext className="mr-12" />
+                    {/* Tombol panah disembunyikan di mobile agar tidak menutupi produk, muncul di md ke atas */}
+                    <CarouselPrevious className="hidden md:flex ml-12" />
+                    <CarouselNext className="hidden md:flex mr-12" />
                 </Carousel>
             )}
         </div>
