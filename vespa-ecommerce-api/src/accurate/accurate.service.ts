@@ -3,7 +3,7 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { URLSearchParams } from 'url';
 import { AccurateOAuth } from '@prisma/client';
 
@@ -162,22 +162,72 @@ export class AccurateService {
         return { message: 'Database berhasil dipilih dan cabang default berhasil disimpan.' };
     }
 
-    public async getAccurateApiClient() {
+// [REVISI LENGKAP] Method getAccurateApiClient dengan Auto-Fix Host & Redirect Handler
+    public async getAccurateApiClient(): Promise<AxiosInstance> {
         const token = await this.getValidToken();
         if (!token) {
             throw new InternalServerErrorException('Integrasi Accurate tidak dikonfigurasi.');
         }
+
+        // Ambil info database terbaru
         const dbInfo = await this.prisma.accurateOAuth.findFirst();
         if (!dbInfo || !dbInfo.dbHost || !dbInfo.dbSession) {
             throw new InternalServerErrorException('Database Accurate belum dipilih atau dibuka.');
         }
-        return axios.create({
+
+        // 1. Buat Instance Axios dengan konfigurasi khusus Redirect
+        const instance = axios.create({
             baseURL: dbInfo.dbHost,
             headers: {
                 'Authorization': `Bearer ${token.accessToken}`,
                 'X-Session-ID': dbInfo.dbSession,
             },
+            // [PENTING] Izinkan redirect dan paksa header Authorization tetap ikut
+            maxRedirects: 5,
+            beforeRedirect: (options) => {
+                // Pasang kembali header saat redirect terjadi (fix issue 308)
+                options.headers['Authorization'] = `Bearer ${token.accessToken}`;
+                options.headers['X-Session-ID'] = dbInfo.dbSession;
+            },
         });
+
+        // 2. [REKOMENDASI] Tambahkan Interceptor untuk menangani perubahan Host secara Otomatis
+        instance.interceptors.response.use(
+            (response) => response,
+            async (error) => {
+                // Cek apakah response memiliki data endpoint baru (biasanya pada status 308 atau 401)
+                // Accurate mengirim JSON: { "error": "...", "endpoint": "https://..." }
+                if (error.response && error.response.data && error.response.data.endpoint) {
+                    const newEndpoint = error.response.data.endpoint;
+                    
+                    // Cek apakah endpoint benar-benar baru/berbeda dari yang kita punya
+                    if (newEndpoint && newEndpoint !== dbInfo.dbHost) {
+                        this.logger.warn(
+                            `[AUTO-FIX] Mendeteksi perubahan host Accurate dari '${dbInfo.dbHost}' ke '${newEndpoint}'. Memperbarui database dan mencoba ulang request...`
+                        );
+
+                        // A. Update database lokal agar request berikutnya langsung benar
+                        await this.prisma.accurateOAuth.updateMany({
+                            data: { dbHost: newEndpoint }
+                        });
+
+                        // B. Update konfigurasi request yang gagal ini dengan host baru
+                        const originalRequest = error.config;
+                        originalRequest.baseURL = newEndpoint;
+                        originalRequest.headers['Authorization'] = `Bearer ${token.accessToken}`;
+                        originalRequest.headers['X-Session-ID'] = dbInfo.dbSession;
+
+                        // C. Retry request original dengan config baru
+                        return axios.request(originalRequest);
+                    }
+                }
+
+                // Jika bukan error perubahan host, lempar error seperti biasa
+                return Promise.reject(error);
+            }
+        );
+
+        return instance;
     }
     
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
