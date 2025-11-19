@@ -47,4 +47,16 @@ export const getPriceCategories = async (): Promise<PriceCategory[]> => {
   const { data } = await api.get('/accurate-pricing/categories');
   return data;
 };
-// 👆👆 AKHIR TAMBAHAN 👆👆
+
+
+// --- 👇 TAMBAHAN BARU 👇 ---
+/**
+ * Menghapus cache Kategori Penjualan (Price Categories) Accurate.
+ * Agar list kategori di dropdown user ter-update dengan data baru dari Accurate.
+ */
+// 👇👇 UPDATE: Return type Promise<any> atau sesuaikan, agar message dari backend bisa diambil
+export const clearPriceCategoriesCache = async (): Promise<any> => {
+  const { data } = await api.delete('/accurate-pricing/categories/cache');
+  return data; // Kembalikan data (berisi message)
+};
+

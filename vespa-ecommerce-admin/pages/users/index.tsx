@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { MoreHorizontal, Edit, Trash2, Search, Percent, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import toast from 'react-hot-toast';
+// 👇 GANTI IMPORT TOAST DARI SONNER (bukan react-hot-toast)
+import { toast } from "sonner"; 
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/lib/api';
 
@@ -17,8 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getActiveUsers, getInactiveUsers, deleteUser, toggleUserActiveStatus, User as UserType } from '@/services/userService';
-// 👇 IMPORT BARU
-import { getPriceCategories } from '@/services/accurateService';
+import { getPriceCategories, clearPriceCategoriesCache } from '@/services/accurateService';
 
 interface User extends UserType {
     isActive: boolean;
@@ -27,7 +27,6 @@ interface User extends UserType {
     accuratePriceCategoryId?: number | null;
 }
 
-// Komponen helper tetap sama
 const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
@@ -40,24 +39,21 @@ const RoleBadge = ({ role }: { role: string }) => {
     return (<span className={`px-2 py-1 text-xs font-semibold rounded-full ${roleStyles[role] || roleStyles.MEMBER}`}>{role}</span>);
 };
 
-// 👇👇 KOMPONEN BADGE KATEGORI (DIREVISI AGAR DINAMIS) 👇👇
 const CategoryBadge = ({ id, name }: { id?: number | null; name?: string }) => {
   if (!id) {
     return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500 italic">Auto</span>;
   }
   
-  // Logika warna berdasarkan nama kategori
   const getCategoryColor = (categoryName?: string) => {
     const lowerName = categoryName?.toLowerCase() || '';
     if (lowerName.includes('umum')) return 'bg-yellow-100 text-yellow-800';
-    if (lowerName.includes('member-10')) return 'bg-indigo-100 text-indigo-800'; // Cek 10 dulu sebelum 1 agar tidak salah match
+    if (lowerName.includes('member-10')) return 'bg-indigo-100 text-indigo-800'; 
     if (lowerName.includes('member-1')) return 'bg-purple-100 text-purple-800';
     if (lowerName.includes('member-2')) return 'bg-blue-100 text-blue-800';
     if (lowerName.includes('member-3')) return 'bg-cyan-100 text-cyan-800';
     if (lowerName.includes('member-4')) return 'bg-teal-100 text-teal-800';
     if (lowerName.includes('member-5')) return 'bg-green-100 text-green-800';
-    // ... bisa tambahkan warna lain sesuai kebutuhan ...
-    return 'bg-gray-100 text-gray-800'; // Default color
+    return 'bg-gray-100 text-gray-800'; 
   };
 
   return (
@@ -66,7 +62,6 @@ const CategoryBadge = ({ id, name }: { id?: number | null; name?: string }) => {
     </span>
   );
 };
-// 👆👆 AKHIR REVISI KOMPONEN 👆👆
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
@@ -75,23 +70,19 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
   const ITEMS_PER_PAGE = 10;
 
-  // 👇👇 1. FETCH KATEGORI HARGA DARI ACCURATE 👇👇
   const { data: priceCategories } = useQuery({
       queryKey: ['accuratePriceCategories'],
       queryFn: getPriceCategories,
-      staleTime: 1000 * 60 * 60, // Cache 1 jam agar hemat request
+      staleTime: 1000 * 60 * 60, 
   });
 
-  // 👇👇 2. BUAT MAPPING (ID -> NAME) 👇👇
   const categoryMapping = useMemo(() => {
       if (!priceCategories) return {};
-      // Mengubah array [{id: 50, name: 'Umum'}, ...] menjadi object { 50: 'Umum', ... }
       return priceCategories.reduce((acc, cat) => {
           acc[cat.id] = cat.name;
           return acc;
       }, {} as Record<number, string>);
   }, [priceCategories]);
-  // 👆👆 ------------------------------------ 👆👆
 
   const queryFn = activeTab === 'active' ? getActiveUsers : getInactiveUsers;
   const { data: usersData, isLoading, isError, error } = useQuery<User[], Error>({
@@ -115,6 +106,32 @@ export default function UsersPage() {
     const startIndex = (page - 1) * ITEMS_PER_PAGE;
     return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredUsers, page]);
+
+  // 👇 REVISI LOGIKA MUTATION UNTUK SONNER & MESSAGE BACKEND
+  const refreshCategoriesMutation = useMutation({
+    mutationFn: async () => {
+      const toastId = toast.loading('Menghubungkan ke Accurate...');
+      try {
+        // Terima object data dari backend
+        const result = await clearPriceCategoriesCache();
+        return { toastId, result }; 
+      } catch (e) {
+        toast.dismiss(toastId);
+        throw e;
+      }
+    },
+    onSuccess: ({ toastId, result }) => {
+      // Gunakan message dari backend jika ada
+      toast.success(result?.message || 'Data Kategori Penjualan berhasil diperbarui!', { id: toastId });
+      queryClient.invalidateQueries({ queryKey: ['accuratePriceCategories'] });
+    },
+    onError: (err: any) => {
+      // Sonner toast.error tidak menerima ID untuk update loading, jadi buat baru (dismiss loading dulu boleh, tapi sonner handle tumpuk)
+      toast.dismiss(); 
+      toast.error('Gagal memperbarui kategori: ' + (err.response?.data?.message || err.message));
+    }
+  });
+  // -------------------------------------------------
 
   const softDeleteMutation = useMutation({
     mutationFn: deleteUser,
@@ -180,6 +197,17 @@ export default function UsersPage() {
             <h1 className="text-2xl font-bold tracking-tight">Manajemen Pengguna</h1>
             <p className="text-muted-foreground">Kelola pengguna dan peran akses mereka.</p>
          </div>
+         
+         <Button 
+            variant="outline" 
+            onClick={() => refreshCategoriesMutation.mutate()}
+            disabled={refreshCategoriesMutation.isPending}
+            title="Ambil ulang daftar Kategori Penjualan terbaru dari Accurate"
+            className={refreshCategoriesMutation.isPending ? "opacity-70 cursor-not-allowed" : ""}
+         >
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshCategoriesMutation.isPending ? 'animate-spin text-primary' : ''}`} />
+            {refreshCategoriesMutation.isPending ? 'Sedang Sinkron...' : 'Refresh Kategori'}
+         </Button>
       </motion.div>
 
       <motion.div variants={itemVariants}>
@@ -206,7 +234,7 @@ export default function UsersPage() {
                 <CardContent>
                     <UserTable
                         users={paginatedUsers}
-                        categoryMapping={categoryMapping} // 👈 OPER MAPPING KE SINI
+                        categoryMapping={categoryMapping} 
                         isLoading={isLoading}
                         isError={isError}
                         error={error}
@@ -239,7 +267,7 @@ export default function UsersPage() {
                  <CardContent>
                      <UserTable
                         users={paginatedUsers}
-                        categoryMapping={categoryMapping} // 👈 OPER MAPPING KE SINI JUGA
+                        categoryMapping={categoryMapping} 
                         isLoading={isLoading}
                         isError={isError}
                         error={error}
@@ -266,10 +294,9 @@ export default function UsersPage() {
   );
 }
 
-// 👇👇 KOMPONEN TABEL DIUPDATE 👇👇
 interface UserTableProps {
     users: User[];
-    categoryMapping: Record<number, string>; // 👈 TERIMA PROPS INI
+    categoryMapping: Record<number, string>; 
     isLoading: boolean;
     isError: boolean;
     error: Error | null;
@@ -289,7 +316,7 @@ interface UserTableProps {
 }
 
 function UserTable({
-    users, categoryMapping, isLoading, isError, error, page, totalPages, onPageChange, // 👈 Destructure categoryMapping
+    users, categoryMapping, isLoading, isError, error, page, totalPages, onPageChange, 
     handleToggleActive, handleDelete, handleSyncCategory,
     toggleActiveMutationLoading, toggleActiveMutationVariables,
     softDeleteMutationLoading, softDeleteMutationVariables,
@@ -330,7 +357,6 @@ function UserTable({
                                     <TableCell>{user.email}</TableCell>
                                     <TableCell><RoleBadge role={user.role} /></TableCell>
                                     
-                                    {/* 👇👇 PENGGUNAAN MAPPING DINAMIS 👇👇 */}
                                     <TableCell>
                                       <div className="flex items-center gap-2">
                                         <CategoryBadge 
@@ -355,7 +381,6 @@ function UserTable({
                                         )}
                                       </div>
                                     </TableCell>
-                                    {/* 👆👆 SELESAI 👆👆 */}
 
                                     <TableCell>{formatDate(user.createdAt)}</TableCell>
                                     <TableCell>

@@ -317,9 +317,10 @@ export default function ProductDetailPage() {
                                     </button>
                                 )}
 
+
                                 <div 
                                     ref={thumbnailContainerRef}
-                                    className="flex flex-col gap-3 overflow-hidden relative"
+                                    className="flex flex-col gap-3 overflow-hidden relative p-2"
                                     style={{ 
                                         height: showScrollButtons ? `${MAX_VISIBLE_THUMBNAILS * THUMBNAIL_HEIGHT - 12}px` : 'auto'
                                     }}
@@ -338,7 +339,7 @@ export default function ProductDetailPage() {
                                                 className={cn(
                                                     'aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
                                                     selectedImage === image.url 
-                                                        ? 'scale-105 shadow-lg ring-4 ring-orange-400' 
+                                                        ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' 
                                                         : 'ring-0'
                                                 )}
                                             >
@@ -372,7 +373,7 @@ export default function ProductDetailPage() {
                                 <img 
                                     src={product.brand.logoUrl} 
                                     alt={product.brand.name} 
-                                    className="w-12 h-auto object-contain" // <-- UBAH DI SINI
+                                    className="w-12 h-auto object-contain" 
                                 />
                             </Link>
                         )}
@@ -381,9 +382,27 @@ export default function ProductDetailPage() {
                     <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex flex-col">
                         <motion.h1 variants={itemVariants} className="text-4xl lg:text-5xl font-bold text-gray-800 mb-2">{product.name}</motion.h1>
                         
-                        <motion.div variants={itemVariants} className="text-sm text-gray-500 mb-4">
+                        <motion.div variants={itemVariants} className="space-y-3 mt-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
                             {product.piaggioCode && (
-                                <p>Piaggio Code: <span className="font-semibold text-gray-700">{product.piaggioCode}</span></p>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                                    <span className="text-gray-500 font-medium text-lg">Piaggio Code:</span>
+                                    <span className="font-bold text-gray-900 text-xl tracking-wide select-all">
+                                        {product.piaggioCode}
+                                    </span>
+                                </div>
+                            )}
+
+                            {product.category && (
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                                    <span className="text-gray-500 font-medium text-lg">Kategori:</span>
+                                    <Link 
+                                        // 👇 URL DIPERBAIKI: menggunakan format query param
+                                        href={`/products?categoryId=${product.category.id}`} 
+                                        className="font-bold text-orange-600 text-xl hover:underline hover:text-orange-700 transition-colors flex items-center gap-2"
+                                    >
+                                        {product.category.name}
+                                    </Link>
+                                </div>
                             )}
                         </motion.div>
                         

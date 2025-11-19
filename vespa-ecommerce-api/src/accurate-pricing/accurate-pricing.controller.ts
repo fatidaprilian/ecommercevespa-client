@@ -29,7 +29,7 @@ export class AccuratePricingController {
   @HttpCode(200)
   async clearCategoriesCache() {
     await this.accuratePricingService.clearPriceCategoriesCache();
-    return { message: 'Cache kategori berhasil dihapus. Request berikutnya akan fetch dari Accurate.' };
+    return { message: 'Berhasil! Data kategori harga telah diperbarui dari Accurate.' };
   }
 
   /**
