@@ -7,11 +7,11 @@ import * as z from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { toast } from 'sonner'; // <-- DIUBAH: Import dari sonner
+import { toast } from 'sonner'; 
 import { ArrowLeft, UploadCloud, X, Trash2, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Tambah FormDescription
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,10 +19,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getCategories, getBrands } from '@/services/pageService';
 import { getProductById, updateProduct, uploadImage, deleteProduct, Product } from '@/services/productService';
 
+// 👇 REVISI SCHEMA: Harga & Stok minimal 0 (boleh 0), bukan 1
 const productFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama produk minimal 3 karakter.' }),
   sku: z.string().min(3, { message: 'SKU minimal 3 karakter.' }),
-  price: z.coerce.number().min(1, { message: 'Harga harus lebih dari 0.' }),
+  price: z.coerce.number().min(0, { message: 'Harga tidak boleh negatif.' }), // Ubah min(1) jadi min(0)
   stock: z.coerce.number().int().min(0, { message: 'Stok tidak boleh negatif.' }),
   weight: z.coerce.number().int().min(1, { message: 'Berat minimal 1 gram.' }),
   description: z.string().optional(),
@@ -35,12 +36,10 @@ const productFormSchema = z.object({
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
-// Komponen Form terpisah untuk logika UI
 function EditProductForm({ initialData, categories, brands }: { initialData: Product; categories: any[]; brands: any[] }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const productId = initialData.id;
-
   const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<ProductFormValues>({
@@ -60,6 +59,25 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
     },
   });
 
+  // 👇 PENTING: Reset form saat data awal dimuat agar harga lama terisi otomatis
+  useEffect(() => {
+    if (initialData) {
+        form.reset({
+            name: initialData.name,
+            sku: initialData.sku,
+            price: initialData.price,
+            stock: initialData.stock,
+            weight: initialData.weight,
+            description: initialData.description || '',
+            piaggioCode: initialData.piaggioCode || '',
+            models: initialData.models || '',
+            categoryId: initialData.categoryId,
+            brandId: initialData.brandId || '',
+            images: initialData.images || [],
+        });
+    }
+  }, [initialData, form]);
+
   const updateMutation = useMutation({
     mutationFn: (values: ProductFormValues) => updateProduct(productId, values),
     onSuccess: () => {
@@ -70,7 +88,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
     },
     onError: (error: any) => {
         toast.error('Gagal Memperbarui Produk', {
-            description: error.response?.data?.message || 'Terjadi kesalahan tidak diketahui.',
+            description: error.response?.data?.message || 'Terjadi kesalahan.',
         });
     },
   });
@@ -84,7 +102,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
     },
     onError: (error: any) => {
       toast.error('Gagal Menghapus Produk', {
-        description: error.response?.data?.message || 'Terjadi kesalahan tidak diketahui.',
+        description: error.response?.data?.message || 'Terjadi kesalahan.',
       });
     },
   });
@@ -151,7 +169,21 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
               <FormField name="description" control={form.control} render={({ field }) => (<FormItem><FormLabel>Deskripsi</FormLabel><FormControl><Textarea placeholder="Jelaskan detail produk di sini..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU (dari Accurate)</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField name="price" control={form.control} render={({ field }) => (<FormItem><FormLabel>Harga</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                
+                {/* 👇 FIELD HARGA DENGAN PESAN BANTUAN 👇 */}
+                <FormField name="price" control={form.control} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Harga (Rp)</FormLabel>
+                        <FormControl>
+                            <Input type="number" {...field} />
+                        </FormControl>
+                        <FormDescription className="text-xs text-muted-foreground">
+                            Biarkan nilai lama jika tidak ingin diubah. Isi 0 jika gratis.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                
                 <FormField name="stock" control={form.control} render={({ field }) => (<FormItem><FormLabel>Stok</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField name="weight" control={form.control} render={({ field }) => (<FormItem><FormLabel>Berat (gram)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
@@ -164,27 +196,18 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
               <div className="flex flex-wrap gap-2 mb-4">
                 {form.watch('images')?.map((image, index) => (
                   <div key={index} className="relative w-20 h-20 group">
-                    <img src={image.url} alt={`product-image-${index}`} className="object-cover w-full h-full rounded-lg border-2 border-gray-200"/>
-                    <button type="button" onClick={() => removeImage(index)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
-                      <X size={14}/>
-                    </button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-0.5 text-center rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                      #{index + 1}
-                    </div>
+                    <img src={image.url} alt={`product-${index}`} className="object-cover w-full h-full rounded-lg border-2 border-gray-200"/>
+                    <button type="button" onClick={() => removeImage(index)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"><X size={14}/></button>
                   </div>
                 ))}
-                {isUploading && (
-                  <div className="relative w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 bg-muted/50 flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                )}
+                {isUploading && <div className="relative w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 bg-muted/50 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}
               </div>
               <FormField control={form.control} name="images" render={() => (
                 <FormItem>
                   <FormControl>
                     <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">
                       <UploadCloud className="w-10 h-10 text-muted-foreground mb-2"/>
-                      <span className="text-sm text-muted-foreground">Klik untuk upload atau drag and drop</span>
+                      <span className="text-sm text-muted-foreground">Klik untuk upload</span>
                       <Input type="file" className="hidden" onChange={handleImageUpload} disabled={isUploading}/>
                     </label>
                   </FormControl>
@@ -200,7 +223,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
               <FormField name="categoryId" control={form.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Kategori</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || undefined}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
                     <SelectContent>{categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
@@ -209,8 +232,8 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
               )} />
               <FormField name="brandId" control={form.control} render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Merek (Opsional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || undefined}>
+                  <FormLabel>Merek</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Pilih merek..." /></SelectTrigger></FormControl>
                     <SelectContent>{brands.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
@@ -231,38 +254,17 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
   );
 }
 
-// Komponen Utama untuk mengambil data
 export default function EditProductPage() {
   const router = useRouter();
   const { id } = router.query;
   const productId = typeof id === 'string' ? id : '';
-
-  const { data: product, isLoading: isLoadingProduct, isError } = useQuery<Product, Error>({
-    queryKey: ['product', productId],
-    queryFn: () => getProductById(productId),
-    enabled: !!productId,
-  });
-
-  const { data: categoriesResponse, isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => getCategories(),
-  });
-
-  const { data: brandsResponse, isLoading: isLoadingBrands } = useQuery({
-    queryKey: ['brands'],
-    queryFn: () => getBrands(),
-  });
   
-  if (isLoadingProduct || isLoadingCategories || isLoadingBrands) {
-    return <p className="text-center p-6">Memuat data...</p>;
-  }
+  const { data: product, isLoading: isLoadingProduct, isError } = useQuery<Product, Error>({ queryKey: ['product', productId], queryFn: () => getProductById(productId), enabled: !!productId });
+  const { data: categoriesResponse, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: () => getCategories() });
+  const { data: brandsResponse, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: () => getBrands() });
+  
+  if (isLoadingProduct || isLoadingCategories || isLoadingBrands) return <div className="flex justify-center p-8"><Loader2 className="animate-spin"/></div>;
+  if (isError || !product) return <p className="text-center p-6 text-red-500">Gagal memuat.</p>;
 
-  if (isError || !product) {
-    return <p className="text-center p-6 text-red-500">Gagal memuat data atau produk tidak ditemukan.</p>;
-  }
-
-  const categories = categoriesResponse?.data || [];
-  const brands = brandsResponse?.data || [];
-
-  return <EditProductForm initialData={product} categories={categories} brands={brands} />;
+  return <EditProductForm initialData={product} categories={categoriesResponse?.data || []} brands={brandsResponse?.data || []} />;
 }

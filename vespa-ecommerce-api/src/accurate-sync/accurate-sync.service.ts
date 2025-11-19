@@ -419,6 +419,7 @@ export class AccurateSyncService {
     }
   }
 
+// 👇👇 GANTI METHOD INI SEPENUHNYA 👇👇
   async syncProductsFromAccurate() {
     this.logger.log('WORKER: Starting product synchronization from Accurate...');
     try {
@@ -430,9 +431,11 @@ export class AccurateSyncService {
 
       while (hasMore) {
         this.logger.log(`WORKER: Fetching product page ${page}...`);
+        
+        // Request fields, termasuk availableToSell (Stok Bersih)
         const response = await apiClient.get('/accurate/api/item/list.do', {
           params: {
-            fields: 'id,no,name,itemType,unitPrice,quantity,averageCost',
+            fields: 'id,no,name,itemType,unitPrice,quantity,averageCost,availableToSell',
             'sp.page': page,
             'sp.pageSize': pageSize,
             'filter.suspended.op': 'EQUAL',
@@ -440,14 +443,9 @@ export class AccurateSyncService {
           },
         });
 
-        this.logger.log(`WORKER: API Response 'm' object: ${JSON.stringify(response.data.m)}`);
-        this.logger.log(`WORKER: API Response returned ${response.data.d?.length || 0} items on page ${page}.`);
-
         const itemsFromAccurate = response.data.d;
         if (!itemsFromAccurate || itemsFromAccurate.length === 0) {
-          this.logger.warn(
-            `WORKER: No items found on page ${page}. Ending sync.`,
-          );
+          this.logger.warn(`WORKER: No items found on page ${page}. Ending sync.`);
           hasMore = false;
           break;
         }
@@ -457,25 +455,35 @@ export class AccurateSyncService {
           if (item.itemType !== 'INVENTORY') continue;
           
           try {
-            const stockFromAccurate = item.quantity || 0;
-            
+            // 1. AMBIL STOK BASIS DARI ACCURATE
+            // Prioritas: availableToSell (Stok yang benar-benar bisa dijual). 
+            // Fallback: quantity (Stok Fisik) hanya jika field available tidak ada.
+            let baseStock = 0;
+            if (item.availableToSell !== undefined && item.availableToSell !== null) {
+                baseStock = item.availableToSell;
+            } else {
+                baseStock = item.quantity || 0; 
+            }
+
+            // 2. HITUNG PENGURANG LOKAL (HANYA ORDER WEB YANG BELUM SYNC)
             const existingProduct = await this.prisma.product.findUnique({
               where: { sku: item.no },
               include: {
                 orderItems: {
                   where: {
                     order: {
-                      status: {
-                        in: ['PENDING', 'PAID', 'PROCESSING']
-                      }
+                      // Ambil order aktif yang menahan stok
+                      status: { in: ['PENDING', 'PAID', 'PROCESSING'] }
                     }
                   },
                   select: {
                     quantity: true,
                     order: {
                       select: {
-                        orderNumber: true,
-                        status: true
+                        // Cek tanda apakah sudah masuk Accurate
+                        accurateSalesOrderNumber: true,
+                        accurateSalesInvoiceNumber: true,
+                        accurateSalesReceiptId: true,
                       }
                     }
                   }
@@ -483,26 +491,37 @@ export class AccurateSyncService {
               }
             });
 
-            const reservedStock = existingProduct?.orderItems.reduce(
-              (sum, item) => sum + item.quantity, 
+            // LOGIKA FILTER:
+            // Hanya kurangi stok untuk order yang BELUM punya nomor Sales Order/Invoice Accurate.
+            // Kalau sudah punya, berarti Accurate sudah mengurangi 'availableToSell' secara otomatis.
+            const localPendingStock = existingProduct?.orderItems.reduce(
+              (sum, orderItem) => {
+                const order = orderItem.order;
+                const isSynced = !!order.accurateSalesOrderNumber || 
+                                 !!order.accurateSalesInvoiceNumber || 
+                                 !!order.accurateSalesReceiptId;
+
+                // Jika SUDAH sync -> Skip (Jangan kurangi lagi, cegah double counting)
+                // Jika BELUM sync -> Hitung sebagai pengurang
+                return isSynced ? sum : sum + orderItem.quantity;
+              }, 
               0
             ) || 0;
 
-            const finalStock = Math.max(0, stockFromAccurate - reservedStock);
+            // 3. HITUNG STOK FINAL UNTUK WEB
+            // Stok Web = (Stok Bersih Accurate) - (Pesanan Web yang belum masuk Accurate)
+            const finalStock = Math.max(0, baseStock - localPendingStock);
 
-            if (reservedStock > 0) {
-              this.logger.log(
-                `[CronSync] SKU ${item.no}: ` +
-                `Accurate=${stockFromAccurate}, ` +
-                `Reserved=${reservedStock}, ` +
-                `Final=${finalStock}`
+            if (localPendingStock > 0) {
+              this.logger.debug(
+                `[SyncStock] SKU ${item.no}: AccurateAvailable=${baseStock} - WebPending=${localPendingStock} = Final=${finalStock}`
               );
             }
 
-            const savedProduct = await this.prisma.product.upsert({
+            // Simpan ke Database Lokal
+            await this.prisma.product.upsert({
               where: { sku: item.no },
               update: {
-                // name: item.name,
                 price: item.unitPrice || 0,
                 stock: finalStock,
                 cost: item.averageCost || 0,
@@ -521,20 +540,14 @@ export class AccurateSyncService {
             
             pageSyncedCount++;
           } catch (upsertError) {
-            this.logger.error(
-              `WORKER: Failed to upsert product with SKU ${item.no}. Error: ${upsertError.message}`,
-              upsertError.stack,
-            );
+            this.logger.error(`WORKER: Failed to upsert product with SKU ${item.no}. Error: ${upsertError.message}`);
           }
         }
         
-        this.logger.log(
-          `WORKER: Synced ${pageSyncedCount} products from page ${page}.`,
-        );
+        this.logger.log(`WORKER: Synced ${pageSyncedCount} products from page ${page}.`);
         totalSyncedCount += pageSyncedCount;
 
         hasMore = itemsFromAccurate.length === pageSize;
-        
         page++;
 
         if (hasMore) {
@@ -542,9 +555,7 @@ export class AccurateSyncService {
         }
       }
 
-      this.logger.log(
-        `WORKER: Successfully synced ${totalSyncedCount} products of type INVENTORY.`,
-      );
+      this.logger.log(`WORKER: Successfully synced ${totalSyncedCount} products of type INVENTORY.`);
       return {
         syncedCount: totalSyncedCount,
         message: `Berhasil menyinkronkan ${totalSyncedCount} produk.`,

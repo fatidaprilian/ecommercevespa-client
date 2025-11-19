@@ -5,6 +5,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config'; // <-- 1. IMPORT CONFIG SERVICE
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { Product, Prisma, Role } from '@prisma/client';
@@ -22,29 +23,27 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private discountsCalcService: DiscountsCalculationService,
-    // private readonly accuratePricingService: AccuratePricingService, // Opsional, bisa dihapus jika tidak ada logic lain yg butuh
-    private priceCalculator: PriceCalculatorService, // <-- INJECT SERVICE BARU
+    // private readonly accuratePricingService: AccuratePricingService, 
+    private priceCalculator: PriceCalculatorService,
+    private configService: ConfigService, // <-- 2. INJECT CONFIG SERVICE
   ) {}
 
-  // 👇👇👇 METHOD YANG SUDAH DI-REVISI TOTAL MENGGUNAKAN CALCULATOR SERVICE 👇👇👇
+  // 👇👇👇 METHOD YANG SUDAH DI-REVISI (LOGIKA HARGA UMUM) 👇👇👇
   public async processProductWithPrice(product: any, user?: UserPayload) {
-    // 1. Cek apakah user login dan punya kategori harga Accurate
     let accuratePriceCategoryId: number | null = null;
+
     if (user?.id) {
-      // Tips Optimasi: Jika ID Kategori Harga sudah ada di payload JWT,
-      // kita bisa pakai langsung tanpa query ke DB lagi.
-      // Untuk sekarang kita query dulu biar aman.
+      // A. JIKA USER LOGIN: Ambil kategori harga dari database user
       const fullUser = await this.prisma.user.findUnique({
         where: { id: user.id },
         select: { accuratePriceCategoryId: true, role: true, id: true },
       });
       accuratePriceCategoryId = fullUser?.accuratePriceCategoryId || null;
 
-      // FALLBACK LAMA: Jika tidak ada kategori Accurate, tapi dia Reseller,
-      // gunakan logic diskon lama (opsional, bisa dihapus jika ingin full Accurate)
+      // FALLBACK LAMA: Jika tidak ada kategori Accurate, tapi dia Reseller
       if (!accuratePriceCategoryId && fullUser?.role === Role.RESELLER) {
         const priceInfo = await this.discountsCalcService.calculatePrice(
-          fullUser as any, // Casting sementara karena kita cuma select sebagian field
+          fullUser as any,
           product,
         );
         return {
@@ -52,29 +51,33 @@ export class ProductsService {
           price: priceInfo.finalPrice,
           priceInfo: {
             originalPrice: product.price,
-            discountPercentage: 0, // Disederhanakan sesuai request klien
+            discountPercentage: 0,
             finalPrice: priceInfo.finalPrice,
             appliedRule: priceInfo.appliedRule,
           },
         };
       }
+    } else {
+      // B. JIKA TIDAK LOGIN (GUEST): Gunakan kategori "Umum" dari ENV
+      const defaultCatId = this.configService.get<string>('ACCURATE_DEFAULT_PRICE_CATEGORY_ID');
+      if (defaultCatId) {
+        accuratePriceCategoryId = Number(defaultCatId);
+      }
     }
 
-    // 2. Panggil Calculator Service untuk hitung harga
+    // 2. Panggil Calculator Service untuk hitung harga (Tier & Rules)
     const finalPrice = this.priceCalculator.calculateFinalPrice(
       product,
       accuratePriceCategoryId,
     );
 
-    // 3. Kembalikan data produk dengan harga final yang sudah dihitung
+    // 3. Kembalikan data produk dengan harga final
     return {
       ...product,
-      price: finalPrice, // <-- HARGA FINAL LANGSUNG DI SINI
-      // Opsi tambahan jika frontend butuh detail (tapi klien minta simple)
+      price: finalPrice,
       priceInfo: {
         originalPrice: product.price,
         finalPrice: finalPrice,
-        // appliedRule: 'CALCULATED_BY_TIER_AND_RULES',
       },
     };
   }
