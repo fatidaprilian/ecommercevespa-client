@@ -253,22 +253,24 @@ export default function ProductDetailPage() {
                             {/* Main Image Area */}
                             <Dialog open={isZoomOpen} onOpenChange={handleOpenChange}>
                                 <DialogTrigger asChild>
-                                    <motion.div
-                                        key={selectedImage}
-                                        className="relative flex-grow flex items-center justify-center bg-gray-100 aspect-square rounded-xl lg:rounded-2xl overflow-hidden cursor-pointer group w-full"
-                                    >
-                                        {/* 2. Menggunakan Image dari Next.js dengan fill + object-contain */}
+                                <motion.div
+                                    key={selectedImage}
+                                    className="relative flex-grow flex items-center justify-center bg-gray-100 aspect-square rounded-xl lg:rounded-2xl overflow-hidden cursor-pointer group w-full"
+                                >
+                                    {/* REVISI: Hanya render jika selectedImage ada. Jika null, tampil background abu (bg-gray-100) */}
+                                    {selectedImage && (
                                         <Image
-                                            src={selectedImage || 'https://placehold.co/600x600'} 
+                                            src={selectedImage}
                                             alt={product.name}
                                             fill
                                             sizes="(max-width: 768px) 100vw, 50vw"
                                             className="object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
                                         />
-                                        <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
-                                            <Search className="h-12 w-12 text-gray-400 opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
-                                        </div>
-                                    </motion.div>
+                                    )}
+                                    <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
+                                        <Search className="h-12 w-12 text-gray-400 opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
+                                    </div>
+                                </motion.div>
                                 </DialogTrigger>
                                 
                                 <DialogContent 
@@ -288,26 +290,25 @@ export default function ProductDetailPage() {
                                     </div>
                                     
                                     <div
-                                        ref={imageRef}
-                                        className="w-full h-full flex items-center justify-center select-none relative"
-                                        onWheel={handleWheel}
-                                        onMouseDown={handleMouseDown}
-                                        onMouseMove={handleMouseMove}
-                                        onMouseUp={handleMouseUp}
-                                        onMouseLeave={handleMouseLeave}
-                                        style={{ cursor: scale > 1 ? 'grab' : 'zoom-in' }}
-                                    >
+                                    ref={imageRef}
+                                    className="w-full h-full flex items-center justify-center select-none relative"
+                                    onWheel={handleWheel}
+                                    onMouseDown={handleMouseDown}
+                                    onMouseMove={handleMouseMove}
+                                    onMouseUp={handleMouseUp}
+                                    onMouseLeave={handleMouseLeave}
+                                    style={{ cursor: scale > 1 ? 'grab' : 'zoom-in' }}
+                                >
+                                    {/* REVISI: Hanya render jika ada gambar */}
+                                    {selectedImage && (
                                         <MotionImage
                                             key={selectedImage}
-                                            src={selectedImage || ''}
+                                            src={selectedImage}
                                             alt="Zoomed product"
-                                            // Kita tetap pakai angka besar agar resolusi tajam & tampilan besar
                                             width={1200} 
                                             height={1200}
-                                            // Tambahkan 'w-auto h-auto' di class
                                             className="w-auto h-auto max-w-[95vw] max-h-[95vh] shadow-2xl pointer-events-none"
                                             style={{
-                                                // INI KUNCINYA: Tambahkan width/height auto di style agar warning hilang
                                                 width: 'auto',
                                                 height: 'auto',
                                                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
@@ -315,7 +316,8 @@ export default function ProductDetailPage() {
                                             }}
                                             draggable={false}
                                         />
-                                    </div>
+                                    )}
+                                </div>
                                 </DialogContent>
                             </Dialog>
 
@@ -340,20 +342,23 @@ export default function ProductDetailPage() {
                                     >
                                         {product.images?.map((image) => (
                                             <button 
-                                                key={`desktop-${image.id}`} 
-                                                onClick={() => setSelectedImage(image.url)} 
-                                                className={cn(
-                                                    'relative aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
-                                                    selectedImage === image.url ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' : 'ring-0'
-                                                )}
-                                            >
+                                            key={`desktop-${image.id}`} // (Sesuaikan key untuk mobile: `mobile-${image.id}`)
+                                            onClick={() => setSelectedImage(image.url)} 
+                                            className={cn(
+                                                'relative aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
+                                                selectedImage === image.url ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' : 'ring-0'
+                                            )}
+                                        >
+                                            {/* REVISI: Cek jika URL ada */}
+                                            {image.url && (
                                                 <Image 
                                                     src={image.url} 
                                                     alt={`Thumbnail ${product.name}`} 
                                                     fill
                                                     className="object-cover"
                                                 />
-                                            </button>
+                                            )}
+                                        </button>
                                         ))}
                                     </div>
                                 </div>
@@ -368,21 +373,24 @@ export default function ProductDetailPage() {
                             {/* 2. MOBILE VERSION (Hidden on Desktop) */}
                             <div className="flex lg:hidden w-full overflow-x-auto gap-3 p-1 scrollbar-hide">
                                 {product.images?.map((image) => (
-                                    <button 
-                                        key={`mobile-${image.id}`} 
-                                        onClick={() => setSelectedImage(image.url)} 
-                                        className={cn(
-                                            'relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200',
-                                            selectedImage === image.url ? 'ring-2 ring-orange-400 ring-offset-1' : 'ring-0'
-                                        )}
-                                    >
+                                <button 
+                                    key={`mobile-${image.id}`} 
+                                    onClick={() => setSelectedImage(image.url)} 
+                                    className={cn(
+                                        'relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200',
+                                        selectedImage === image.url ? 'ring-2 ring-orange-400 ring-offset-1' : 'ring-0'
+                                    )}
+                                >
+                                    {/* PENTING: Cek dulu ada URL-nya atau tidak. Kalau tidak dicek, Next.js akan ERROR jika URL kosong */}
+                                    {image.url && (
                                         <Image 
                                             src={image.url} 
                                             alt={`Thumbnail ${product.name}`} 
                                             fill
                                             className="object-cover"
                                         />
-                                    </button>
+                                    )}
+                                </button>
                                 ))}
                             </div>
 
