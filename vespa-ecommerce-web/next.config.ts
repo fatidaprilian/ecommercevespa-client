@@ -16,8 +16,6 @@ const nextConfig: NextConfig = {
   },
   
   images: {
-    loader: 'custom',
-    loaderFile: './app/lib/imageLoader.ts',
     // 1. Optimasi: Hapus AVIF (berat), cukup WebP saja
     formats: ['image/webp'], 
     
