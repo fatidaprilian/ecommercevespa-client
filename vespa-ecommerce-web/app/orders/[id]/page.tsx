@@ -28,6 +28,7 @@ import { getOrderById } from '@/services/orderService';
 import { Button } from '@/components/ui/button';
 import { getTrackingDetails, TrackingDetails } from '@/services/shippingService';
 import { PaymentPreference } from '@/store/cart';
+import Image from 'next/image';
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return 'Tanggal tidak tersedia';
@@ -412,14 +413,17 @@ export default function OrderDetailPage() {
                     className="flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
-                      <img
-                        src={
-                          item.product.images?.[0]?.url ||
-                          'https://placehold.co/100x100'
-                        }
-                        alt={item.product.name}
-                        className="w-16 h-16 object-cover rounded-md"
-                      />
+                      <div className="relative w-16 h-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                      {item.product.images?.[0]?.url && (
+                        <Image
+                          src={item.product.images[0].url}
+                          alt={item.product.name}
+                          fill
+                          className="object-cover"
+                          sizes="64px"
+                        />
+                      )}
+                    </div>
                       <div>
                         <p className="font-semibold">{item.product.name}</p>
                         <p className="text-sm text-gray-500">

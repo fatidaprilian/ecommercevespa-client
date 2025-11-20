@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useBrands } from '@/hooks/use-brands';
 import { Brand } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import Image from 'next/image';
 import {
   Carousel,
   CarouselContent,
@@ -59,11 +60,15 @@ export function BrandShowcase() {
                                         className="block grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300 transform hover:scale-110"
                                     >
                                         {brand.logoUrl ? (
-                                            <img
+                                            <div className="relative h-10 md:h-12 w-full">
+                                            <Image
                                                 src={brand.logoUrl}
                                                 alt={`${brand.name} logo`}
-                                                className="h-10 md:h-12 w-full object-contain"
+                                                fill
+                                                className="object-contain"
+                                                sizes="(max-width: 768px) 100px, 150px"
                                             />
+                                        </div>
                                         ) : (
                                             <div className="h-10 md:h-12 flex items-center justify-center px-2">
                                                 <span className="text-sm font-semibold text-gray-500 text-center">{brand.name}</span>

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Heart, ShoppingCart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // <--- Import Image
 
 import { Card } from '@/components/ui/card';
 import { Product } from '@/types';
@@ -46,7 +47,8 @@ export function ProductCard({ product }: ProductCardProps) {
         toggleWishlist(product.id);
     };
 
-    const imageUrl = product.images?.[0]?.url || '/product-placeholder.jpg';
+    // REVISI: Hapus fallback placeholder agar tidak muncul gambar pecah
+    const imageUrl = product.images?.[0]?.url;
     const isProductInWishlist = isWishlisted(product.id);
 
     return (
@@ -55,7 +57,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 "group w-full h-full flex flex-col bg-white border-gray-200 overflow-hidden",
                 // Mobile: styling dasar
                 "rounded-lg shadow-sm",
-                // Desktop: hover effects (tetap dipertahankan)
+                // Desktop: hover effects
                 "sm:rounded-lg sm:hover:shadow-xl transition-shadow duration-300"
             )}
         >
@@ -64,7 +66,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 aria-label={product.name}
                 className="flex flex-col h-full"
             >
-                {/* Bagian Gambar - Tetap menggunakan logika background image */}
+                {/* --- Bagian Gambar --- */}
                 <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
                     <button
                         onClick={handleToggleWishlist}
@@ -81,20 +83,34 @@ export function ProductCard({ product }: ProductCardProps) {
                         />
                     </button>
                     
+                    {/* Wrapper Motion */}
                     <motion.div
-                        style={{ backgroundImage: `url(${imageUrl})` }}
-                        className="w-full h-full bg-cover bg-center bg-no-repeat"
+                        className="relative w-full h-full"
                         whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.4, ease: 'easeOut' }}
-                    />
+                    >
+                        {/* REVISI: Hanya render Image jika URL-nya ada */}
+                        {imageUrl && (
+                            <Image
+                                src={imageUrl}
+                                alt={product.name}
+                                fill
+                                className="object-cover object-center"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            />
+                        )}
+                    </motion.div>
                 </div>
+                {/* ----------------------------------------- */}
 
-                {/* Bagian Konten */}
+                {/* --- Bagian Konten --- */}
                 <div className="flex flex-col flex-grow p-2 sm:p-3">
                     {/* Brand & Kategori */}
                     <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2 text-[10px] sm:text-xs text-gray-500">
                         <div className="flex-shrink-0 max-w-[50%] truncate">
                             {product.brand?.logoUrl ? (
+                                // Logo brand kecil biasanya aman pakai img biasa (jarang kena blokir ISP karena ukuran kecil/svg)
+                                // Tapi kalau mau diubah ke Next Image juga boleh. Untuk sekarang biarkan img agar layout tidak bergeser.
                                 <img 
                                     src={product.brand.logoUrl} 
                                     alt={product.brand.name || 'Brand'} 
@@ -116,7 +132,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         </div>
                     </div>
                     
-                    {/* Nama Produk - Diberi tinggi tetap (fixed height) di mobile agar kartu sejajar */}
+                    {/* Nama Produk */}
                     <div className="h-9 sm:h-auto min-h-[36px] sm:min-h-[40px] mb-2 flex items-start">
                         <h3
                             className="text-sm sm:text-base font-semibold text-black group-hover:text-[#f04e23] transition-colors line-clamp-2 leading-tight"
@@ -128,16 +144,13 @@ export function ProductCard({ product }: ProductCardProps) {
 
                     {/* Footer: Harga & Tombol */}
                     <div className="mt-auto pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                        {/* Wrapper Harga: flex-1 & min-w-0 mencegah harga 'jebol' keluar kotak */}
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                              <PriceDisplay 
                                 priceInfo={product.priceInfo} 
-                                // Mobile: text-sm (agar muat), Desktop: text-lg/xl (tetap besar)
                                 className="text-sm sm:text-lg font-bold truncate text-gray-900" 
                              />
                         </div>
                         
-                        {/* Tombol Keranjang: flex-shrink-0 agar tombol tidak tergencet saat harga panjang */}
                         <button
                             onClick={handleAddToCart}
                             aria-label="Tambah ke keranjang"

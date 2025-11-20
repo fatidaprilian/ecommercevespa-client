@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Address } from '@/services/addressService';
 import { ShippingRate } from '@/services/shippingService';
 import { useAuthStore } from '@/store/auth';
+import Image from 'next/image';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -109,7 +110,17 @@ export function OrderSummary({
           .map(item => (
             <div key={item.id} className="flex justify-between text-sm items-center">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <img src={item.product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={item.product.name} className="w-12 h-12 object-cover rounded-md" />
+                <div className="relative w-12 h-12 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                  {item.product.images?.[0]?.url && (
+                    <Image
+                      src={item.product.images[0].url}
+                      alt={item.product.name}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{item.product.name}</p>
                   <p className="text-gray-500">{formatPrice(Number(item.product.price))} x {item.quantity}</p>

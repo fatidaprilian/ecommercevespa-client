@@ -25,6 +25,7 @@ import { useDebounce } from 'use-debounce';
 import { getMyOrders, PaginatedOrders } from '@/services/orderService';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
@@ -159,13 +160,21 @@ export default function OrdersPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3 -space-x-4">
                                     {order.items.slice(0, 3).map(item => (
-                                        <img 
-                                            key={item.id} 
-                                            src={item.product.images?.[0]?.url || 'https://placehold.co/100x100'}
-                                            alt={item.product.name}
-                                            className="h-16 w-16 object-cover rounded-full border-2 border-white shadow-sm"
-                                            title={item.product.name}
-                                        />
+                                        <div 
+                                          key={item.id} 
+                                          className="relative h-16 w-16 rounded-full border-2 border-white shadow-sm overflow-hidden bg-gray-100" 
+                                          title={item.product.name}
+                                      >
+                                          {item.product.images?.[0]?.url && (
+                                              <Image 
+                                                  src={item.product.images[0].url}
+                                                  alt={item.product.name}
+                                                  fill
+                                                  className="object-cover"
+                                                  sizes="64px"
+                                              />
+                                          )}
+                                      </div>
                                     ))}
                                     {order.items.length > 3 && (
                                         <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-500 border-2 border-white shadow-sm">

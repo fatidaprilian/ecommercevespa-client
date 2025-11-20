@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import PriceDisplay from '@/components/molecules/PriceDisplay';
+import Image from 'next/image';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -137,7 +138,17 @@ export default function CartPage() {
                         checked={selectedItems.has(cartItemId)}
                         onCheckedChange={() => toggleItemSelected(cartItemId)}
                       />
-                      <img src={product.images?.[0]?.url || 'https://placehold.co/100x100'} alt={product.name} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg border flex-shrink-0" />
+                      <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 overflow-hidden rounded-lg border bg-gray-100">
+                          {product.images?.[0]?.url && (
+                              <Image 
+                                  src={product.images[0].url} 
+                                  alt={product.name} 
+                                  fill 
+                                  className="object-cover"
+                                  sizes="100px"
+                              />
+                          )}
+                      </div>
                       <div className="flex flex-col justify-between flex-grow gap-2">
                           <div>
                               <h3 className="font-semibold text-base sm:text-lg text-gray-800 leading-tight">{product.name}</h3>
