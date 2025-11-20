@@ -352,9 +352,10 @@ export default function ProductDetailPage() {
                                 )}
                             </div>
 
+
                             {/* 2. MOBILE VERSION (Hidden on Desktop) */}
                             {/* Tampilan Horizontal dibawah gambar, Swipe native (tanpa tombol panah) */}
-                            <div className="flex lg:hidden w-full overflow-x-auto gap-3 pb-2 scrollbar-hide">
+                            <div className="flex lg:hidden w-full overflow-x-auto gap-3 p-1 scrollbar-hide">
                                 {product.images?.map((image) => (
                                     <button 
                                         key={`mobile-${image.id}`} 
