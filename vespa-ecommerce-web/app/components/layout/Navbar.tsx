@@ -190,7 +190,6 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                {/* ✅ DESKTOP NAVBAR — TIDAK DIUBAH */}
                 <motion.nav
                     ref={navRef}
                     animate={{ height: isScrolled ? 80 : 112 }}
