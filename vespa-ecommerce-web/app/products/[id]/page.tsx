@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { ShoppingCart, Check, Minus, Plus, Package, Ruler, ArrowLeft, Heart, Search, X, ZoomIn, ZoomOut, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import Image from 'next/image'; // <-- 1. Import Image dari next/image
 
 import { useProduct } from '@/hooks/use-product';
 import { useCartStore } from '@/store/cart';
@@ -39,6 +40,8 @@ import { BrandShowcase } from '@/components/organisms/BrandShowcase';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { RecentlyViewed } from '@/components/organisms/RecentlyViewed';
 
+// Membuat komponen Image yang support animasi Framer Motion
+const MotionImage = motion(Image);
 
 const ProductDetailSkeleton = () => (
     <div className="bg-white min-h-screen pt-28 animate-pulse">
@@ -254,9 +257,13 @@ export default function ProductDetailPage() {
                                         key={selectedImage}
                                         className="relative flex-grow flex items-center justify-center bg-gray-100 aspect-square rounded-xl lg:rounded-2xl overflow-hidden cursor-pointer group w-full"
                                     >
-                                        <img
-                                            src={selectedImage || 'https://placehold.co/600x600'} alt={product.name}
-                                            className="w-full h-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
+                                        {/* 2. Menggunakan Image dari Next.js dengan fill + object-contain */}
+                                        <Image
+                                            src={selectedImage || 'https://placehold.co/600x600'} 
+                                            alt={product.name}
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, 50vw"
+                                            className="object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
                                         />
                                         <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
                                             <Search className="h-12 w-12 text-gray-400 opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
@@ -282,7 +289,7 @@ export default function ProductDetailPage() {
                                     
                                     <div
                                         ref={imageRef}
-                                        className="w-full h-full flex items-center justify-center select-none"
+                                        className="w-full h-full flex items-center justify-center select-none relative"
                                         onWheel={handleWheel}
                                         onMouseDown={handleMouseDown}
                                         onMouseMove={handleMouseMove}
@@ -290,12 +297,19 @@ export default function ProductDetailPage() {
                                         onMouseLeave={handleMouseLeave}
                                         style={{ cursor: scale > 1 ? 'grab' : 'zoom-in' }}
                                     >
-                                        <motion.img
+                                        <MotionImage
                                             key={selectedImage}
                                             src={selectedImage || ''}
                                             alt="Zoomed product"
-                                            className="block h-auto w-auto max-w-[95vw] max-h-[95vh] shadow-2xl pointer-events-none"
+                                            // Kita tetap pakai angka besar agar resolusi tajam & tampilan besar
+                                            width={1200} 
+                                            height={1200}
+                                            // Tambahkan 'w-auto h-auto' di class
+                                            className="w-auto h-auto max-w-[95vw] max-h-[95vh] shadow-2xl pointer-events-none"
                                             style={{
+                                                // INI KUNCINYA: Tambahkan width/height auto di style agar warning hilang
+                                                width: 'auto',
+                                                height: 'auto',
                                                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
                                                 transition: isDragging.current ? 'none' : 'transform 0.1s linear',
                                             }}
@@ -329,11 +343,16 @@ export default function ProductDetailPage() {
                                                 key={`desktop-${image.id}`} 
                                                 onClick={() => setSelectedImage(image.url)} 
                                                 className={cn(
-                                                    'aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
+                                                    'relative aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
                                                     selectedImage === image.url ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' : 'ring-0'
                                                 )}
                                             >
-                                                <img src={image.url} alt={`Thumbnail ${product.name}`} className="w-full h-full object-cover"/>
+                                                <Image 
+                                                    src={image.url} 
+                                                    alt={`Thumbnail ${product.name}`} 
+                                                    fill
+                                                    className="object-cover"
+                                                />
                                             </button>
                                         ))}
                                     </div>
@@ -353,11 +372,16 @@ export default function ProductDetailPage() {
                                         key={`mobile-${image.id}`} 
                                         onClick={() => setSelectedImage(image.url)} 
                                         className={cn(
-                                            'flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200',
+                                            'relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200',
                                             selectedImage === image.url ? 'ring-2 ring-orange-400 ring-offset-1' : 'ring-0'
                                         )}
                                     >
-                                        <img src={image.url} alt={`Thumbnail ${product.name}`} className="w-full h-full object-cover"/>
+                                        <Image 
+                                            src={image.url} 
+                                            alt={`Thumbnail ${product.name}`} 
+                                            fill
+                                            className="object-cover"
+                                        />
                                     </button>
                                 ))}
                             </div>
@@ -365,8 +389,13 @@ export default function ProductDetailPage() {
                         </div>
                         
                         {product.brand && product.brand.logoUrl && (
-                            <Link href={`/products?brandId=${product.brand.id}`} className="block mt-4 lg:mt-6 transition-opacity hover:opacity-70">
-                                <img src={product.brand.logoUrl} alt={product.brand.name} className="w-10 lg:w-12 h-auto object-contain" />
+                            <Link href={`/products?brandId=${product.brand.id}`} className="block mt-4 lg:mt-6 transition-opacity hover:opacity-70 relative w-10 lg:w-12 h-10">
+                                <Image 
+                                    src={product.brand.logoUrl} 
+                                    alt={product.brand.name} 
+                                    fill
+                                    className="object-contain"
+                                />
                             </Link>
                         )}
                     </motion.div>
@@ -377,56 +406,47 @@ export default function ProductDetailPage() {
                             {product.name}
                         </motion.h1>
                         
-                    {/* GRID UNTUK ALIGNMENT LABEL (Titik Dua Rapi) */}
-                    <motion.div variants={itemVariants} className="mt-2 lg:mt-4 mb-4 lg:mb-6 p-3 lg:p-4 bg-gray-50 rounded-lg border border-gray-100">
-                        {/* Grid wrapper: Kolom kiri fix (110px/130px), Kolom kanan sisa (1fr) */}
-                        <div className="grid grid-cols-[110px_1fr] lg:grid-cols-[130px_1fr] gap-y-2 lg:gap-y-3 text-sm lg:text-base">
-                            
-                            {/* 1. Part Number / SKU */}
-                            {product.sku && (
-                                <>
-                                    {/* Label: Hapus titik dua di sini */}
-                                    <div className="text-gray-500 font-medium flex items-center h-full">
-                                        Part Number
-                                    </div>
-                                    {/* Value: Tambahkan titik dua di awal sini */}
-                                    <div className="text-gray-900 text-sm lg:text-base tracking-wide select-all flex items-center">
-                                        <span className="mr-1">:</span> {product.sku}
-                                    </div>
-                                </>
-                            )}
+                        {/* GRID UNTUK ALIGNMENT LABEL (Titik Dua Rapi) */}
+                        <motion.div variants={itemVariants} className="mt-2 lg:mt-4 mb-4 lg:mb-6 p-3 lg:p-4 bg-gray-50 rounded-lg border border-gray-100">
+                            <div className="grid grid-cols-[110px_1fr] lg:grid-cols-[130px_1fr] gap-y-2 lg:gap-y-3 text-sm lg:text-base">
+                                
+                                {/* 1. Part Number / SKU */}
+                                {product.sku && (
+                                    <>
+                                        <div className="text-gray-500 font-medium flex items-center h-full">Part Number</div>
+                                        <div className="text-gray-900 text-sm lg:text-base tracking-wide select-all flex items-center">
+                                            <span className="mr-1">:</span> {product.sku}
+                                        </div>
+                                    </>
+                                )}
 
-                            {/* 2. Piaggio Code */}
-                            {product.piaggioCode && (
-                                <>
-                                    <div className="text-gray-500 font-medium flex items-center h-full">
-                                        Piaggio Code
-                                    </div>
-                                    <div className="text-gray-900 text-sm lg:text-base tracking-wide select-all flex items-center">
-                                        <span className="mr-1">:</span> {product.piaggioCode}
-                                    </div>
-                                </>
-                            )}
+                                {/* 2. Piaggio Code */}
+                                {product.piaggioCode && (
+                                    <>
+                                        <div className="text-gray-500 font-medium flex items-center h-full">Piaggio Code</div>
+                                        <div className="text-gray-900 text-sm lg:text-base tracking-wide select-all flex items-center">
+                                            <span className="mr-1">:</span> {product.piaggioCode}
+                                        </div>
+                                    </>
+                                )}
 
-                            {/* 3. Kategori */}
-                            {product.category && (
-                                <>
-                                    <div className="text-gray-500 font-medium flex items-center h-full">
-                                        Kategori
-                                    </div>
-                                    <div className="flex items-center">
-                                        <span className="mr-1 text-gray-900">:</span>
-                                        <Link 
-                                            href={`/products?categoryId=${product.category.id}`} 
-                                            className="text-orange-600 text-sm lg:text-base hover:underline hover:text-orange-700 transition-colors"
-                                        >
-                                            {product.category.name}
-                                        </Link>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </motion.div>
+                                {/* 3. Kategori */}
+                                {product.category && (
+                                    <>
+                                        <div className="text-gray-500 font-medium flex items-center h-full">Kategori</div>
+                                        <div className="flex items-center">
+                                            <span className="mr-1 text-gray-900">:</span>
+                                            <Link 
+                                                href={`/products?categoryId=${product.category.id}`} 
+                                                className="text-orange-600 text-sm lg:text-base hover:underline hover:text-orange-700 transition-colors"
+                                            >
+                                                {product.category.name}
+                                            </Link>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
                         
                         <Separator className="my-2 lg:my-4" />
                         
