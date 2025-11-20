@@ -14,6 +14,7 @@ import { useWishlistStore } from '@/store/wishlist';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import PriceDisplay from './PriceDisplay';
+import cloudinaryLoader from '@/lib/cloudinaryLoader';
 
 interface ProductCardProps {
     product: Product;
