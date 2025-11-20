@@ -377,33 +377,56 @@ export default function ProductDetailPage() {
                             {product.name}
                         </motion.h1>
                         
-                        {/* GRID UNTUK ALIGNMENT LABEL (Titik Dua Rapi) */}
-                        <motion.div variants={itemVariants} className="mt-2 lg:mt-4 mb-4 lg:mb-6 p-3 lg:p-4 bg-gray-50 rounded-lg border border-gray-100">
-                            <div className="grid grid-cols-[110px_1fr] lg:grid-cols-[130px_1fr] gap-y-2 lg:gap-y-3 text-sm lg:text-base">
-                                {product.piaggioCode && (
-                                    <>
-                                        <div className="text-gray-500 font-medium flex items-center h-full">Piaggio Code:</div>
-                                        <div className="font-bold text-gray-900 text-base lg:text-xl tracking-wide select-all flex items-center">
-                                            {product.piaggioCode}
-                                        </div>
-                                    </>
-                                )}
+                    {/* GRID UNTUK ALIGNMENT LABEL (Titik Dua Rapi) */}
+                    <motion.div variants={itemVariants} className="mt-2 lg:mt-4 mb-4 lg:mb-6 p-3 lg:p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        {/* Grid wrapper: Kolom kiri fix (110px/130px), Kolom kanan sisa (1fr) */}
+                        <div className="grid grid-cols-[110px_1fr] lg:grid-cols-[130px_1fr] gap-y-2 lg:gap-y-3 text-sm lg:text-base">
+                            
+                            {/* 1. Part Number / SKU */}
+                            {product.sku && (
+                                <>
+                                    {/* Label: Hapus titik dua di sini */}
+                                    <div className="text-gray-500 font-medium flex items-center h-full">
+                                        Part Number
+                                    </div>
+                                    {/* Value: Tambahkan titik dua di awal sini */}
+                                    <div className="text-gray-900 text-sm lg:text-base tracking-wide select-all flex items-center">
+                                        <span className="mr-1">:</span> {product.sku}
+                                    </div>
+                                </>
+                            )}
 
-                                {product.category && (
-                                    <>
-                                        <div className="text-gray-500 font-medium flex items-center h-full">Kategori:</div>
-                                        <div className="flex items-center">
-                                            <Link 
-                                                href={`/products?categoryId=${product.category.id}`} 
-                                                className="font-bold text-orange-600 text-base lg:text-xl hover:underline hover:text-orange-700 transition-colors"
-                                            >
-                                                {product.category.name}
-                                            </Link>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </motion.div>
+                            {/* 2. Piaggio Code */}
+                            {product.piaggioCode && (
+                                <>
+                                    <div className="text-gray-500 font-medium flex items-center h-full">
+                                        Piaggio Code
+                                    </div>
+                                    <div className="text-gray-900 text-sm lg:text-base tracking-wide select-all flex items-center">
+                                        <span className="mr-1">:</span> {product.piaggioCode}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* 3. Kategori */}
+                            {product.category && (
+                                <>
+                                    <div className="text-gray-500 font-medium flex items-center h-full">
+                                        Kategori
+                                    </div>
+                                    <div className="flex items-center">
+                                        <span className="mr-1 text-gray-900">:</span>
+                                        <Link 
+                                            href={`/products?categoryId=${product.category.id}`} 
+                                            className="text-orange-600 text-sm lg:text-base hover:underline hover:text-orange-700 transition-colors"
+                                        >
+                                            {product.category.name}
+                                        </Link>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </motion.div>
                         
                         <Separator className="my-2 lg:my-4" />
                         
