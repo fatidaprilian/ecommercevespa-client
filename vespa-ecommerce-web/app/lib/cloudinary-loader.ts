@@ -1,4 +1,4 @@
-// image-loader.ts
+// file: image-loader.ts (Simpan di Root Project)
 
 type LoaderProps = {
   src: string;
@@ -7,26 +7,27 @@ type LoaderProps = {
 };
 
 export default function imageLoader({ src }: LoaderProps): string {
-  // 1. File lokal (biarkan)
+  // 1. Jika file lokal, biarkan
   if (src.startsWith('/')) return src;
 
-  // 2. Bukan Cloudinary (biarkan)
+  // 2. Jika bukan Cloudinary, biarkan
   if (!src.includes('res.cloudinary.com')) return src;
 
   try {
     const urlObj = new URL(src);
-    const pathName = urlObj.pathname; // Contoh: /dadhqwzm7/image/upload/v123/gambar.jpg
+    const pathName = urlObj.pathname; // /dadhqwzm7/image/upload/v123/gambar.jpg
     
-    // Kita cari /upload/ cuma untuk validasi, tapi kita tidak akan menyisipkan parameter apapun.
     const uploadToken = '/upload/';
     const uploadIndex = pathName.indexOf(uploadToken);
     
     if (uploadIndex === -1) return src;
 
-    // Hapus domain asli, ganti dengan proxy kita
-    // Input: https://res.cloudinary.com/dadhqwzm7/image/upload/v123/foto.jpg
-    // Output: /cdn-images/dadhqwzm7/image/upload/v123/foto.jpg
-    return `/cdn-images${pathName}`;
+    const beforeUpload = pathName.slice(0, uploadIndex + uploadToken.length);
+    const afterUpload = pathName.slice(uploadIndex + uploadToken.length);
+
+    // HASIL: /cdn-images/dadhqwzm7/image/upload/f_auto/v123/gambar.jpg
+    // Tambahkan 'f_auto' manual di sini agar format otomatis (WebP/AVIF)
+    return `/cdn-images${beforeUpload}f_auto/${afterUpload}`;
     
   } catch (error) {
     return src;
