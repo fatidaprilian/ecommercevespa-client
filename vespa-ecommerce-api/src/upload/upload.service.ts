@@ -28,29 +28,15 @@ export class UploadService {
     try {
       const fileStr = bufferToDataURI(file.buffer, file.mimetype);
       
-      // 🔥 AUTO RESIZE SAAT UPLOAD
+      // Upload dengan auto-resize yang benar
       const result = await cloudinary.uploader.upload(fileStr, {
         folder: 'vespa_parts',
-        transformation: [
-          {
-            width: 1500,
-            height: 1500,
-            crop: 'limit',        // Tidak stretch, cuma limit max size
-            quality: 'auto:good', // Auto quality optimization
-            fetch_format: 'auto', // Auto format (webp/avif)
-          },
-        ],
-        eager: [
-          // Generate thumbnail otomatis (opsional)
-          {
-            width: 500,
-            height: 500,
-            crop: 'limit',
-            quality: 'auto:good',
-            fetch_format: 'auto',
-          },
-        ],
-        eager_async: false, // Proses langsung, tidak async
+        // Langsung resize saat upload (bukan eager)
+        width: 1500,
+        height: 1500,
+        crop: 'limit',
+        quality: 'auto:good',
+        format: 'jpg', // Force JPG untuk consistency
       });
 
       this.logger.log(`✅ Image uploaded and resized: ${result.public_id}`);
@@ -98,7 +84,6 @@ export class UploadService {
       throw new NotFoundException(`Data pembayaran untuk order ID ${orderId} tidak ditemukan.`);
     }
 
-    // Hapus bukti pembayaran lama jika ada
     if (payment.proofOfPayment) {
       await this.deleteImageFromCloudinary(payment.proofOfPayment);
     }
@@ -106,18 +91,13 @@ export class UploadService {
     try {
       const fileStr = bufferToDataURI(file.buffer, file.mimetype);
       
-      // 🔥 AUTO RESIZE UNTUK BUKTI PEMBAYARAN JUGA
       const result = await cloudinary.uploader.upload(fileStr, {
         folder: 'proof_of_payments',
-        transformation: [
-          {
-            width: 1200,
-            height: 1200,
-            crop: 'limit',
-            quality: 'auto:good',
-            fetch_format: 'auto',
-          },
-        ],
+        width: 1200,
+        height: 1200,
+        crop: 'limit',
+        quality: 'auto:good',
+        format: 'jpg',
       });
 
       this.logger.log(`✅ Proof of payment uploaded: ${result.public_id}`);
