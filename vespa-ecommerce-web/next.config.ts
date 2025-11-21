@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   output: 'standalone',
   
-  // Tambahan: Timeout diperpanjang biar aman saat build
+  // Aman: Timeout build diperpanjang
   staticPageGenerationTimeout: 100,
 
   experimental: {
@@ -16,14 +16,21 @@ const nextConfig: NextConfig = {
   },
   
   images: {
-    // 1. Optimasi: Hapus AVIF (berat), cukup WebP saja
+
+    loader: 'custom',
+    loaderFile: './app/lib/cloudinary-loader.ts',
+    // --- SOLUSI TIMEOUT & BLOKIR ISP ---
+    // 1. Matikan Image Optimization Server-Side
+    // Supaya VPS Anda tidak "double job" (download + resize) yang bikin timeout.
+    // Biarkan Cloudinary yang melakukan resize via URL.
+
+    // Settingan di bawah ini (formats, deviceSizes) jadi tidak aktif karena unoptimized: true,
+    // tapi biarkan saja tidak apa-apa (diabaikan Next.js).
     formats: ['image/webp'], 
-    
-    // 2. Optimasi: Batasi ukuran resize agar server tidak memproses gambar 4K/8K
-    deviceSizes: [640, 750, 828, 1080, 1200], 
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96],
     
-    // 3. Support Logo Brand (SVG)
+    // Support SVG Brand
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
 
@@ -46,15 +53,25 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // --- Konfigurasi Cloudinary ---
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
         port: '',
         pathname: '/**',
       },
-      // ------------------------------
     ],
+  },
+
+  // --- BAGIAN KRUSIAL UNTUK PROXY ---
+  // Ini membuat URL /cdn-images/... di domain Anda
+  // diam-diam mengambil data dari Cloudinary.
+  async rewrites() {
+    return [
+      {
+        source: '/cdn-images/:path*',
+        destination: 'https://res.cloudinary.com/:path*',
+      },
+    ];
   },
 
   eslint: {

@@ -1,36 +1,34 @@
+// image-loader.ts
+
 type LoaderProps = {
   src: string;
   width: number;
   quality?: number;
 };
 
-export default function cloudinaryLoader({ src, width, quality }: LoaderProps): string {
-  // File lokal (public folder)
-  if (src.startsWith('/')) {
+export default function imageLoader({ src }: LoaderProps): string {
+  // 1. File lokal (biarkan)
+  if (src.startsWith('/')) return src;
+
+  // 2. Bukan Cloudinary (biarkan)
+  if (!src.includes('res.cloudinary.com')) return src;
+
+  try {
+    const urlObj = new URL(src);
+    const pathName = urlObj.pathname; // Contoh: /dadhqwzm7/image/upload/v123/gambar.jpg
+    
+    // Kita cari /upload/ cuma untuk validasi, tapi kita tidak akan menyisipkan parameter apapun.
+    const uploadToken = '/upload/';
+    const uploadIndex = pathName.indexOf(uploadToken);
+    
+    if (uploadIndex === -1) return src;
+
+    // Hapus domain asli, ganti dengan proxy kita
+    // Input: https://res.cloudinary.com/dadhqwzm7/image/upload/v123/foto.jpg
+    // Output: /cdn-images/dadhqwzm7/image/upload/v123/foto.jpg
+    return `/cdn-images${pathName}`;
+    
+  } catch (error) {
     return src;
   }
-
-  // Bukan Cloudinary
-  if (!src.includes('res.cloudinary.com')) {
-    return src;
-  }
-
-  // Cloudinary - inject transformation
-  const params = [
-    'f_auto',
-    'c_limit',
-    `w_${width}`,
-    `q_${quality || 75}`
-  ];
-
-  const uploadIndex = src.indexOf('/upload/');
-  
-  if (uploadIndex === -1) {
-    return src;
-  }
-
-  const beforeUpload = src.slice(0, uploadIndex + '/upload/'.length);
-  const afterUpload = src.slice(uploadIndex + '/upload/'.length);
-
-  return `${beforeUpload}${params.join(',')}/${afterUpload}`;
 }

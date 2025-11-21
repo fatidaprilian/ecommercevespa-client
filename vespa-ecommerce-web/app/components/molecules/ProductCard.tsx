@@ -111,11 +111,15 @@ export function ProductCard({ product }: ProductCardProps) {
                             {product.brand?.logoUrl ? (
                                 // Logo brand kecil biasanya aman pakai img biasa (jarang kena blokir ISP karena ukuran kecil/svg)
                                 // Tapi kalau mau diubah ke Next Image juga boleh. Untuk sekarang biarkan img agar layout tidak bergeser.
-                                <img 
-                                    src={product.brand.logoUrl} 
-                                    alt={product.brand.name || 'Brand'} 
-                                    className="h-3 sm:h-5 object-contain"
-                                />
+                                <div className="relative h-3 sm:h-5 w-12"> {/* Wrapper untuk mengatur ukuran */}
+                                    <Image 
+                                        src={product.brand.logoUrl} 
+                                        alt={product.brand.name || 'Brand'} 
+                                        fill
+                                        className="object-contain object-left" // object-left agar logo rata kiri
+                                        sizes="50px"
+                                    />
+                                </div>
                             ) : product.brand?.name ? (
                                 <span className="font-semibold truncate block">
                                     {product.brand.name}
