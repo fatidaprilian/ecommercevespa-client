@@ -1,15 +1,14 @@
-// pages/products/index.tsx
+// File: pages/products/index.tsx
 
-import { useState, useEffect, useMemo } from 'react'; // <-- useMemo ditambahkan
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useRouter } from 'next/router'; // <-- Import useRouter
 import { 
   PlusCircle, MoreHorizontal, Edit, Trash2, Search, 
   ChevronLeft, ChevronRight, Loader2, RefreshCw, 
   CheckCircle, XCircle, Package, Tag,
-  EyeOff, // <-- Icon baru
-  Eye, // <-- Icon baru
-  X // <-- Icon baru untuk Batal
+  EyeOff, Eye, X 
 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox'; // <-- Pastikan ini ada
+import { Checkbox } from '@/components/ui/checkbox';
 
 import { 
   getProducts, 
@@ -37,10 +36,10 @@ import {
   deleteProduct, 
   PaginatedProducts, 
   Product,
-  bulkUpdateProductVisibility // <-- Pastikan ini ada
+  bulkUpdateProductVisibility 
 } from '@/services/productService';
 
-// --- Framer Motion Variants (Sama seperti UsersPage) ---
+// --- Framer Motion Variants ---
 const pageVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
@@ -53,19 +52,42 @@ const itemVariants = {
 };
 
 export default function ProductsPage() {
+  const router = useRouter(); // <-- Init Router
+  const queryClient = useQueryClient();
+  
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  // 👇 REVISI: Gunakan router.query untuk inisialisasi searchTerm agar tidak hilang saat back
+  useEffect(() => {
+    if (router.isReady && router.query.q) {
+      setSearchTerm(router.query.q as string);
+    }
+  }, [router.isReady, router.query.q]);
+
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
   const [activeTab, setActiveTab] = useState<"active" | "inactive">("active");
-  
-  // --- STATE UNTUK BULK ACTION (Sekarang Persisten) ---
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
-  // --- END ---
-
-  const queryClient = useQueryClient();
   const [isSyncingRules, setIsSyncingRules] = useState(false);
 
-  // Query data produk berdasarkan activeTab
+  // 👇 REVISI: Update URL saat search berubah (agar tersimpan di history)
+  useEffect(() => {
+    if (router.isReady) {
+        // Update URL query param 'q' tanpa refresh halaman
+        const currentQuery = router.query;
+        // Hanya update jika nilai berbeda agar tidak spam history
+        if (currentQuery.q !== debouncedSearchTerm) {
+            router.replace({
+                pathname: router.pathname,
+                query: { ...currentQuery, q: debouncedSearchTerm || undefined }, // Hapus q jika kosong
+            }, undefined, { shallow: true });
+        }
+        // Reset page ke 1 jika search berubah
+        if (debouncedSearchTerm !== (currentQuery.q || '')) {
+            setPage(1);
+        }
+    }
+  }, [debouncedSearchTerm, router.isReady]);
+
   const { data: productsResponse, isLoading, isError, error } = useQuery<PaginatedProducts, Error>({
     queryKey: ['products', page, debouncedSearchTerm, activeTab],
     queryFn: () => getProducts({ 
@@ -76,26 +98,17 @@ export default function ProductsPage() {
     placeholderData: (previousData) => previousData,
   });
 
-  // Reset halaman ke 1 saat search term berubah
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearchTerm]);
-
-  // !! EFEK YANG MERESET SELEKSI TELAH DIHAPUS !!
-
   const products = productsResponse?.data || [];
   const meta = productsResponse?.meta;
 
-  // --- HELPERS BARU UNTUK SELEKSI (HANYA MEMPENGARUHI HALAMAN SAAT INI) ---
+  // Helpers Seleksi
   const currentPageIds = useMemo(() => products.map((p) => p.id), [products]);
   const isAllPageSelected = useMemo(() => {
     if (currentPageIds.length === 0) return false;
-    // Cek apakah semua ID di halaman ini ada di dalam state seleksi
     return currentPageIds.every((id) => selectedProductIds.includes(id));
   }, [currentPageIds, selectedProductIds]);
-  // --- END ---
 
-  // Mutation untuk Update (Featured / Visibility)
+  // Mutations
   const updateProductMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) => updateProduct(id, data),
     onSuccess: (updatedProduct) => {
@@ -109,7 +122,6 @@ export default function ProductsPage() {
     },
   });
   
-  // Mutation untuk Hard Delete
   const deleteMutation = useMutation({
     mutationFn: deleteProduct,
     onSuccess: () => {
@@ -123,13 +135,12 @@ export default function ProductsPage() {
     }
   });
 
-  // Mutation untuk BULK UPDATE VISIBILITY
   const bulkUpdateVisibilityMutation = useMutation({
     mutationFn: bulkUpdateProductVisibility,
     onSuccess: (data) => {
       toast.success(data.message);
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      setSelectedProductIds([]); // Kosongkan pilihan HANYA setelah sukses
+      setSelectedProductIds([]); 
     },
     onError: (error: any) => {
       toast.error("Gagal Memperbarui Produk", {
@@ -137,9 +148,7 @@ export default function ProductsPage() {
       });
     },
   });
-  // --- END ---
 
-  // Mutation untuk Sync Harga Accurate
   const handleSyncRules = async () => {
     if (!confirm('Yakin ingin menyinkronkan aturan harga dari Accurate?')) return;
     setIsSyncingRules(true);
@@ -157,6 +166,7 @@ export default function ProductsPage() {
     }
   };
 
+  // Handlers
   const handleFeatureToggle = (product: Product) => {
     updateProductMutation.mutate({ id: product.id, data: { isFeatured: !product.isFeatured } });
   };
@@ -172,31 +182,22 @@ export default function ProductsPage() {
     }
   };
 
-  // --- HANDLER SELEKSI BARU (LEBIH PINTAR) ---
   const handleSelectAll = () => {
     if (isAllPageSelected) {
-      // Jika semua di halaman ini sudah terpilih, deselect HANYA halaman ini
       setSelectedProductIds((prev) => prev.filter((id) => !currentPageIds.includes(id)));
     } else {
-      // Jika belum, select semua di halaman ini (tambahkan ke state, hindari duplikat)
       setSelectedProductIds((prev) => [...new Set([...prev, ...currentPageIds])]);
     }
   };
 
   const handleSelectRow = (id: string) => {
     setSelectedProductIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((pid) => pid !== id) // Hapus
-        : [...prev, id], // Tambah
+      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id],
     );
   };
   
-  // HANDLER TOMBOL BATAL
-  const handleClearSelection = () => {
-    setSelectedProductIds([]);
-  };
+  const handleClearSelection = () => setSelectedProductIds([]);
 
-  // HANDLER TOMBOL BULK ACTION
   const handleBulkAction = (isVisible: boolean) => {
     const actionText = isVisible ? 'aktifkan' : 'sembunyikan';
     if (!confirm(`Yakin ingin ${actionText} ${selectedProductIds.length} produk yang dipilih?`)) {
@@ -210,14 +211,12 @@ export default function ProductsPage() {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={pageVariants} className="space-y-6">
-      {/* Header Section */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Manajemen Produk</h1>
           <p className="text-muted-foreground">Kelola katalog, harga, dan stok produk Anda.</p>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
-            {/* --- REVISI TOMBOL BULK ACTION DENGAN TOMBOL BATAL --- */}
             {selectedProductIds.length > 0 && (
               <AnimatePresence>
                 <motion.div 
@@ -226,7 +225,6 @@ export default function ProductsPage() {
                   exit={{ opacity: 0, width: 0, transition: { duration: 0.2 } }}
                   className="flex items-center gap-2 overflow-hidden"
                 >
-                  {/* TAMPILKAN TOMBOL HIDE HANYA JIKA DI TAB AKTIF */}
                   {activeTab === 'active' && (
                     <Button
                       variant="outline"
@@ -244,7 +242,6 @@ export default function ProductsPage() {
                     </Button>
                   )}
                   
-                  {/* TAMPILKAN TOMBOL UNHIDE HANYA JIKA DI TAB NON-AKTIF */}
                   {activeTab === 'inactive' && (
                     <Button
                       variant="outline"
@@ -262,7 +259,6 @@ export default function ProductsPage() {
                     </Button>
                   )}
 
-                  {/* TOMBOL BATAL BARU */}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -270,13 +266,11 @@ export default function ProductsPage() {
                     className="text-muted-foreground"
                     title="Batalkan semua pilihan"
                   >
-                     <X className="mr-1 h-4 w-4" /> Batal ({selectedProductIds.length})
+                      <X className="mr-1 h-4 w-4" /> Batal ({selectedProductIds.length})
                   </Button>
-
                 </motion.div>
               </AnimatePresence>
             )}
-            {/* --- END REVISI TOMBOL BULK ACTION --- */}
 
             <Button onClick={handleSyncRules} disabled={isSyncingRules} variant="outline" size="sm">
               {isSyncingRules ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -288,7 +282,6 @@ export default function ProductsPage() {
         </div>
       </motion.div>
 
-      {/* Tabs & Table Section */}
       <motion.div variants={itemVariants}>
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as "active" | "inactive"); setPage(1); }} className="w-full">
             <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
@@ -330,12 +323,10 @@ export default function ProductsPage() {
                             onVisibilityToggle={handleVisibilityToggle}
                             onDelete={handleDelete}
                             isMutationPending={updateProductMutation.isPending || deleteMutation.isPending || bulkUpdateVisibilityMutation.isPending}
-                            // --- PROPS SELEKSI BARU ---
                             selectedProductIds={selectedProductIds}
                             onSelectAll={handleSelectAll}
                             onSelectRow={handleSelectRow}
-                            isAllSelected={isAllPageSelected} // <-- Kirim status halaman ini
-                            // --- END ---
+                            isAllSelected={isAllPageSelected}
                         />
                     </CardContent>
                 </Card>
@@ -363,12 +354,10 @@ export default function ProductsPage() {
                             onVisibilityToggle={handleVisibilityToggle}
                             onDelete={handleDelete}
                             isMutationPending={updateProductMutation.isPending || deleteMutation.isPending || bulkUpdateVisibilityMutation.isPending}
-                            // --- PROPS SELEKSI BARU ---
                             selectedProductIds={selectedProductIds}
                             onSelectAll={handleSelectAll}
                             onSelectRow={handleSelectRow}
-                            isAllSelected={isAllPageSelected} // <-- Kirim status halaman ini
-                            // --- END ---
+                            isAllSelected={isAllPageSelected}
                         />
                     </CardContent>
                 </Card>
@@ -379,7 +368,7 @@ export default function ProductsPage() {
   );
 }
 
-// --- Komponen Tabel Terpisah (Lebih Rapi & Smooth) ---
+// --- Komponen Tabel Terpisah ---
 
 interface ProductTableProps {
     products: Product[];
@@ -394,20 +383,16 @@ interface ProductTableProps {
     onVisibilityToggle: (product: Product) => void;
     onDelete: (id: string) => void;
     isMutationPending: boolean;
-    // --- PROPS SELEKSI (Nama tetap sama) ---
     selectedProductIds: string[];
     onSelectAll: () => void;
     onSelectRow: (id: string) => void;
     isAllSelected: boolean;
-    // --- END ---
 }
 
 function ProductTable({
     products, isLoading, isError, error, activeTab, meta, page, setPage,
     onFeatureToggle, onVisibilityToggle, onDelete, isMutationPending,
-    // --- PROPS SELEKSI ---
     selectedProductIds, onSelectAll, onSelectRow, isAllSelected
-    // --- END ---
 }: ProductTableProps) {
     const isInactiveView = activeTab === 'inactive';
 
@@ -417,7 +402,6 @@ function ProductTable({
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
-                            {/* --- CHECKBOX HEADER --- */}
                             <TableHead className="w-[40px] px-4">
                               <Checkbox
                                 checked={isAllSelected}
@@ -426,7 +410,6 @@ function ProductTable({
                                 disabled={isLoading || products.length === 0}
                               />
                             </TableHead>
-                            {/* --- END --- */}
                             <TableHead className="w-[80px] text-center">Unggulan</TableHead>
                             <TableHead>Info Produk</TableHead>
                             <TableHead className="hidden md:table-cell">Kategori</TableHead>
@@ -438,7 +421,7 @@ function ProductTable({
                     </TableHeader>
                     <AnimatePresence mode="wait">
                         <motion.tbody
-                            key={page + activeTab + (isLoading ? 'loading' : 'loaded')} // Kunci di-update agar animasi lebih baik
+                            key={page + activeTab + (isLoading ? 'loading' : 'loaded')}
                             initial="hidden" animate="visible" exit="exit"
                             variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
                         >
@@ -461,12 +444,8 @@ function ProductTable({
                                       key={product.id} 
                                       variants={itemVariants} 
                                       className="group"
-                                      // Terapkan style 'selected' jika ID ada di state
                                       data-state={selectedProductIds.includes(product.id) ? 'selected' : ''}
-                                      // Anda bisa tambahkan style di CSS/globals.css:
-                                      // .table-row[data-state="selected"] { background-color: theme(colors.blue.50); }
                                     >
-                                        {/* --- CHECKBOX ROW --- */}
                                         <TableCell className="px-4">
                                           <Checkbox
                                             checked={selectedProductIds.includes(product.id)}
@@ -474,7 +453,6 @@ function ProductTable({
                                             aria-label="Select row"
                                           />
                                         </TableCell>
-                                        {/* --- END --- */}
                                         <TableCell className="text-center">
                                             <Switch
                                                 checked={product.isFeatured}
@@ -532,6 +510,7 @@ function ProductTable({
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem asChild>
+                                                        {/* TOMBOL EDIT (URL-nya otomatis akan ditangkap next.js) */}
                                                         <Link href={`/products/edit?id=${product.id}`} className="cursor-pointer flex items-center">
                                                             <Edit className="mr-2 h-4 w-4" /> Edit Detail
                                                         </Link>
@@ -562,7 +541,6 @@ function ProductTable({
                 </Table>
             </div>
 
-            {/* Pagination */}
             {meta && meta.lastPage > 1 && (
                 <div className="flex items-center justify-between pt-4">
                     <div className="text-sm text-muted-foreground">

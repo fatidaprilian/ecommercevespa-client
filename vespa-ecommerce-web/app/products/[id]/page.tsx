@@ -397,12 +397,16 @@ export default function ProductDetailPage() {
                         </div>
                         
                         {product.brand && product.brand.logoUrl && (
-                            <Link href={`/products?brandId=${product.brand.id}`} className="block mt-4 lg:mt-6 transition-opacity hover:opacity-70 relative w-10 lg:w-12 h-10">
+                            <Link 
+                                href={`/products?brandId=${product.brand.id}`} 
+                                // REVISI SIZE: w-16 h-16 (Mobile) dan lg:w-20 lg:h-20 (Desktop)
+                                className="block mt-4 lg:mt-6 transition-opacity hover:opacity-70 relative w-20 h-20 lg:w-24 lg:h-24"
+                            >
                                 <Image 
                                     src={product.brand.logoUrl} 
                                     alt={product.brand.name} 
                                     fill
-                                    className="object-contain"
+                                    className="object-contain" // object-contain memastikan logo tidak terpotong
                                 />
                             </Link>
                         )}

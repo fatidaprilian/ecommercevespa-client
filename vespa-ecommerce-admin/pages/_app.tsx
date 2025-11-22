@@ -14,7 +14,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster /> {/* <-- 2. DIUBAH: Gunakan Toaster Sonner */}
+      <Toaster position="top-center"/>
 
       {router.pathname === '/auth/login' ? (
         <Component {...pageProps} />

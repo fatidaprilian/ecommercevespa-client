@@ -1,17 +1,14 @@
-// File: pages/products/edit.tsx
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import { toast } from 'sonner'; 
 import { ArrowLeft, UploadCloud, X, Trash2, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Tambah FormDescription
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,11 +16,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getCategories, getBrands } from '@/services/pageService';
 import { getProductById, updateProduct, uploadImage, deleteProduct, Product } from '@/services/productService';
 
-// 👇 REVISI SCHEMA: Harga & Stok minimal 0 (boleh 0), bukan 1
+// Schema Validation
 const productFormSchema = z.object({
   name: z.string().min(3, { message: 'Nama produk minimal 3 karakter.' }),
   sku: z.string().min(3, { message: 'SKU minimal 3 karakter.' }),
-  price: z.coerce.number().min(0, { message: 'Harga tidak boleh negatif.' }), // Ubah min(1) jadi min(0)
+  price: z.coerce.number().min(0, { message: 'Harga tidak boleh negatif.' }),
   stock: z.coerce.number().int().min(0, { message: 'Stok tidak boleh negatif.' }),
   weight: z.coerce.number().int().min(1, { message: 'Berat minimal 1 gram.' }),
   description: z.string().optional(),
@@ -59,7 +56,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
     },
   });
 
-  // 👇 PENTING: Reset form saat data awal dimuat agar harga lama terisi otomatis
+  // Reset form saat data awal dimuat
   useEffect(() => {
     if (initialData) {
         form.reset({
@@ -81,10 +78,14 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
   const updateMutation = useMutation({
     mutationFn: (values: ProductFormValues) => updateProduct(productId, values),
     onSuccess: () => {
+      // Invalidate queries agar data terbaru diambil saat user kembali
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product', productId] });
+      
       toast.success('Produk berhasil diperbarui!');
-      router.push('/products');
+      
+      // 👇 REVISI: Gunakan router.back() agar filter pencarian (polini) tidak hilang
+      router.back();
     },
     onError: (error: any) => {
         toast.error('Gagal Memperbarui Produk', {
@@ -98,7 +99,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Produk berhasil dihapus.');
-      router.push('/products');
+      router.push('/products'); // Kalau hapus, tetap redirect ke index bersih
     },
     onError: (error: any) => {
       toast.error('Gagal Menghapus Produk', {
@@ -107,23 +108,35 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
     },
   });
 
+  // 👇 REVISI: Handle Multiple Upload + Validasi Nama
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    const toastId = toast.loading('Mengupload gambar...');
+    const toastId = toast.loading(`Mengupload ${files.length} gambar...`);
+    
     try {
-      const response = await uploadImage(file);
+      // Proses upload multiple secara paralel
+      const uploadPromises = Array.from(files).map(file => uploadImage(file));
+      const responses = await Promise.all(uploadPromises);
+      
+      // Ambil gambar yang sudah ada di form
       const currentImages = form.getValues('images') || [];
-      form.setValue('images', [...currentImages, { url: response.url }]);
+      const newImages = responses.map(res => ({ url: res.url }));
+      
+      // Gabungkan gambar lama + baru
+      form.setValue('images', [...currentImages, ...newImages]);
+      
       toast.dismiss(toastId);
-      toast.success('Gambar berhasil di-upload!');
+      toast.success(`${files.length} Gambar berhasil di-upload!`);
     } catch (error) {
       toast.dismiss(toastId);
-      toast.error('Upload gambar gagal.');
+      toast.error('Sebagian atau semua gambar gagal di-upload.');
     } finally {
       setIsUploading(false);
+      // Reset value input agar bisa upload file yang sama lagi jika perlu
+      event.target.value = ''; 
     }
   };
   
@@ -145,11 +158,11 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/products">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Daftar Produk
-          </Link>
+        {/* 👇 REVISI: Tombol Back manual pakai router.back() agar filter search tidak hilang */}
+        <Button variant="outline" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali
         </Button>
+
         <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleteMutation.isPending}>
           <Trash2 className="mr-2 h-4 w-4" /> 
           {deleteMutation.isPending ? 'Menghapus...' : 'Hapus Produk'}
@@ -170,7 +183,6 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU (dari Accurate)</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 
-                {/* 👇 FIELD HARGA DENGAN PESAN BANTUAN 👇 */}
                 <FormField name="price" control={form.control} render={({ field }) => (
                     <FormItem>
                         <FormLabel>Harga (Rp)</FormLabel>
@@ -207,8 +219,18 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
                   <FormControl>
                     <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">
                       <UploadCloud className="w-10 h-10 text-muted-foreground mb-2"/>
-                      <span className="text-sm text-muted-foreground">Klik untuk upload</span>
-                      <Input type="file" className="hidden" onChange={handleImageUpload} disabled={isUploading}/>
+                      <span className="text-sm text-muted-foreground">Klik untuk upload (Bisa pilih banyak)</span>
+                      
+                      {/* 👇 REVISI: Tambahkan property 'multiple' */}
+                      <Input 
+                        type="file" 
+                        multiple 
+                        className="hidden" 
+                        onChange={handleImageUpload} 
+                        disabled={isUploading}
+                        accept="image/*"
+                      />
+
                     </label>
                   </FormControl>
                   <FormMessage />
@@ -259,9 +281,17 @@ export default function EditProductPage() {
   const { id } = router.query;
   const productId = typeof id === 'string' ? id : '';
   
-  const { data: product, isLoading: isLoadingProduct, isError } = useQuery<Product, Error>({ queryKey: ['product', productId], queryFn: () => getProductById(productId), enabled: !!productId });
-  const { data: categoriesResponse, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: () => getCategories() });
-  const { data: brandsResponse, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: () => getBrands() });
+  const { data: product, isLoading: isLoadingProduct, isError } = useQuery<Product, Error>({ 
+    queryKey: ['product', productId], 
+    queryFn: () => getProductById(productId), 
+    enabled: !!productId,
+    // 👇 REVISI: Matikan auto-refetch agar form tidak reset saat pindah tab browser
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  const { data: categoriesResponse, isLoading: isLoadingCategories } = useQuery({ queryKey: ['categories'], queryFn: () => getCategories(), refetchOnWindowFocus: false });
+  const { data: brandsResponse, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: () => getBrands(), refetchOnWindowFocus: false });
   
   if (isLoadingProduct || isLoadingCategories || isLoadingBrands) return <div className="flex justify-center p-8"><Loader2 className="animate-spin"/></div>;
   if (isError || !product) return <p className="text-center p-6 text-red-500">Gagal memuat.</p>;
