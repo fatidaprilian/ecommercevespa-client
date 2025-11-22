@@ -1,6 +1,6 @@
 // image-loader.ts
 
-const CLOUDFLARE_WORKER_URL = 'https://jss-image-proxy.faridaprilian215.workers.dev'; // <--- GANTI INI
+const CLOUDFLARE_WORKER_URL = 'https://cdn.jakartascootershop.com'; // <--- GANTI INI
 
 type LoaderProps = {
   src: string;
