@@ -524,7 +524,7 @@ export default function ProductDetailPage() {
                         <div className="prose prose-sm sm:prose-base lg:prose-lg text-gray-700 max-w-full break-words">
                             {product.description ? (
                                 <div className="w-full overflow-x-auto">
-                                    <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                                    <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: product.description }} />
                                 </div>
                             ) : (
                                 <p>Tidak ada deskripsi untuk produk ini.</p>
