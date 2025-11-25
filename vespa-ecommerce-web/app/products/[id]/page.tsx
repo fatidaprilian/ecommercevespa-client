@@ -282,7 +282,7 @@ export default function ProductDetailPage() {
                                         <DialogDescription>Image viewer for {product.name}</DialogDescription>
                                     </DialogHeader>
 
-                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 p-2 rounded-lg z-20">
+                                    <div className="absolute bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 p-2 rounded-lg z-20">
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.max(prev / 1.2, 1))}><ZoomOut /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={resetImageState}><RefreshCw size={18} /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.min(prev * 1.2, 5))}><ZoomIn /></Button>
@@ -307,14 +307,12 @@ export default function ProductDetailPage() {
                                             alt="Zoomed product"
                                             width={1200} 
                                             height={1200}
-                                            className="w-auto h-auto max-w-[95vw] max-h-[95vh] shadow-2xl pointer-events-none"
-                                            style={{
-                                                width: 'auto',
-                                                height: 'auto',
-                                                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                                                transition: isDragging.current ? 'none' : 'transform 0.1s linear',
-                                            }}
-                                            draggable={false}
+                                            className="w-[95vw] h-[80vh] lg:w-[95vw] lg:h-[95vh] object-contain drop-shadow-2xl pointer-events-none"
+                                                style={{
+                                                    transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                                                    transition: isDragging.current ? 'none' : 'transform 0.1s linear',
+                                                }}
+                                                draggable={false}
                                         />
                                     )}
                                 </div>
