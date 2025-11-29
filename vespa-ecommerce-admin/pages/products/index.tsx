@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useRouter } from 'next/router'; // <-- Import useRouter
+import { useRouter } from 'next/router';
 import { 
   PlusCircle, MoreHorizontal, Edit, Trash2, Search, 
   ChevronLeft, ChevronRight, Loader2, RefreshCw, 
@@ -52,12 +52,12 @@ const itemVariants = {
 };
 
 export default function ProductsPage() {
-  const router = useRouter(); // <-- Init Router
+  const router = useRouter();
   const queryClient = useQueryClient();
   
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  // 👇 REVISI: Gunakan router.query untuk inisialisasi searchTerm agar tidak hilang saat back
+  // inisialisasi search dari query
   useEffect(() => {
     if (router.isReady && router.query.q) {
       setSearchTerm(router.query.q as string);
@@ -69,19 +69,16 @@ export default function ProductsPage() {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isSyncingRules, setIsSyncingRules] = useState(false);
 
-  // 👇 REVISI: Update URL saat search berubah (agar tersimpan di history)
+  // simpan search ke URL
   useEffect(() => {
     if (router.isReady) {
-        // Update URL query param 'q' tanpa refresh halaman
         const currentQuery = router.query;
-        // Hanya update jika nilai berbeda agar tidak spam history
         if (currentQuery.q !== debouncedSearchTerm) {
             router.replace({
                 pathname: router.pathname,
-                query: { ...currentQuery, q: debouncedSearchTerm || undefined }, // Hapus q jika kosong
+                query: { ...currentQuery, q: debouncedSearchTerm || undefined },
             }, undefined, { shallow: true });
         }
-        // Reset page ke 1 jika search berubah
         if (debouncedSearchTerm !== (currentQuery.q || '')) {
             setPage(1);
         }
@@ -396,149 +393,326 @@ function ProductTable({
 }: ProductTableProps) {
     const isInactiveView = activeTab === 'inactive';
 
+    // --- STATE VIEW SHARED (loading/error/empty) ---
+    const renderStatusEmpty = (
+      <div className="flex flex-col items-center justify-center gap-2 py-10">
+        <Package className="h-8 w-8 opacity-50" />
+        <p className="text-sm text-muted-foreground">
+          Tidak ada produk {isInactiveView ? 'non-aktif' : 'aktif'} ditemukan.
+        </p>
+      </div>
+    );
+
+    const renderStatusLoading = (
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+
+    const renderStatusError = (
+      <div className="flex items-center justify-center py-10 text-red-500 text-sm">
+        {error?.message || "Terjadi kesalahan"}
+      </div>
+    );
+
+    const showLoading = isLoading;
+    const showError   = !isLoading && isError;
+    const showEmpty   = !isLoading && !isError && products.length === 0;
+
     return (
         <>
-            <div className="rounded-md border overflow-hidden">
-                <Table>
-                    <TableHeader className="bg-muted/50">
-                        <TableRow>
-                            <TableHead className="w-[40px] px-4">
-                              <Checkbox
-                                checked={isAllSelected}
-                                onCheckedChange={onSelectAll}
-                                aria-label="Select all on this page"
-                                disabled={isLoading || products.length === 0}
-                              />
-                            </TableHead>
-                            <TableHead className="w-[80px] text-center">Unggulan</TableHead>
-                            <TableHead>Info Produk</TableHead>
-                            <TableHead className="hidden md:table-cell">Kategori</TableHead>
-                            <TableHead>Harga</TableHead>
-                            <TableHead>Stok</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right pr-4">Aksi</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <AnimatePresence mode="wait">
-                        <motion.tbody
-                            key={page + activeTab + (isLoading ? 'loading' : 'loaded')}
-                            initial="hidden" animate="visible" exit="exit"
-                            variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-                        >
-                            {isLoading ? (
-                                <TableRow><TableCell colSpan={8} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></TableCell></TableRow>
-                            ) : isError ? (
-                                <TableRow><TableCell colSpan={8} className="h-32 text-center text-red-500">{error?.message || "Terjadi kesalahan"}</TableCell></TableRow>
-                            ) : products.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
-                                        <div className="flex flex-col items-center justify-center gap-2">
-                                            <Package className="h-8 w-8 opacity-50" />
-                                            <p>Tidak ada produk {isInactiveView ? 'non-aktif' : 'aktif'} ditemukan.</p>
-                                        </div>
+            {/* DESKTOP / TABLET ≥ md: Tabel klasik (tidak diubah) */}
+            <div className="hidden md:block">
+              <div className="rounded-md border overflow-hidden">
+                  <Table>
+                      <TableHeader className="bg-muted/50">
+                          <TableRow>
+                              <TableHead className="w-[40px] px-4">
+                                <Checkbox
+                                  checked={isAllSelected}
+                                  onCheckedChange={onSelectAll}
+                                  aria-label="Select all on this page"
+                                  disabled={isLoading || products.length === 0}
+                                />
+                              </TableHead>
+                              <TableHead className="w-[80px] text-center">Unggulan</TableHead>
+                              <TableHead>Info Produk</TableHead>
+                              <TableHead className="hidden md:table-cell">Kategori</TableHead>
+                              <TableHead>Harga</TableHead>
+                              <TableHead>Stok</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right pr-4">Aksi</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <AnimatePresence mode="wait">
+                          <motion.tbody
+                              key={page + activeTab + (isLoading ? 'loading' : 'loaded')}
+                              initial="hidden"
+                              animate="visible"
+                              exit="exit"
+                              variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+                          >
+                              {showLoading ? (
+                                  <TableRow>
+                                    <TableCell colSpan={8}>
+                                      {renderStatusLoading}
                                     </TableCell>
-                                </TableRow>
-                            ) : (
-                                products.map((product) => (
-                                    <motion.tr 
-                                      key={product.id} 
-                                      variants={itemVariants} 
-                                      className="group"
-                                      data-state={selectedProductIds.includes(product.id) ? 'selected' : ''}
-                                    >
-                                        <TableCell className="px-4">
-                                          <Checkbox
-                                            checked={selectedProductIds.includes(product.id)}
-                                            onCheckedChange={() => onSelectRow(product.id)}
-                                            aria-label="Select row"
-                                          />
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Switch
-                                                checked={product.isFeatured}
-                                                onCheckedChange={() => onFeatureToggle(product)}
-                                                disabled={isMutationPending || isInactiveView}
-                                                aria-label="Toggle unggulan"
-                                                className="data-[state=checked]:bg-yellow-500"
+                                  </TableRow>
+                              ) : showError ? (
+                                  <TableRow>
+                                    <TableCell colSpan={8}>
+                                      {renderStatusError}
+                                    </TableCell>
+                                  </TableRow>
+                              ) : showEmpty ? (
+                                  <TableRow>
+                                      <TableCell colSpan={8}>
+                                        {renderStatusEmpty}
+                                      </TableCell>
+                                  </TableRow>
+                              ) : (
+                                  products.map((product) => (
+                                      <motion.tr 
+                                        key={product.id} 
+                                        variants={itemVariants} 
+                                        className="group"
+                                        data-state={selectedProductIds.includes(product.id) ? 'selected' : ''}
+                                      >
+                                          <TableCell className="px-4">
+                                            <Checkbox
+                                              checked={selectedProductIds.includes(product.id)}
+                                              onCheckedChange={() => onSelectRow(product.id)}
+                                              aria-label="Select row"
                                             />
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium group-hover:text-primary transition-colors">
-                                                    {product.name}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                    <Tag className="h-3 w-3" /> {product.sku}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="hidden md:table-cell">
-                                            {product.category?.name ? (
-                                                <Badge variant="outline">{product.category.name}</Badge>
-                                            ) : (
-                                                <span className="text-muted-foreground text-xs">-</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            Rp{product.price.toLocaleString('id-ID')}
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className={`font-medium ${product.stock <= 5 ? "text-red-600" : "text-green-600"}`}>
-                                                {product.stock}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center space-x-2">
-                                                <Switch
-                                                    id={`visibility-${product.id}`}
-                                                    checked={product.isVisible}
-                                                    onCheckedChange={() => onVisibilityToggle(product)}
-                                                    disabled={isMutationPending}
-                                                />
-                                                <Label htmlFor={`visibility-${product.id}`} className={`text-xs ${product.isVisible ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                                    {product.isVisible ? 'Aktif' : 'Non-Aktif'}
-                                                </Label>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right pr-4">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                        <span className="sr-only">Menu</span>
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem asChild>
-                                                        {/* TOMBOL EDIT (URL-nya otomatis akan ditangkap next.js) */}
-                                                        <Link href={`/products/edit?id=${product.id}`} className="cursor-pointer flex items-center">
-                                                            <Edit className="mr-2 h-4 w-4" /> Edit Detail
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                    
-                                                    {isInactiveView ? (
-                                                        <DropdownMenuItem onClick={() => onVisibilityToggle(product)} className="text-green-600 focus:text-green-600 cursor-pointer">
-                                                            <CheckCircle className="mr-2 h-4 w-4" /> Aktifkan Kembali
-                                                        </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem onClick={() => onVisibilityToggle(product)} className="text-orange-600 focus:text-orange-600 cursor-pointer">
-                                                            <XCircle className="mr-2 h-4 w-4" /> Sembunyikan
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => onDelete(product.id)} className="text-red-600 focus:text-red-600 cursor-pointer">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Hapus Permanen
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </motion.tr>
-                                ))
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                              <Switch
+                                                  checked={product.isFeatured}
+                                                  onCheckedChange={() => onFeatureToggle(product)}
+                                                  disabled={isMutationPending || isInactiveView}
+                                                  aria-label="Toggle unggulan"
+                                                  className="data-[state=checked]:bg-yellow-500"
+                                              />
+                                          </TableCell>
+                                          <TableCell>
+                                              <div className="flex flex-col">
+                                                  <span className="font-medium group-hover:text-primary transition-colors">
+                                                      {product.name}
+                                                  </span>
+                                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                      <Tag className="h-3 w-3" /> {product.sku}
+                                                  </span>
+                                              </div>
+                                          </TableCell>
+                                          <TableCell className="hidden md:table-cell">
+                                              {product.category?.name ? (
+                                                  <Badge variant="outline">{product.category.name}</Badge>
+                                              ) : (
+                                                  <span className="text-muted-foreground text-xs">-</span>
+                                              )}
+                                          </TableCell>
+                                          <TableCell className="font-medium">
+                                              Rp{product.price.toLocaleString('id-ID')}
+                                          </TableCell>
+                                          <TableCell>
+                                              <span className={`font-medium ${product.stock <= 5 ? "text-red-600" : "text-green-600"}`}>
+                                                  {product.stock}
+                                              </span>
+                                          </TableCell>
+                                          <TableCell>
+                                              <div className="flex items-center space-x-2">
+                                                  <Switch
+                                                      id={`visibility-${product.id}`}
+                                                      checked={product.isVisible}
+                                                      onCheckedChange={() => onVisibilityToggle(product)}
+                                                      disabled={isMutationPending}
+                                                  />
+                                                  <Label
+                                                    htmlFor={`visibility-${product.id}`}
+                                                    className={`text-xs ${product.isVisible ? 'text-green-600' : 'text-muted-foreground'}`}
+                                                  >
+                                                      {product.isVisible ? 'Aktif' : 'Non-Aktif'}
+                                                  </Label>
+                                              </div>
+                                          </TableCell>
+                                          <TableCell className="text-right pr-4">
+                                              <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                          <MoreHorizontal className="h-4 w-4" />
+                                                          <span className="sr-only">Menu</span>
+                                                      </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end">
+                                                      <DropdownMenuItem asChild>
+                                                          <Link href={`/products/edit?id=${product.id}`} className="cursor-pointer flex items-center">
+                                                              <Edit className="mr-2 h-4 w-4" /> Edit Detail
+                                                          </Link>
+                                                      </DropdownMenuItem>
+                                                      
+                                                      {isInactiveView ? (
+                                                          <DropdownMenuItem onClick={() => onVisibilityToggle(product)} className="text-green-600 focus:text-green-600 cursor-pointer">
+                                                              <CheckCircle className="mr-2 h-4 w-4" /> Aktifkan Kembali
+                                                          </DropdownMenuItem>
+                                                      ) : (
+                                                          <DropdownMenuItem onClick={() => onVisibilityToggle(product)} className="text-orange-600 focus:text-orange-600 cursor-pointer">
+                                                              <XCircle className="mr-2 h-4 w-4" /> Sembunyikan
+                                                          </DropdownMenuItem>
+                                                      )}
+                                                      
+                                                      <DropdownMenuSeparator />
+                                                      <DropdownMenuItem onClick={() => onDelete(product.id)} className="text-red-600 focus:text-red-600 cursor-pointer">
+                                                          <Trash2 className="mr-2 h-4 w-4" /> Hapus Permanen
+                                                      </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                              </DropdownMenu>
+                                          </TableCell>
+                                      </motion.tr>
+                                  ))
+                              )}
+                          </motion.tbody>
+                      </AnimatePresence>
+                  </Table>
+              </div>
+            </div>
+
+            {/* MOBILE < md: Card view, lebih enak di-scroll vertikal */}
+            <div className="md:hidden space-y-2">
+              {showLoading && renderStatusLoading}
+              {showError && renderStatusError}
+              {showEmpty && renderStatusEmpty}
+
+              {!showLoading && !showError && !showEmpty && (
+                <AnimatePresence>
+                  {products.map((product) => (
+                    <motion.div
+                      key={product.id}
+                      variants={itemVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      className="rounded-md border bg-white px-3 py-2 shadow-sm"
+                      data-state={selectedProductIds.includes(product.id) ? 'selected' : ''}
+                    >
+                      {/* Bar atas: checkbox + nama + menu aksi */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <Checkbox
+                            checked={selectedProductIds.includes(product.id)}
+                            onCheckedChange={() => onSelectRow(product.id)}
+                            aria-label="Select row"
+                            className="mt-1"
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium leading-snug">
+                              {product.name}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <Tag className="h-3 w-3" /> {product.sku}
+                            </span>
+                          </div>
+                        </div>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/products/edit?id=${product.id}`}
+                                className="cursor-pointer flex items-center"
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Edit Detail
+                              </Link>
+                            </DropdownMenuItem>
+
+                            {isInactiveView ? (
+                              <DropdownMenuItem
+                                onClick={() => onVisibilityToggle(product)}
+                                className="text-green-600 focus:text-green-600 cursor-pointer"
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4" /> Aktifkan Kembali
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => onVisibilityToggle(product)}
+                                className="text-orange-600 focus:text-orange-600 cursor-pointer"
+                              >
+                                <XCircle className="mr-2 h-4 w-4" /> Sembunyikan
+                              </DropdownMenuItem>
                             )}
-                        </motion.tbody>
-                    </AnimatePresence>
-                </Table>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => onDelete(product.id)}
+                              className="text-red-600 focus:text-red-600 cursor-pointer"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Hapus Permanen
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Info bawah: harga, stok, kategori, toggle */}
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                        <div className="flex items-center gap-1 mr-3">
+                          <span className="text-muted-foreground">Harga:</span>
+                          <span className="font-semibold">
+                            Rp{product.price.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 mr-3">
+                          <span className="text-muted-foreground">Stok:</span>
+                          <span className={`font-semibold ${product.stock <= 5 ? "text-red-600" : "text-green-600"}`}>
+                            {product.stock}
+                          </span>
+                        </div>
+
+                        {product.category?.name && (
+                          <Badge variant="outline" className="text-[11px]">
+                            {product.category.name}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={product.isFeatured}
+                            onCheckedChange={() => onFeatureToggle(product)}
+                            disabled={isMutationPending || isInactiveView}
+                            aria-label="Toggle unggulan"
+                            className="data-[state=checked]:bg-yellow-500"
+                          />
+                          <span className="text-[11px] text-muted-foreground">
+                            Unggulan
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            id={`visibility-mobile-${product.id}`}
+                            checked={product.isVisible}
+                            onCheckedChange={() => onVisibilityToggle(product)}
+                            disabled={isMutationPending}
+                          />
+                          <Label
+                            htmlFor={`visibility-mobile-${product.id}`}
+                            className={`text-[11px] ${product.isVisible ? 'text-green-600' : 'text-muted-foreground'}`}
+                          >
+                            {product.isVisible ? 'Aktif' : 'Non-Aktif'}
+                          </Label>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
             </div>
 
             {meta && meta.lastPage > 1 && (

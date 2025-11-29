@@ -3,8 +3,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { MoreHorizontal, Edit, Trash2, Search, Percent, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-// 👇 GANTI IMPORT TOAST DARI SONNER (bukan react-hot-toast)
+import { MoreHorizontal, Edit, Trash2, Search, Percent, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw, User as UserIcon, Calendar, Mail } from 'lucide-react';
+// 👇 IMPORT TOAST DARI SONNER
 import { toast } from "sonner"; 
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/lib/api';
@@ -107,12 +107,11 @@ export default function UsersPage() {
     return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredUsers, page]);
 
-  // 👇 REVISI LOGIKA MUTATION UNTUK SONNER & MESSAGE BACKEND
+  // 👇 LOGIKA MUTATION
   const refreshCategoriesMutation = useMutation({
     mutationFn: async () => {
       const toastId = toast.loading('Menghubungkan ke Accurate...');
       try {
-        // Terima object data dari backend
         const result = await clearPriceCategoriesCache();
         return { toastId, result }; 
       } catch (e) {
@@ -121,17 +120,14 @@ export default function UsersPage() {
       }
     },
     onSuccess: ({ toastId, result }) => {
-      // Gunakan message dari backend jika ada
       toast.success(result?.message || 'Data Kategori Penjualan berhasil diperbarui!', { id: toastId });
       queryClient.invalidateQueries({ queryKey: ['accuratePriceCategories'] });
     },
     onError: (err: any) => {
-      // Sonner toast.error tidak menerima ID untuk update loading, jadi buat baru (dismiss loading dulu boleh, tapi sonner handle tumpuk)
       toast.dismiss(); 
       toast.error('Gagal memperbarui kategori: ' + (err.response?.data?.message || err.message));
     }
   });
-  // -------------------------------------------------
 
   const softDeleteMutation = useMutation({
     mutationFn: deleteUser,
@@ -192,7 +188,9 @@ export default function UsersPage() {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={pageVariants} className="space-y-6">
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
+      
+      {/* UPDATE RESPONSIVE HEADER: Gunakan flex-col pada mobile dan row pada md */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
          <div>
             <h1 className="text-2xl font-bold tracking-tight">Manajemen Pengguna</h1>
             <p className="text-muted-foreground">Kelola pengguna dan peran akses mereka.</p>
@@ -203,7 +201,7 @@ export default function UsersPage() {
             onClick={() => refreshCategoriesMutation.mutate()}
             disabled={refreshCategoriesMutation.isPending}
             title="Ambil ulang daftar Kategori Penjualan terbaru dari Accurate"
-            className={refreshCategoriesMutation.isPending ? "opacity-70 cursor-not-allowed" : ""}
+            className={`w-full md:w-auto ${refreshCategoriesMutation.isPending ? "opacity-70 cursor-not-allowed" : ""}`}
          >
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshCategoriesMutation.isPending ? 'animate-spin text-primary' : ''}`} />
             {refreshCategoriesMutation.isPending ? 'Sedang Sinkron...' : 'Refresh Kategori'}
@@ -212,14 +210,16 @@ export default function UsersPage() {
 
       <motion.div variants={itemVariants}>
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as 'active' | 'inactive'); setPage(1); setSearchTerm(''); }}>
-          <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-            <TabsList>
-              <TabsTrigger value="active">Pengguna Aktif</TabsTrigger>
-              <TabsTrigger value="inactive">Pengguna Nonaktif</TabsTrigger>
+          
+          {/* UPDATE RESPONSIVE TABS & SEARCH */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
+            <TabsList className="w-full sm:w-auto">
+              <TabsTrigger value="active" className="flex-1 sm:flex-none">Pengguna Aktif</TabsTrigger>
+              <TabsTrigger value="inactive" className="flex-1 sm:flex-none">Pengguna Nonaktif</TabsTrigger>
             </TabsList>
             <div className="relative w-full sm:w-auto sm:max-w-sm">
                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                 <Input placeholder="Cari berdasarkan nama atau email..." className="pl-9" value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value); setPage(1);}} />
+                 <Input placeholder="Cari..." className="pl-9 w-full" value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value); setPage(1);}} />
             </div>
           </div>
 
@@ -231,7 +231,7 @@ export default function UsersPage() {
                       Total {filteredUsers.length} pengguna aktif ditemukan. Halaman {page} dari {totalPages || 1}.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0 md:p-6"> {/* Hapus padding di mobile agar card menyentuh tepi jika perlu, atau sesuaikan */}
                     <UserTable
                         users={paginatedUsers}
                         categoryMapping={categoryMapping} 
@@ -264,8 +264,8 @@ export default function UsersPage() {
                       Total {filteredUsers.length} pengguna nonaktif ditemukan. Halaman {page} dari {totalPages || 1}.
                   </CardDescription>
                 </CardHeader>
-                 <CardContent>
-                     <UserTable
+                 <CardContent className="p-0 md:p-6">
+                      <UserTable
                         users={paginatedUsers}
                         categoryMapping={categoryMapping} 
                         isLoading={isLoading}
@@ -329,129 +329,250 @@ function UserTable({
 
     return (
         <>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Nama</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Peran</TableHead>
-                        <TableHead>Kategori Harga</TableHead>
-                        <TableHead>Tanggal Bergabung</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <AnimatePresence mode="wait">
-                    <motion.tbody
-                        key={page + (isInactiveView ? 'inactive' : 'active')}
-                        initial="hidden" animate="visible" exit="exit"
-                        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-                    >
-                        {isLoading && <TableRow><TableCell colSpan={7} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground"/></TableCell></TableRow>}
-                        {isError && <TableRow><TableCell colSpan={7} className="text-center h-24 text-red-500">{error?.message || 'Gagal memuat data'}</TableCell></TableRow>}
+            {/* TAMPILAN DESKTOP (TABLE) - Disembunyikan pada mobile */}
+            <div className="hidden md:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Nama</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Peran</TableHead>
+                            <TableHead>Kategori Harga</TableHead>
+                            <TableHead>Tanggal Bergabung</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Aksi</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <AnimatePresence mode="wait">
+                        <motion.tbody
+                            key={page + (isInactiveView ? 'inactive' : 'active')}
+                            initial="hidden" animate="visible" exit="exit"
+                            variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+                        >
+                            {isLoading && <TableRow><TableCell colSpan={7} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground"/></TableCell></TableRow>}
+                            {isError && <TableRow><TableCell colSpan={7} className="text-center h-24 text-red-500">{error?.message || 'Gagal memuat data'}</TableCell></TableRow>}
 
-                        {users && users.length > 0 ? (
-                            users.map((user) => (
-                                <motion.tr key={user.id} variants={itemVariants}>
-                                    <TableCell className="font-medium">{user.name || '-'}</TableCell>
-                                    <TableCell>{user.email}</TableCell>
-                                    <TableCell><RoleBadge role={user.role} /></TableCell>
-                                    
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <CategoryBadge 
-                                          id={user.accuratePriceCategoryId} 
-                                          name={user.accuratePriceCategoryId ? categoryMapping[user.accuratePriceCategoryId] : undefined}
-                                        />
-                                        {user.accurateCustomerNo && (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleSyncCategory(user.id)}
-                                            disabled={isSyncingUser(user.id)}
-                                            title="Sinkronkan kategori dari Accurate"
-                                            className="h-7 w-7 p-0"
-                                          >
-                                            {isSyncingUser(user.id) ? (
-                                              <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : (
-                                              <RefreshCw className="h-3 w-3" />
-                                            )}
-                                          </Button>
-                                        )}
-                                      </div>
-                                    </TableCell>
+                            {users && users.length > 0 ? (
+                                users.map((user) => (
+                                    <motion.tr key={user.id} variants={itemVariants}>
+                                        <TableCell className="font-medium">{user.name || '-'}</TableCell>
+                                        <TableCell>{user.email}</TableCell>
+                                        <TableCell><RoleBadge role={user.role} /></TableCell>
+                                        
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <CategoryBadge 
+                                                    id={user.accuratePriceCategoryId} 
+                                                    name={user.accuratePriceCategoryId ? categoryMapping[user.accuratePriceCategoryId] : undefined}
+                                                />
+                                                {user.accurateCustomerNo && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleSyncCategory(user.id)}
+                                                    disabled={isSyncingUser(user.id)}
+                                                    title="Sinkronkan kategori dari Accurate"
+                                                    className="h-7 w-7 p-0"
+                                                >
+                                                    {isSyncingUser(user.id) ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <RefreshCw className="h-3 w-3" />
+                                                    )}
+                                                </Button>
+                                                )}
+                                            </div>
+                                        </TableCell>
 
-                                    <TableCell>{formatDate(user.createdAt)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center space-x-2">
-                                            <Switch
-                                                id={`active-switch-${user.id}`}
-                                                checked={user.isActive}
-                                                onCheckedChange={() => handleToggleActive(user.id, user.isActive)}
-                                                disabled={isTogglingUser(user.id)}
-                                                aria-label={user.isActive ? 'Nonaktifkan pengguna' : 'Aktifkan pengguna'}
-                                            />
-                                            <Label htmlFor={`active-switch-${user.id}`} className={user.isActive ? 'text-green-600' : 'text-gray-500'}>
-                                                {user.isActive ? 'Aktif' : 'Nonaktif'}
-                                            </Label>
-                                            {isTogglingUser(user.id) && (
-                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild>
-                                                    <Link href={`/users/edit?id=${user.id}`}>
-                                                        <Edit className="mr-2 h-4 w-4" /> Edit Pengguna
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                                {user.role === 'RESELLER' && (
+                                        <TableCell>{formatDate(user.createdAt)}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center space-x-2">
+                                                <Switch
+                                                    id={`active-switch-${user.id}`}
+                                                    checked={user.isActive}
+                                                    onCheckedChange={() => handleToggleActive(user.id, user.isActive)}
+                                                    disabled={isTogglingUser(user.id)}
+                                                />
+                                                <Label htmlFor={`active-switch-${user.id}`} className={user.isActive ? 'text-green-600' : 'text-gray-500'}>
+                                                    {user.isActive ? 'Aktif' : 'Nonaktif'}
+                                                </Label>
+                                                {isTogglingUser(user.id) && (
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
                                                     <DropdownMenuItem asChild>
-                                                        <Link href={`/users/discounts?id=${user.id}`}>
-                                                            <Percent className="mr-2 h-4 w-4" /> Kelola Diskon
+                                                        <Link href={`/users/edit?id=${user.id}`}>
+                                                            <Edit className="mr-2 h-4 w-4" /> Edit Pengguna
                                                         </Link>
                                                     </DropdownMenuItem>
-                                                )}
-                                                {!isInactiveView && (
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleDelete(user.id)}
-                                                        className="text-red-600 focus:text-red-600"
-                                                        disabled={!user.isActive || isDeletingUser(user.id)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Nonaktifkan
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {isInactiveView && (
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleToggleActive(user.id, user.isActive)}
-                                                        className="text-green-600 focus:text-green-600"
-                                                        disabled={user.isActive || isTogglingUser(user.id)}
-                                                    >
-                                                        <CheckCircle className="mr-2 h-4 w-4" /> Aktifkan Kembali
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </motion.tr>
-                            ))
-                        ) : (
-                            !isLoading && <TableRow><TableCell colSpan={7} className="text-center h-24">{isInactiveView ? 'Tidak ada pengguna nonaktif.' : 'Pengguna tidak ditemukan.'}</TableCell></TableRow>
-                        )}
-                    </motion.tbody>
-                </AnimatePresence>
-            </Table>
+                                                    {user.role === 'RESELLER' && (
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={`/users/discounts?id=${user.id}`}>
+                                                                <Percent className="mr-2 h-4 w-4" /> Kelola Diskon
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {!isInactiveView && (
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDelete(user.id)}
+                                                            className="text-red-600 focus:text-red-600"
+                                                            disabled={!user.isActive || isDeletingUser(user.id)}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Nonaktifkan
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {isInactiveView && (
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleToggleActive(user.id, user.isActive)}
+                                                            className="text-green-600 focus:text-green-600"
+                                                            disabled={user.isActive || isTogglingUser(user.id)}
+                                                        >
+                                                            <CheckCircle className="mr-2 h-4 w-4" /> Aktifkan Kembali
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </motion.tr>
+                                ))
+                            ) : (
+                                !isLoading && <TableRow><TableCell colSpan={7} className="text-center h-24">{isInactiveView ? 'Tidak ada pengguna nonaktif.' : 'Pengguna tidak ditemukan.'}</TableCell></TableRow>
+                            )}
+                        </motion.tbody>
+                    </AnimatePresence>
+                </Table>
+            </div>
+
+            {/* TAMPILAN MOBILE (CARD LIST) - Disembunyikan pada desktop */}
+            <div className="md:hidden space-y-4 px-4 pb-4">
+                 {isLoading && <div className="text-center p-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground"/></div>}
+                 {isError && <div className="text-center p-8 text-red-500">{error?.message || 'Gagal memuat data'}</div>}
+                 
+                 {!isLoading && !isError && users && users.length === 0 && (
+                     <div className="text-center p-8 text-muted-foreground border rounded-lg bg-muted/20">
+                         {isInactiveView ? 'Tidak ada pengguna nonaktif.' : 'Pengguna tidak ditemukan.'}
+                     </div>
+                 )}
+
+                 {!isLoading && users && users.map((user) => (
+                     <motion.div 
+                        key={user.id} 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-card border rounded-lg shadow-sm overflow-hidden"
+                     >
+                         <div className="p-4 space-y-3">
+                            {/* Header Card: Nama & Role */}
+                            <div className="flex justify-between items-start gap-2">
+                                <div className="space-y-1 overflow-hidden">
+                                    <h3 className="font-semibold text-base truncate pr-2">{user.name || 'Tanpa Nama'}</h3>
+                                    <div className="flex items-center text-xs text-muted-foreground">
+                                        <Mail className="h-3 w-3 mr-1" />
+                                        <span className="truncate">{user.email}</span>
+                                    </div>
+                                </div>
+                                <div className="flex-shrink-0">
+                                    <RoleBadge role={user.role} />
+                                </div>
+                            </div>
+
+                            {/* Kategori Accurate */}
+                            <div className="flex items-center gap-2 text-sm bg-muted/40 p-2 rounded-md">
+                                 <span className="text-muted-foreground text-xs">Kategori:</span>
+                                 <CategoryBadge 
+                                    id={user.accuratePriceCategoryId} 
+                                    name={user.accuratePriceCategoryId ? categoryMapping[user.accuratePriceCategoryId] : undefined}
+                                 />
+                                 {user.accurateCustomerNo && (
+                                     <button 
+                                        onClick={() => handleSyncCategory(user.id)}
+                                        disabled={isSyncingUser(user.id)}
+                                        className="ml-auto text-primary hover:text-primary/80"
+                                     >
+                                         {isSyncingUser(user.id) ? <Loader2 className="h-4 w-4 animate-spin"/> : <RefreshCw className="h-4 w-4"/>}
+                                     </button>
+                                 )}
+                            </div>
+
+                            {/* Status Switch & Tanggal */}
+                            <div className="flex justify-between items-center pt-1">
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        id={`mobile-active-${user.id}`}
+                                        checked={user.isActive}
+                                        onCheckedChange={() => handleToggleActive(user.id, user.isActive)}
+                                        disabled={isTogglingUser(user.id)}
+                                        className="scale-90"
+                                    />
+                                    <Label htmlFor={`mobile-active-${user.id}`} className={`text-xs ${user.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                                        {user.isActive ? 'Aktif' : 'Nonaktif'}
+                                    </Label>
+                                </div>
+                                <div className="flex items-center text-xs text-muted-foreground">
+                                    <Calendar className="h-3 w-3 mr-1" />
+                                    {formatDate(user.createdAt)}
+                                </div>
+                            </div>
+                         </div>
+
+                         {/* Footer Actions */}
+                         <div className="border-t bg-muted/20 p-2 flex gap-2">
+                            <Button variant="outline" size="sm" className="flex-1 h-9" asChild>
+                                <Link href={`/users/edit?id=${user.id}`}>
+                                    <Edit className="mr-2 h-3 w-3" /> Edit
+                                </Link>
+                            </Button>
+                            
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-9 px-3">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {user.role === 'RESELLER' && (
+                                        <DropdownMenuItem asChild>
+                                            <Link href={`/users/discounts?id=${user.id}`}>
+                                                <Percent className="mr-2 h-4 w-4" /> Kelola Diskon
+                                            </Link>
+                                        </DropdownMenuItem>
+                                    )}
+                                    {!isInactiveView ? (
+                                        <DropdownMenuItem
+                                            onClick={() => handleDelete(user.id)}
+                                            className="text-red-600"
+                                            disabled={!user.isActive || isDeletingUser(user.id)}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" /> Nonaktifkan
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        <DropdownMenuItem
+                                            onClick={() => handleToggleActive(user.id, user.isActive)}
+                                            className="text-green-600"
+                                            disabled={user.isActive || isTogglingUser(user.id)}
+                                        >
+                                            <CheckCircle className="mr-2 h-4 w-4" /> Aktifkan Kembali
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                         </div>
+                     </motion.div>
+                 ))}
+            </div>
 
             {totalPages > 1 && (
-                 <div className="flex items-center justify-end space-x-2 pt-4">
-                     <Button variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page === 1}><ChevronLeft className="h-4 w-4" /><span>Sebelumnya</span></Button>
-                     <Button variant="outline" size="sm" onClick={() => onPageChange(page + 1)} disabled={page === totalPages}><span>Berikutnya</span><ChevronRight className="h-4 w-4" /></Button>
+                 <div className="flex items-center justify-center md:justify-end space-x-2 pt-4 pb-4">
+                     <Button variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page === 1}><ChevronLeft className="h-4 w-4" /><span>Prev</span></Button>
+                     <div className="text-sm font-medium md:hidden">Hal {page}/{totalPages}</div>
+                     <Button variant="outline" size="sm" onClick={() => onPageChange(page + 1)} disabled={page === totalPages}><span>Next</span><ChevronRight className="h-4 w-4" /></Button>
                  </div>
              )}
         </>

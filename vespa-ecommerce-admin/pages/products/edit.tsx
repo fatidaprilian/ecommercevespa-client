@@ -156,7 +156,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-hidden">
       <div className="flex justify-between items-center">
         {/* 👇 REVISI: Tombol Back manual pakai router.back() agar filter search tidak hilang */}
         <Button variant="outline" size="sm" onClick={() => router.back()}>
@@ -174,20 +174,96 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
           <Card>
             <CardHeader><CardTitle>Informasi Dasar Produk</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              <FormField name="name" control={form.control} render={({ field }) => (<FormItem><FormLabel>Nama Produk</FormLabel><FormControl><Input placeholder="Contoh: Kampas Rem Depan" {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField name="piaggioCode" control={form.control} render={({ field }) => (<FormItem><FormLabel>Piaggio Code</FormLabel><FormControl><Input placeholder="Contoh: 1D000543" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField name="models" control={form.control} render={({ field }) => (<FormItem><FormLabel>Models</FormLabel><FormControl><Input placeholder="Contoh: PX125E, PX150E" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+              
+              <FormField 
+                name="name" 
+                control={form.control} 
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Produk</FormLabel>
+                    <FormControl>
+                      {/* Tambahan className max-w-full agar input tidak meluber */}
+                      <Input placeholder="Contoh: Kampas Rem Depan" {...field} className="max-w-full" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} 
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
+                <FormField 
+                  name="piaggioCode" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Piaggio Code</FormLabel>
+                      <FormControl>
+                         {/* Tambahan className max-w-full */}
+                        <Input placeholder="Contoh: 1D000543" {...field} value={field.value || ''} className="max-w-full" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
+                <FormField 
+                  name="models" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Models</FormLabel>
+                      <FormControl>
+                         {/* Tambahan className max-w-full */}
+                        <Input placeholder="Contoh: PX125E, PX150E" {...field} value={field.value || ''} className="max-w-full" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
               </div>
-              <FormField name="description" control={form.control} render={({ field }) => (<FormItem><FormLabel>Deskripsi</FormLabel><FormControl><Textarea placeholder="Jelaskan detail produk di sini..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <FormField name="sku" control={form.control} render={({ field }) => (<FormItem><FormLabel>SKU (dari Accurate)</FormLabel><FormControl><Input placeholder="VSP-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
+
+              <FormField 
+                name="description" 
+                control={form.control} 
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deskripsi</FormLabel>
+                    <FormControl>
+                      {/* 👇 PENTING: className="break-all" agar teks panjang tanpa spasi (url/hash) patah ke bawah */}
+                      <Textarea 
+                        placeholder="Jelaskan detail produk di sini..." 
+                        {...field} 
+                        value={field.value || ''} 
+                        className="break-all whitespace-pre-wrap max-w-full" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} 
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 min-w-0">
+                <FormField 
+                  name="sku" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SKU (dari Accurate)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="VSP-001" {...field} className="max-w-full" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
                 
-                <FormField name="price" control={form.control} render={({ field }) => (
+                <FormField 
+                  name="price" 
+                  control={form.control} 
+                  render={({ field }) => (
                     <FormItem>
                         <FormLabel>Harga (Rp)</FormLabel>
                         <FormControl>
-                            <Input type="number" {...field} />
+                            <Input type="number" {...field} className="max-w-full" />
                         </FormControl>
                         <FormDescription className="text-xs text-muted-foreground">
                             Biarkan nilai lama jika tidak ingin diubah. Isi 0 jika gratis.
@@ -196,8 +272,32 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
                     </FormItem>
                 )} />
                 
-                <FormField name="stock" control={form.control} render={({ field }) => (<FormItem><FormLabel>Stok</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField name="weight" control={form.control} render={({ field }) => (<FormItem><FormLabel>Berat (gram)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField 
+                  name="stock" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stok</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} className="max-w-full" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
+                <FormField 
+                  name="weight" 
+                  control={form.control} 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Berat (gram)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} className="max-w-full" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} 
+                />
               </div>
             </CardContent>
           </Card>
@@ -217,7 +317,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
               <FormField control={form.control} name="images" render={() => (
                 <FormItem>
                   <FormControl>
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent max-w-full">
                       <UploadCloud className="w-10 h-10 text-muted-foreground mb-2"/>
                       <span className="text-sm text-muted-foreground">Klik untuk upload (Bisa pilih banyak)</span>
                       
@@ -241,12 +341,12 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
 
           <Card>
             <CardHeader><CardTitle>Organisasi</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
               <FormField name="categoryId" control={form.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Kategori</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger className="max-w-full"><SelectValue placeholder="Pilih kategori..." /></SelectTrigger></FormControl>
                     <SelectContent>{categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <FormMessage />
@@ -256,7 +356,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
                 <FormItem>
                   <FormLabel>Merek</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Pilih merek..." /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger className="max-w-full"><SelectValue placeholder="Pilih merek..." /></SelectTrigger></FormControl>
                     <SelectContent>{brands.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <FormMessage />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CreditCard, Building2, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -182,12 +182,15 @@ export default function PaymentMappingsPage() {
 
   return (
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={pageVariants}>
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
+      
+      {/* UPDATE RESPONSIVE: Menggunakan flex-col pada mobile dan row pada md ke atas */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0">
         <h1 className="text-2xl font-bold tracking-tight">Pemetaan Pembayaran</h1>
-        <Button onClick={() => handleOpenDialog()}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Tambah Pemetaan Baru
+        <Button onClick={() => handleOpenDialog()} className="w-full md:w-auto">
+          <PlusCircle className="mr-2 h-4 w-4" /> Tambah Pemetaan
         </Button>
       </motion.div>
+
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
@@ -195,47 +198,90 @@ export default function PaymentMappingsPage() {
             <CardDescription>Hubungkan metode pembayaran dari Midtrans ke akun Kas & Bank di Accurate.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? <div className="flex justify-center"><Loader2 className="animate-spin" /></div> : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Kunci Metode</TableHead>
-                    <TableHead>Nama Akun Accurate</TableHead>
-                    <TableHead>Deskripsi</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <AnimatePresence>
-                    <motion.tbody
-                        initial="hidden"
-                        animate="visible"
-                        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-                    >
-                        {mappings?.map((mapping) => (
-                        <motion.tr key={mapping.id} variants={itemVariants}>
-                            <TableCell className="font-mono">{mapping.paymentMethodKey}</TableCell>
-                            <TableCell>{mapping.accurateBankName}</TableCell>
-                            <TableCell>{mapping.description}</TableCell>
-                            <TableCell className="text-right space-x-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(mapping)}>
-                                    <Edit className="h-4 w-4" />
+            {isLoading ? <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : (
+              <>
+                {/* --- TAMPILAN DESKTOP (TABLE) --- */}
+                {/* class 'hidden md:table' memastikan ini hanya muncul di layar medium ke atas */}
+                <div className="hidden md:block">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Kunci Metode</TableHead>
+                        <TableHead>Nama Akun Accurate</TableHead>
+                        <TableHead>Deskripsi</TableHead>
+                        <TableHead className="text-right">Aksi</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <AnimatePresence>
+                        <motion.tbody
+                            initial="hidden"
+                            animate="visible"
+                            variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+                        >
+                            {mappings?.map((mapping) => (
+                            <motion.tr key={mapping.id} variants={itemVariants}>
+                                <TableCell className="font-mono font-medium">{mapping.paymentMethodKey}</TableCell>
+                                <TableCell>{mapping.accurateBankName}</TableCell>
+                                <TableCell>{mapping.description}</TableCell>
+                                <TableCell className="text-right space-x-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(mapping)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(mapping.id)} disabled={deleteMutation.isPending}>
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                </TableCell>
+                            </motion.tr>
+                            ))}
+                        </motion.tbody>
+                    </AnimatePresence>
+                    </Table>
+                </div>
+
+                {/* --- TAMPILAN MOBILE (CARD LIST) --- */}
+                {/* class 'md:hidden' memastikan ini hanya muncul di layar kecil */}
+                <div className="md:hidden space-y-4">
+                    {mappings?.length === 0 && <p className="text-center text-muted-foreground text-sm">Belum ada data.</p>}
+                    {mappings?.map((mapping) => (
+                        <div key={mapping.id} className="border rounded-lg p-4 space-y-3 bg-card shadow-sm">
+                            <div className="flex items-start justify-between">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                                        <CreditCard className="h-4 w-4" />
+                                        <span className="font-mono">{mapping.paymentMethodKey}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-foreground">
+                                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                                        <span>{mapping.accurateBankName}</span>
+                                    </div>
+                                    {mapping.description && (
+                                        <div className="flex items-start gap-2 text-xs text-muted-foreground pt-1">
+                                            <FileText className="h-3 w-3 mt-0.5" />
+                                            <span>{mapping.description}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="flex justify-end pt-2 border-t gap-2">
+                                <Button variant="outline" size="sm" className="h-8 text-xs flex-1" onClick={() => handleOpenDialog(mapping)}>
+                                    <Edit className="mr-2 h-3 w-3" /> Edit
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(mapping.id)} disabled={deleteMutation.isPending}>
-                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                <Button variant="destructive" size="sm" className="h-8 text-xs flex-1" onClick={() => handleDelete(mapping.id)} disabled={deleteMutation.isPending}>
+                                    <Trash2 className="mr-2 h-3 w-3" /> Hapus
                                 </Button>
-                            </TableCell>
-                        </motion.tr>
-                        ))}
-                    </motion.tbody>
-                </AnimatePresence>
-              </Table>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
       </motion.div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <PaymentMappingForm mapping={editingMapping} onClose={handleCloseDialog} />
         </DialogContent>
       </Dialog>
