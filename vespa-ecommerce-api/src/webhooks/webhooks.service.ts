@@ -349,21 +349,67 @@ export class WebhooksService {
   }
 
   // --- HANDLER SALES ORDER ---
+// --- HANDLER SALES ORDER ---
   private async processSalesOrderWebhook(eventData: any) {
     const salesOrderNo = eventData.number || eventData.salesOrderNo;
     const salesOrderId = eventData.id || eventData.salesOrderId;
-    const action = eventData.action;
+    const action = eventData.action; // 'WRITE' (Create/Update) atau 'DELETE'
 
     this.logger.log(
       `Processing Sales Order webhook: ${salesOrderNo} (ID: ${salesOrderId}) - Action: ${action}`,
     );
 
+    // 1. JIKA ACTION = DELETE (Pesanan Dihapus di Accurate)
+    if (action === 'DELETE') {
+      try {
+        // Cari order yang punya nomor SO ini
+        // Kita cari berdasarkan accurateSalesOrderNumber yang sudah disimpan sebelumnya
+        const order = await this.prisma.order.findFirst({
+          where: { accurateSalesOrderNumber: salesOrderNo },
+        });
+
+        if (order) {
+          // Cek dulu, kalau sudah COMPLETED/SHIPPED/DELIVERED jangan dicancel sembarangan (Bahaya)
+          // Kecuali klien emang mau paksa cancel.
+          // Amannya: Hanya cancel jika status masih PENDING/PROCESSING/PAID.
+          if (
+            order.status === OrderStatus.PENDING ||
+            order.status === OrderStatus.PAID ||
+            order.status === OrderStatus.PROCESSING
+          ) {
+            await this.prisma.order.update({
+              where: { id: order.id },
+              data: { status: OrderStatus.CANCELLED },
+            });
+            this.logger.log(
+              `⚠️ Sales Order ${salesOrderNo} DIHAPUS di Accurate. Order ${order.orderNumber} otomatis di-set ke CANCELLED.`,
+            );
+          } else {
+            this.logger.warn(
+              `⚠️ Sales Order ${salesOrderNo} DIHAPUS di Accurate, tapi status Order ${order.orderNumber} adalah ${order.status}. Tidak di-cancel otomatis untuk keamanan.`,
+            );
+          }
+        } else {
+          this.logger.warn(
+            `Sales Order ${salesOrderNo} dihapus di Accurate, tapi tidak ditemukan di database lokal.`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Gagal memproses DELETE Sales Order ${salesOrderNo}: ${error.message}`,
+        );
+      }
+      return; // Stop di sini kalau delete
+    }
+
+    // 2. JIKA ACTION = WRITE (Create/Update - Logika Lama)
     if (salesOrderNo) {
       try {
         const orderNumberFromSO = salesOrderNo.replace(/^SO-/, '');
         const order = await this.prisma.order.findUnique({
           where: { orderNumber: orderNumberFromSO },
         });
+        
         if (order && !order.accurateSalesOrderNumber) {
           await this.prisma.order.update({
             where: { id: order.id },
