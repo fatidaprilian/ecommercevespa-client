@@ -385,21 +385,27 @@ export default function OrderDetailPage() {
             )}
 
             {isReseller && order.status === 'PROCESSING' && (
-              <div className="bg-green-50 border-l-4 border-green-400 text-green-800 p-4 rounded-r-lg shadow">
-                <div className="flex">
-                  <div className="py-1">
-                    <FileText className="h-6 w-6 text-green-500 mr-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold">Pembayaran Diterima</p>
-                    <p className="text-sm">
-                      Terima kasih! Pembayaran Anda telah kami konfirmasi.
-                      Pesanan Anda kini sedang kami siapkan untuk pengiriman.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+  <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-900 p-4 rounded-r-lg shadow-sm mb-6">
+    <div className="flex items-start">
+      <div className="flex-shrink-0 pt-1">
+        {/* Gunakan Icon Truck atau Package untuk menekankan barang fisik */}
+        <Truck className="h-5 w-5 text-blue-600 mr-3" />
+      </div>
+      <div>
+        <p className="font-bold text-base">Pesanan Dalam Proses Pengiriman</p>
+        <p className="text-sm mt-1 text-blue-800">
+          Faktur penjualan telah diterbitkan. Barang Anda sedang disiapkan atau dalam perjalanan oleh tim gudang kami.
+        </p>
+        
+        {/* Bagian ini PENTING agar tidak rancu soal pembayaran */}
+        <div className="mt-2 flex items-center p-2 bg-blue-100 rounded text-xs font-medium text-blue-700 w-fit">
+           <Info className="w-3 h-3 mr-1.5" />
+           Status Tagihan: Menunggu Pelunasan
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
             {/* Item Pesanan */}
             <div className="bg-white rounded-lg shadow p-6">

@@ -13,13 +13,30 @@ export class WebhooksController {
   @Public()
   @Post('accurate')
   @HttpCode(HttpStatus.OK)
-  handleAccurateWebhook(@Body() payload: any) {
+  async handleAccurateWebhook(@Body() payload: any) {
     this.logger.log('--- ACCURATE WEBHOOK RECEIVED ---');
-    const webhookData = Array.isArray(payload) ? payload[0] : payload;
-    this.logger.log(JSON.stringify(webhookData, null, 2));
-    
-    this.webhooksService.handleAccurateWebhook(webhookData);
-    
+    this.logger.log(
+      `Raw payload type: ${Array.isArray(payload) ? 'ARRAY' : 'OBJECT'}`
+    );
+    this.logger.log(JSON.stringify(payload, null, 2));
+
+    // 🔑 Normalisasi: selalu jadikan array agar bisa loop semua event
+    const events = Array.isArray(payload) ? payload : [payload];
+
+    for (const event of events) {
+      try {
+        this.logger.log(
+          `[AccurateWebhook] Processing event type="${event?.type}" uuid="${event?.uuid ?? 'N/A'}"`
+        );
+        await this.webhooksService.handleAccurateWebhook(event);
+      } catch (err: any) {
+        this.logger.error(
+          `❌ Error processing Accurate webhook event type="${event?.type}": ${err.message}`,
+          err.stack,
+        );
+      }
+    }
+
     return { message: 'Accurate webhook received successfully' };
   }
 

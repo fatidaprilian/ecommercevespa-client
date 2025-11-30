@@ -2,7 +2,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Loader2, User, Package, MapPin, Truck, CheckCircle, ChevronsRight, Landmark, Copy } from 'lucide-react';
+import {
+  ArrowLeft,
+  Loader2,
+  User,
+  Package,
+  MapPin,
+  Truck,
+  CheckCircle,
+  ChevronsRight,
+  Landmark,
+  Copy,
+} from 'lucide-react';
 
 import { getOrderById, Order, OrderItem, OrderStatus } from '@/services/orderService';
 import { Button } from '@/components/ui/button';
@@ -149,7 +160,6 @@ function ShipmentTracking({ order }: { order: Order }) {
         const parsed = (() => {
           const dStr = formatDate(rawDate);
           // We'll also keep a Date object for sorting (best-effort)
-          // Reuse the inner logic from formatDate to convert to Date again for sort:
           // quick helper here to avoid exporting internals
           const toDate = (val: any): Date | null => {
             if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
@@ -257,13 +267,25 @@ function ShipmentTracking({ order }: { order: Order }) {
   );
 }
 
+type StatusAndActionsProps = {
+  order: Order;
+  onValidate: () => void;
+  onCreateShipment: () => void;
+  isStatusLoading: boolean;
+  isShipmentLoading: boolean;
+  isShipmentDisabled?: boolean;
+  disabledReason?: string;
+};
+
 function StatusAndActions({
   order,
   onValidate,
   onCreateShipment,
   isStatusLoading,
   isShipmentLoading,
-}: any) {
+  isShipmentDisabled,
+  disabledReason,
+}: StatusAndActionsProps) {
   const statusStyle = `px-2 py-1 text-sm font-bold rounded-full ${
     order.status === 'PAID'
       ? 'bg-green-100 text-green-800'
@@ -275,6 +297,7 @@ function StatusAndActions({
       ? 'bg-yellow-100 text-yellow-800'
       : 'bg-gray-100 text-gray-800'
   }`;
+
   return (
     <Card>
       <CardHeader>
@@ -336,8 +359,24 @@ function StatusAndActions({
               <p className="text-muted-foreground">Kurir Pilihan Pelanggan:</p>
               <p className="font-semibold text-base">{order.courier}</p>
             </div>
-            <Button onClick={onCreateShipment} className="w-full" disabled={isShipmentLoading}>
-              {isShipmentLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Truck className="mr-2 h-4 w-4" />}
+
+            {isShipmentDisabled && (
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm rounded-md p-3">
+                {disabledReason ||
+                  'Metode pengiriman ini tidak dapat diproses secara otomatis. Silakan proses pengiriman secara manual.'}
+              </div>
+            )}
+
+            <Button
+              onClick={onCreateShipment}
+              className="w-full"
+              disabled={isShipmentLoading || isShipmentDisabled}
+            >
+              {isShipmentLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Truck className="mr-2 h-4 w-4" />
+              )}
               Buat Pengiriman & Dapatkan Resi
             </Button>
           </div>
@@ -500,7 +539,28 @@ export default function OrderDetailPage() {
     }
   };
 
+  if (isLoading)
+    return (
+      <div className="flex justify-center p-8">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
+  if (isError) return <p className="text-center text-red-500 p-8">Gagal memuat detail pesanan.</p>;
+  if (!order) return null;
+
+  // Deteksi kurir "TOKO - Pengiriman Toko"
+  const normalizedCourier = (order.courier || '').toLowerCase();
+  const isTokoShipment = normalizedCourier.startsWith('toko - pengiriman toko');
+
   const handleCreateShipment = () => {
+    // Blokir pengiriman otomatis jika metode "Pengiriman Toko"
+    if (isTokoShipment) {
+      toast.error(
+        'Metode "Pengiriman Toko" tidak dapat diproses melalui pengiriman otomatis. Silakan atur pengiriman secara manual.'
+      );
+      return;
+    }
+
     if (!order?.courier) return toast.error('Informasi kurir tidak ditemukan.');
     const parts = order.courier.split(' - ');
     if (parts.length < 2) return toast.error(`Format kurir tidak valid: ${order.courier}`);
@@ -509,10 +569,6 @@ export default function OrderDetailPage() {
     const courier_type = parts[1].trim().toLowerCase();
     shipmentMutation.mutate({ orderId, courier_company, courier_type });
   };
-
-  if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
-  if (isError) return <p className="text-center text-red-500 p-8">Gagal memuat detail pesanan.</p>;
-  if (!order) return null;
 
   return (
     <div className="space-y-6">
@@ -538,6 +594,8 @@ export default function OrderDetailPage() {
             onCreateShipment={handleCreateShipment}
             isStatusLoading={statusMutation.isPending}
             isShipmentLoading={shipmentMutation.isPending}
+            isShipmentDisabled={isTokoShipment}
+            disabledReason='Metode "TOKO - Pengiriman Toko" tidak dapat menggunakan pengiriman otomatis. Silakan proses pengiriman secara manual.'
           />
         </div>
       </div>
