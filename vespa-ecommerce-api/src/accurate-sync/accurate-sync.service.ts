@@ -358,7 +358,7 @@ export class AccurateSyncService {
         transDate: formatDateToAccurate(new Date(order.createdAt)),
         detailItem: detailItem,
         branchName: dbInfo.branchName,
-        number: `SO-${order.orderNumber}`,
+        poNumber: order.orderNumber,
       };
       const response = await apiClient.post(
         '/accurate/api/sales-order/save.do',

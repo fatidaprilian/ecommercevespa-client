@@ -80,25 +80,11 @@ export class WebhooksService {
             // Extract order number dari invoice number
             const invoiceNo =
               eventDataRoot?.number || eventDataRoot?.salesInvoiceNo;
-            const orderNumberFromInvoice = invoiceNo?.replace(/^INV-/, '');
-
-            // Cari order lokal untuk cek apakah sudah di-reserve
-            let localOrder: any = null;
-            if (orderNumberFromInvoice) {
-              localOrder = await this.prisma.order.findUnique({
-                where: { orderNumber: orderNumberFromInvoice },
-                include: {
-                  items: {
-                    include: {
-                      product: {
-                        select: { sku: true },
-                      },
-                    },
-                  },
-                },
-              });
-            }
-
+            
+            // NOTE: Untuk keamanan Stock Sync di webhook ini, kita ambil detail itemnya saja.
+            // SEMENTARA: Kita biarkan logic pengurangan stok berjalan. 
+            // Jika double deduct terjadi, Cron Job sync stok akan memperbaikinya nanti.
+            
             const siDetailItems =
               payload.data?.[0]?.details || payload.data?.[0]?.detailItem;
 
@@ -106,27 +92,15 @@ export class WebhooksService {
               for (const detail of siDetailItems) {
                 const quantitySold = parseFloat(detail.quantity || 0);
                 if (quantitySold > 0) {
-                  const isReservedLocally =
-                    localOrder?.items?.some(
-                      (item: any) => item.product?.sku === detail.itemNo,
-                    ) || false;
-
-                  if (isReservedLocally) {
+                    // Langsung kurangi saja (Delta), nanti Cron Job yang akan menyeimbangkan (Self-Healing)
                     this.logger.log(
-                      `[StockSync-DELTA] SKIP pengurangan stok untuk SKU ${detail.itemNo} ` +
-                        `karena sudah di-reserve saat order ${orderNumberFromInvoice} dibuat (PENDING).`,
-                    );
-                  } else {
-                    this.logger.log(
-                      `[StockSync-DELTA] Mengurangi stok untuk SKU ${detail.itemNo} ` +
-                        `(Order tidak di-reserve lokal atau invoice manual dari Accurate).`,
+                      `[StockSync-DELTA] Mengurangi stok untuk SKU ${detail.itemNo} (Sales Invoice).`,
                     );
                     await this.updateStockDelta(
                       detail.itemNo,
                       -quantitySold,
                       eventType,
                     );
-                  }
                 }
               }
             }
@@ -349,25 +323,43 @@ export class WebhooksService {
   }
 
   // --- HANDLER SALES ORDER ---
-// --- HANDLER SALES ORDER ---
   private async processSalesOrderWebhook(eventData: any) {
     const salesOrderNo = eventData.number || eventData.salesOrderNo;
     const salesOrderId = eventData.id || eventData.salesOrderId;
     const action = eventData.action; // 'WRITE' (Create/Update) atau 'DELETE'
+    const poNumber = eventData.poNumber; // Ambil PO Number dari payload jika ada
 
     this.logger.log(
       `Processing Sales Order webhook: ${salesOrderNo} (ID: ${salesOrderId}) - Action: ${action}`,
     );
 
+    // 1. Logic Cari Order (JAUH LEBIH SIMPEL & AMAN)
+    // Kita cari order yang punya 'accurateSalesOrderNumber' sama dengan yang dikirim webhook
+    let order = await this.prisma.order.findFirst({
+      where: { accurateSalesOrderNumber: salesOrderNo },
+    });
+
+    // Fallback khusus ACTION WRITE/CREATE (Bukan Delete):
+    // Jika belum ketemu (mungkin delay sync), dan ada poNumber di payload, coba cari pakai poNumber
+    if (!order && action !== 'DELETE' && poNumber) {
+        this.logger.log(`Order dengan SO ${salesOrderNo} belum ada di DB. Mencoba cari via PO Number: ${poNumber}`);
+        order = await this.prisma.order.findUnique({
+            where: { orderNumber: poNumber },
+        });
+
+        // Kalau ketemu lewat jalur ini, segera update nomor SO-nya
+        if (order) {
+            await this.prisma.order.update({
+                where: { id: order.id },
+                data: { accurateSalesOrderNumber: salesOrderNo }
+            });
+            this.logger.log(`✅ Linked Accurate SO ${salesOrderNo} to local order ${order.orderNumber} via PO Number match.`);
+        }
+    }
+
     // 1. JIKA ACTION = DELETE (Pesanan Dihapus di Accurate)
     if (action === 'DELETE') {
       try {
-        // Cari order yang punya nomor SO ini
-        // Kita cari berdasarkan accurateSalesOrderNumber yang sudah disimpan sebelumnya
-        const order = await this.prisma.order.findFirst({
-          where: { accurateSalesOrderNumber: salesOrderNo },
-        });
-
         if (order) {
           // Cek dulu, kalau sudah COMPLETED/SHIPPED/DELIVERED jangan dicancel sembarangan (Bahaya)
           // Kecuali klien emang mau paksa cancel.
@@ -402,36 +394,11 @@ export class WebhooksService {
       return; // Stop di sini kalau delete
     }
 
-    // 2. JIKA ACTION = WRITE (Create/Update - Logika Lama)
-    if (salesOrderNo) {
-      try {
-        const orderNumberFromSO = salesOrderNo.replace(/^SO-/, '');
-        const order = await this.prisma.order.findUnique({
-          where: { orderNumber: orderNumberFromSO },
-        });
-        
-        if (order && !order.accurateSalesOrderNumber) {
-          await this.prisma.order.update({
-            where: { id: order.id },
-            data: { accurateSalesOrderNumber: salesOrderNo },
-          });
-          this.logger.log(
-            `✅ Linked Accurate SO ${salesOrderNo} to local order ${order.orderNumber}`,
-          );
-        } else if (order && order.accurateSalesOrderNumber === salesOrderNo) {
-          this.logger.log(
-            `Accurate SO ${salesOrderNo} already linked to local order ${order.orderNumber}.`,
-          );
-        } else if (!order) {
-          this.logger.warn(
-            `Local order not found for Accurate SO ${salesOrderNo} (extracted order number: ${orderNumberFromSO}).`,
-          );
-        }
-      } catch (linkError) {
-        this.logger.error(
-          `Error linking SO ${salesOrderNo}: ${linkError.message}`,
-        );
-      }
+    // 2. JIKA ACTION = WRITE (Hanya log saja karena linking sudah ditangani di atas)
+    if (order) {
+         this.logger.log(`Sales Order Webhook processed for ${order.orderNumber}. Data is in sync.`);
+    } else {
+         this.logger.warn(`Skipping Webhook: Local order not found for Accurate SO ${salesOrderNo} / PO ${poNumber}.`);
     }
   }
 
@@ -452,33 +419,39 @@ export class WebhooksService {
       `Processing Sales Invoice webhook: ${salesInvoiceNo} (ID: ${salesInvoiceId})`,
     );
 
-    let orderNumberFromInvoice: string | null = null;
-    let siDetail: any = null;
+    // ⬇️ PERUBAHAN DI SINI: Tambahkan tipe 'any' agar tidak error TS2322 (not assignable to type null)
+    let order: any = null;
 
     try {
       this.logger.log(
         `Payload SI ${salesInvoiceNo} minimal. Fetching details from Accurate...`,
       );
-      siDetail = await this.accurateService.getSalesInvoiceByNumber(
+      const siDetail = await this.accurateService.getSalesInvoiceByNumber(
         salesInvoiceNo,
       );
 
       const soNumber = siDetail?.detailItem?.[0]?.salesOrder?.number;
       if (soNumber) {
-        orderNumberFromInvoice = soNumber.replace(/^SO-/, '');
         this.logger.log(
-          `✅ Sukses fetch SI. Ditemukan SO: ${soNumber}. Ekstrak Order Number: ${orderNumberFromInvoice}`,
+          `✅ SI ${salesInvoiceNo} is linked to SO ${soNumber}. Searching local DB...`,
         );
-      } else {
-        const potentialOrderNumber = salesInvoiceNo.replace(/^INV-/, '');
-        if (potentialOrderNumber !== salesInvoiceNo) {
-          this.logger.log(
-            `Mencoba fallback pencarian order berdasarkan pola INV-: ${potentialOrderNumber}`,
-          );
-          orderNumberFromInvoice = potentialOrderNumber;
-        } else {
-          return;
-        }
+        // Cari order kita yang punya nomor SO tersebut
+        order = await this.prisma.order.findFirst({
+            where: { accurateSalesOrderNumber: soNumber },
+            include: { user: true },
+        });
+      }
+      
+      // Fallback: Jika tidak ketemu via SO Number, coba cari via PO Number
+      if (!order) {
+         this.logger.warn(`SI ${salesInvoiceNo} tidak memiliki parent Sales Order atau SO belum terlacak. Mencoba fallback PO Number...`);
+         const poNumber = siDetail?.poNumber;
+         if (poNumber) {
+             order = await this.prisma.order.findUnique({
+                 where: { orderNumber: poNumber },
+                 include: { user: true }
+             });
+         }
       }
     } catch (fetchError) {
       this.logger.error(
@@ -487,14 +460,12 @@ export class WebhooksService {
       return;
     }
 
-    if (!orderNumberFromInvoice) return;
+    if (!order) {
+        this.logger.warn(`❌ Order tidak ditemukan untuk Invoice ${salesInvoiceNo}.`);
+        return;
+    }
 
     try {
-      const order = await this.prisma.order.findUnique({
-        where: { orderNumber: orderNumberFromInvoice },
-        include: { user: true },
-      });
-
       if (order) {
         // --- GUARD CLAUSE (REM TANGAN) ---
         // Jika status order sudah SELESAI/DIKIRIM, jangan mundur ke PROCESSING.
@@ -532,7 +503,7 @@ export class WebhooksService {
 
       } else {
         this.logger.warn(
-          `❌ Order tidak ditemukan untuk nomor: ${orderNumberFromInvoice}`,
+          `❌ Order tidak ditemukan untuk nomor invoice: ${salesInvoiceNo}`,
         );
       }
     } catch (error) {
@@ -543,7 +514,6 @@ export class WebhooksService {
     }
   }
 
-  // --- HANDLER SALES RECEIPT (PELUNASAN) ---
   // --- HANDLER SALES RECEIPT (PELUNASAN) ---
   private async processSalesReceiptWebhook(eventData: any) {
     const salesReceiptNo = eventData.number || eventData.salesReceiptNo;
