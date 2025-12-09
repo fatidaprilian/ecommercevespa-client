@@ -420,7 +420,7 @@ export class AccurateSyncService {
   }
 
 // 👇👇 GANTI METHOD INI SEPENUHNYA 👇👇
-  async syncProductsFromAccurate() {
+async syncProductsFromAccurate() {
     this.logger.log('WORKER: Starting product synchronization from Accurate...');
     try {
       const apiClient = await this.accurateService.getAccurateApiClient();
@@ -456,8 +456,6 @@ export class AccurateSyncService {
           
           try {
             // 1. AMBIL STOK BASIS DARI ACCURATE
-            // Prioritas: availableToSell (Stok yang benar-benar bisa dijual). 
-            // Fallback: quantity (Stok Fisik) hanya jika field available tidak ada.
             let baseStock = 0;
             if (item.availableToSell !== undefined && item.availableToSell !== null) {
                 baseStock = item.availableToSell;
@@ -465,7 +463,32 @@ export class AccurateSyncService {
                 baseStock = item.quantity || 0; 
             }
 
-            // 2. HITUNG PENGURANG LOKAL (HANYA ORDER WEB YANG BELUM SYNC)
+            const accurateItemIdStr = item.id.toString();
+
+            // 2. CEK KONFLIK ID & UPDATE SKU (Logic Baru untuk Fix Error Unique Constraint)
+            // Cari apakah ada produk lokal yang punya accurateItemId ini tapi SKU-nya beda?
+            const existingByAccurateId = await this.prisma.product.findUnique({
+              where: { accurateItemId: accurateItemIdStr }
+            });
+
+            if (existingByAccurateId && existingByAccurateId.sku !== item.no) {
+               this.logger.warn(`[SyncProduct] Mendeteksi perubahan SKU untuk ID ${accurateItemIdStr}. Lama: ${existingByAccurateId.sku} -> Baru: ${item.no}`);
+               
+               // Cek apakah SKU baru ini bentrok dengan produk lain (sangat jarang, tapi jaga-jaga)
+               const conflictSku = await this.prisma.product.findUnique({ where: { sku: item.no }});
+               if (conflictSku) {
+                 // Kalau bentrok, hapus yang lama/konflik agar bisa di-rename
+                 await this.prisma.product.delete({ where: { id: conflictSku.id } });
+               }
+
+               // Update SKU produk yang sudah ada agar match dengan Accurate
+               await this.prisma.product.update({
+                 where: { id: existingByAccurateId.id },
+                 data: { sku: item.no }
+               });
+            }
+
+            // 3. HITUNG PENGURANG LOKAL (HANYA ORDER WEB YANG BELUM SYNC)
             const existingProduct = await this.prisma.product.findUnique({
               where: { sku: item.no },
               include: {
@@ -493,7 +516,6 @@ export class AccurateSyncService {
 
             // LOGIKA FILTER:
             // Hanya kurangi stok untuk order yang BELUM punya nomor Sales Order/Invoice Accurate.
-            // Kalau sudah punya, berarti Accurate sudah mengurangi 'availableToSell' secara otomatis.
             const localPendingStock = existingProduct?.orderItems.reduce(
               (sum, orderItem) => {
                 const order = orderItem.order;
@@ -508,8 +530,7 @@ export class AccurateSyncService {
               0
             ) || 0;
 
-            // 3. HITUNG STOK FINAL UNTUK WEB
-            // Stok Web = (Stok Bersih Accurate) - (Pesanan Web yang belum masuk Accurate)
+            // 4. HITUNG STOK FINAL UNTUK WEB
             const finalStock = Math.max(0, baseStock - localPendingStock);
 
             if (localPendingStock > 0) {
@@ -522,10 +543,11 @@ export class AccurateSyncService {
             await this.prisma.product.upsert({
               where: { sku: item.no },
               update: {
+                name: item.name, // Update nama juga siapa tau berubah
                 price: item.unitPrice || 0,
                 stock: finalStock,
                 cost: item.averageCost || 0,
-                accurateItemId: item.id.toString(),
+                accurateItemId: accurateItemIdStr,
               },
               create: {
                 sku: item.no,
@@ -534,7 +556,7 @@ export class AccurateSyncService {
                 stock: finalStock,
                 cost: item.averageCost || 0,
                 weight: 1000,
-                accurateItemId: item.id.toString(),
+                accurateItemId: accurateItemIdStr,
               },
             });
             
