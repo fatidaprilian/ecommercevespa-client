@@ -15,10 +15,15 @@ import { Address } from '@/services/addressService';
 import { ShippingRate } from '@/services/shippingService';
 import { Button } from '@/components/ui/button';
 import { getVatPercentage } from '@/services/settingsService';
+// Import Named Export (pakai kurung kurawal)
+import { useProfile } from '@/hooks/useProfile';
 
 export default function CheckoutPage() {
     const { cart, selectedItems } = useCartStore();
-    const { isAuthenticated } = useAuthStore();
+    // 👇 AMBIL setAuth DAN token UNTUK UPDATE STATE
+    const { isAuthenticated, setAuth, token } = useAuthStore();
+    // 👇 AMBIL refetch DARI HOOK
+    const { refetch } = useProfile();
     const router = useRouter();
 
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
@@ -28,6 +33,21 @@ export default function CheckoutPage() {
 
     const selectedCartItems =
         cart?.items?.filter((item) => selectedItems.has(item.id)) || [];
+
+    // 👇 EFEK KHUSUS: SINKRONISASI DATA USER OTOMATIS
+    useEffect(() => {
+        if (isAuthenticated) {
+            // 1. Ambil data terbaru dari server (Backend sudah cek DB)
+            refetch().then((result) => {
+                // 2. Jika data berhasil didapat & token ada
+                if (result.data && token) {
+                    // 3. PAKSA UPDATE penyimpanan browser (Store) dengan Role terbaru
+                    // Ini yang bikin UI langsung berubah tanpa relogin!
+                    setAuth(result.data, token);
+                }
+            });
+        }
+    }, [isAuthenticated, refetch, setAuth, token]);
 
     useEffect(() => {
         const fetchVat = async () => {
