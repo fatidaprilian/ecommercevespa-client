@@ -544,6 +544,6 @@ Dokumen ini adalah properti internal untuk tim development Vespa Ecommerce Platf
 
 <div align="center">
 
-**Made with ❤️ by Vespa Ecommerce Development Team**
+**Made with ❤️ by KODEKIRI Development Team**
 
 </div>
