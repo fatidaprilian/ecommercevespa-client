@@ -538,7 +538,7 @@ Jika menemukan bug atau ingin berkontribusi:
 
 ## 📄 License
 
-Dokumen ini adalah properti internal untuk tim development Vespa Ecommerce Platform. 
+Dokumen ini adalah properti internal untuk tim development KODEKIRI. 
 
 ---
 
