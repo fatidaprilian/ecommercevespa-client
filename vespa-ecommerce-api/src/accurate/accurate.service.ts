@@ -78,16 +78,16 @@ export class AccurateService {
         return { connected: isConnected, dbSelected: isDbSelected };
     }
 
-private async getValidToken(): Promise<AccurateOAuth | null> {
+    private async getValidToken(): Promise<AccurateOAuth | null> {
         const token = await this.prisma.accurateOAuth.findFirst();
         if (!token) return null;
-        
+
         if (new Date(token.expiresAt.getTime() - 30 * 60 * 1000) < new Date()) {
             return this.refreshAccessToken(token);
         }
         return token;
     }
-    
+
     private async refreshAccessToken(token: AccurateOAuth): Promise<AccurateOAuth> {
         this.logger.log('Token akan kedaluwarsa, mencoba me-refresh...');
         try {
@@ -101,11 +101,17 @@ private async getValidToken(): Promise<AccurateOAuth | null> {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
             });
-            const { access_token, expires_in } = response.data;
+            const { access_token, refresh_token, expires_in } = response.data;
             const expiresAt = new Date(Date.now() + expires_in * 1000);
+
+            const updateData: any = { accessToken: access_token, expiresAt };
+            if (refresh_token) {
+                updateData.refreshToken = refresh_token;
+            }
+
             const updatedToken = await this.prisma.accurateOAuth.update({
                 where: { id: token.id },
-                data: { accessToken: access_token, expiresAt },
+                data: updateData,
             });
             this.logger.log('✅ Access token berhasil di-refresh.');
             return updatedToken;
@@ -154,9 +160,9 @@ private async getValidToken(): Promise<AccurateOAuth | null> {
         const firstBranchName = branchResponse.data.d[0].name;
         this.logger.log(`Cabang default ditemukan: ${firstBranchName}`);
         await this.prisma.accurateOAuth.updateMany({
-            data: { 
-                dbId, 
-                dbHost: host, 
+            data: {
+                dbId,
+                dbHost: host,
                 dbSession: session,
                 branchName: firstBranchName
             },
@@ -168,7 +174,7 @@ private async getValidToken(): Promise<AccurateOAuth | null> {
     @Cron(CronExpression.EVERY_DAY_AT_4AM)
     async maintainAccurateConnection() {
         this.logger.log('🔄 [CRON] Menjalankan pemeliharaan koneksi Accurate...');
-        
+
         const token = await this.prisma.accurateOAuth.findFirst();
         if (!token) {
             this.logger.warn('⚠️ [CRON] Tidak ada token Accurate yang ditemukan. Skip maintenance.');
@@ -181,10 +187,10 @@ private async getValidToken(): Promise<AccurateOAuth | null> {
 
             // 2. Ping API untuk memicu update Host otomatis (jika ada perpindahan server 308)
             const apiClient = await this.getAccurateApiClient();
-            
+
             // Request ringan ke endpoint list database/cabang hanya untuk cek koneksi
             await apiClient.get('/accurate/api/branch/list.do', {
-                params: { fields: 'id', limit: 1 } 
+                params: { fields: 'id', limit: 1 }
             });
 
             this.logger.log('✅ [CRON] Pemeliharaan koneksi Accurate berhasil. Token & Host valid.');
@@ -193,7 +199,7 @@ private async getValidToken(): Promise<AccurateOAuth | null> {
         }
     }
 
-public async getAccurateApiClient(): Promise<AxiosInstance> {
+    public async getAccurateApiClient(): Promise<AxiosInstance> {
         const token = await this.getValidToken();
         if (!token) {
             throw new InternalServerErrorException('Integrasi Accurate tidak dikonfigurasi.');
@@ -213,8 +219,10 @@ public async getAccurateApiClient(): Promise<AxiosInstance> {
                 'Authorization': `Bearer ${token.accessToken}`,
                 'X-Session-ID': dbInfo.dbSession,
             },
-            // Izinkan status 308 agar tidak langsung error, tapi diproses interceptor
-            validateStatus: (status) => status >= 200 && status < 400, 
+            // Disable auto-redirect to handle 308 manually (update DB host)
+            maxRedirects: 0,
+            // Treat 308 as error so it hits the interceptor
+            validateStatus: (status) => status >= 200 && status < 300,
         });
 
         // Interceptor Pintar: Auto-fix Host & Retry Token
@@ -222,7 +230,7 @@ public async getAccurateApiClient(): Promise<AxiosInstance> {
             (response) => {
                 // Kadang Accurate melempar 200 OK tapi isinya error JSON
                 if (response.data && response.data.error && response.data.error === 'error.invalid_token') {
-                     return Promise.reject({ response: { status: 401, config: response.config } });
+                    return Promise.reject({ response: { status: 401, config: response.config } });
                 }
                 return response;
             },
@@ -232,10 +240,10 @@ public async getAccurateApiClient(): Promise<AxiosInstance> {
                 // 1. HANDLER PERPINDAHAN HOST (308 Permanent Redirect)
                 if (error.response && (error.response.status === 308 || error.response.data?.endpoint)) {
                     const newEndpoint = error.response.data?.endpoint || error.response.headers['location'];
-                    
+
                     if (newEndpoint && newEndpoint !== dbInfo.dbHost) {
                         this.logger.warn(`[AUTO-FIX] Host Accurate berubah: ${dbInfo.dbHost} -> ${newEndpoint}`);
-                        
+
                         // A. Update Database Lokal
                         await this.prisma.accurateOAuth.updateMany({
                             data: { dbHost: newEndpoint }
@@ -253,10 +261,10 @@ public async getAccurateApiClient(): Promise<AxiosInstance> {
                     this.logger.warn('Token expired saat request (401), mencoba refresh...');
                     try {
                         const newToken = await this.refreshAccessToken(token);
-                        
+
                         // Update header dengan token baru
                         originalRequest.headers['Authorization'] = `Bearer ${newToken.accessToken}`;
-                        
+
                         // Ulangi Request
                         return axios.request(originalRequest);
                     } catch (refreshError) {
@@ -270,13 +278,13 @@ public async getAccurateApiClient(): Promise<AxiosInstance> {
 
         return instance;
     }
-    
+
     public async getSalesInvoiceByNumber(invoiceNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Mengambil detail Faktur Penjualan untuk nomor: ${invoiceNumber}`);
             const apiClient = await this.getAccurateApiClient();
-            
-            const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', { 
+
+            const response = await apiClient.get('/accurate/api/sales-invoice/detail.do', {
                 params: {
                     number: invoiceNumber
                 }
@@ -285,7 +293,7 @@ public async getAccurateApiClient(): Promise<AxiosInstance> {
             if (response.data?.s && response.data.d) {
                 return response.data.d;
             }
-            
+
             this.logger.warn(`Tidak ada Faktur Penjualan ditemukan dengan nomor: ${invoiceNumber} menggunakan /detail.do`);
             return null;
         } catch (error) {
@@ -293,13 +301,13 @@ public async getAccurateApiClient(): Promise<AxiosInstance> {
             return null;
         }
     }
-    
+
     public async getSalesReceiptDetailByNumber(receiptNumber: string): Promise<any | null> {
         try {
             this.logger.log(`Mengambil detail Penerimaan Penjualan untuk nomor: ${receiptNumber}`);
             const apiClient = await this.getAccurateApiClient();
-            
-            const response = await apiClient.get('/accurate/api/sales-receipt/detail.do', { 
+
+            const response = await apiClient.get('/accurate/api/sales-receipt/detail.do', {
                 params: { number: receiptNumber }
             });
 
@@ -363,7 +371,7 @@ public async getAccurateApiClient(): Promise<AxiosInstance> {
     async disconnect(): Promise<{ message: string }> {
         this.logger.log('Disconnecting from Accurate by deleting OAuth tokens...');
         const deleteResult = await this.prisma.accurateOAuth.deleteMany({});
-        
+
         if (deleteResult.count > 0) {
             this.logger.log('✅ Successfully disconnected from Accurate.');
             return { message: 'Berhasil memutuskan koneksi dari Accurate.' };
