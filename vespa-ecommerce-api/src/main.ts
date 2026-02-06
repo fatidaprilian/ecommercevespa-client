@@ -3,13 +3,11 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 
 async function bootstrap() {
-  console.log('--- [DEBUG] Memeriksa nilai environment variable dari main.ts ---');
-  console.log('Nilai ACCURATE_CLIENT_ID yang terbaca:', process.env.ACCURATE_CLIENT_ID);
-  console.log('------------------------------------------------------------------');
+  const logger = new Logger('Bootstrap');
 
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
@@ -46,8 +44,9 @@ async function bootstrap() {
 
   const port = configService.get('PORT') || 3001;
   await app.listen(port);
-  console.log(`🚀 Server running on port ${port}`);
-  console.log(`✅ CORS enabled for origins: ${allowedOrigins.join(', ')}`);
-  console.log('✅ Cloudinary successfully configured!');
+
+  logger.log(`🚀 Server running on port ${port}`);
+  logger.log(`✅ CORS enabled for origins: ${allowedOrigins.join(', ')}`);
+  logger.log('✅ Cloudinary successfully configured!');
 }
 bootstrap();

@@ -28,23 +28,23 @@ export default function CartPage() {
   const { cart, isLoading, updateItemQuantity, removeItem, selectedItems, toggleItemSelected, toggleSelectAll, fetchCart } = useCartStore();
   const { isAuthenticated } = useAuthStore();
 
-  // 👇 REVISI BAGIAN INI: Tambahkan polling interval 👇
+  // Polling interval for silent refresh
   useEffect(() => {
     if (isAuthenticated) {
-      // 1. Fetch awal saat halaman dimuat (akan menampilkan loading spinner jika belum ada data)
+      // 1. Initial fetch on load (shows loading spinner)
       fetchCart();
 
-      // 2. Pasang interval untuk melakukan silent refresh setiap 5 detik
-      // 'true' artinya mode silent (tanpa loading spinner)
+      // 2. Set interval for silent refresh every 5 seconds
+      // 'true' means silent mode (no loading spinner)
       const intervalId = setInterval(() => {
         fetchCart(true);
       }, 5000);
 
-      // 3. Bersihkan interval saat komponen di-unmount agar tidak memory leak
+      // 3. Cleanup interval on unmount to prevent memory leaks
       return () => clearInterval(intervalId);
     }
   }, [isAuthenticated, fetchCart]);
-  // 👆 AKHIR REVISI 👆
+  // End polling logic
 
   const items = cart?.items || [];
   const isAllSelected = items.length > 0 && selectedItems.size === items.length;

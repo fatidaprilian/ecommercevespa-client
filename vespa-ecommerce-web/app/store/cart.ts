@@ -22,7 +22,7 @@ export enum PaymentPreference {
   OTHER = 'other',
 }
 
-// Map untuk menyimpan debounce function per item ID
+// Map to store debounce functions per item ID
 const updateDebounces = new Map<string, Function>();
 
 const getDebouncedUpdate = (cartItemId: string) => {
@@ -34,7 +34,7 @@ const getDebouncedUpdate = (cartItemId: string) => {
           await api.patch(`/cart/items/${cartItemId}`, { quantity });
           onSuccess();
         } catch (error) {
-          console.error("Gagal sinkronisasi kuantitas:", error);
+          console.error("Failed to sync quantity:", error);
           toast.error('Gagal memperbarui keranjang.');
           onError();
         }
@@ -51,11 +51,11 @@ type CartState = {
   selectedItems: Set<string>;
   error: string | null;
 
-  // Set untuk melacak item yang sedang diedit lokal (pending API/debounce)
-  // Agar tidak ditimpa oleh polling fetchCart
+  // Set to track items being edited locally (pending API/debounce)
+  // Prevents overwriting by polling fetchCart
   updatingItemIds: Set<string>;
 
-  // forceSilent = true artinya refresh data tanpa memicu loading spinner (untuk polling)
+  // forceSilent = true means refresh data without triggering loading spinner (for polling)
   fetchCart: (forceSilent?: boolean) => Promise<void>;
 
   addItem: (productId: string, quantity?: number) => Promise<void>;
@@ -93,10 +93,10 @@ export const useCartStore = create<CartState>((set, get) => ({
   clearClientCart: () => set({ cart: null, selectedItems: new Set(), isLoading: false, error: null, isHydrated: false, updatingItemIds: new Set() }),
 
   fetchCart: async (forceSilent = false) => {
-    // Jika TIDAK dipaksa (initial load) DAN sudah ada data, skip biar hemat resource
+    // If NOT forced (initial load) AND already hydrated, skip to save resources
     if (!forceSilent && get().isHydrated) return;
 
-    // Hanya tampilkan loading spinner jika BUKAN silent refresh
+    // Only show loading spinner if NOT silent refresh
     if (!forceSilent) {
       set({ isLoading: true, error: null });
     }
@@ -105,13 +105,13 @@ export const useCartStore = create<CartState>((set, get) => ({
       const { data } = await api.get('/cart');
 
       set((state) => {
-        // LOGIKA PENTING SAAT SILENT REFRESH:
-        // Sinkronisasi selectedItems. Jika ada item yang dihapus dari backend (misal stok habis total),
-        // kita harus hapus juga dari selectedItems agar tidak error saat checkout.
+        // IMPORTANT LOGIC FOR SILENT REFRESH:
+        // Sync selectedItems. If an item is removed from backend (e.g. out of stock),
+        // we must also remove it from selectedItems to avoid error during checkout.
         const newCartItemIds = new Set(data.items.map((item: CartItem) => item.id));
         const newSelectedItems = new Set(state.selectedItems);
 
-        // Cek setiap item yang terpilih, apakah masih ada di data keranjang baru?
+        // Check each selected item, does it still exist in new cart data?
         state.selectedItems.forEach(id => {
           if (!newCartItemIds.has(id)) {
             newSelectedItems.delete(id);
@@ -119,14 +119,14 @@ export const useCartStore = create<CartState>((set, get) => ({
         });
 
         // INTELLIGENT MERGE:
-        // Jangan timpa item yang sedang di-update user
+        // Do not overwrite items being updated by user
         let finalCart = data;
         if (state.cart && state.updatingItemIds.size > 0) {
           const mergedItems = data.items.map((serverItem: CartItem) => {
             if (state.updatingItemIds.has(serverItem.id)) {
-              // Cari item versi lokal
+              // Find local version
               const localItem = state.cart!.items.find(i => i.id === serverItem.id);
-              // Gunakan versi lokal (optimistic) jika ada, abaikan server sementara
+              // Use local version (optimistic) if exists, ignore server temporarily
               return localItem ? { ...serverItem, quantity: localItem.quantity } : serverItem;
             }
             return serverItem;
@@ -142,15 +142,15 @@ export const useCartStore = create<CartState>((set, get) => ({
         };
       });
 
-      // Auto-select semua HANYA saat fetch PERTAMA KALI.
-      // Saat polling (silent refresh), jangan reset pilihan user.
+      // Auto-select all ONLY on FIRST fetch.
+      // During polling (silent refresh), do not reset user selection.
       if (!get().isHydrated && !forceSilent) {
         get().toggleSelectAll(true);
       }
 
     } catch (error) {
-      console.error("Gagal mengambil keranjang:", error);
-      // Jika silent refresh gagal (misal koneksi putus sebentar), jangan tampilkan error heboh
+      console.error("Failed to fetch cart:", error);
+      // If silent refresh fails (e.g. connection lost), do not show error
       if (!forceSilent) {
         set({ isLoading: false, error: 'Gagal memuat keranjang.', isHydrated: true });
       }
@@ -161,7 +161,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     try {
       const { data } = await api.post('/cart/items', { productId, quantity });
       set({ cart: data });
-      // Otomatis pilih item yang baru ditambahkan
+      // Automatically select newly added item
       const updatedItem = data.items.find((item: CartItem) => item.productId === productId);
       if (updatedItem) {
         set(state => {
@@ -180,7 +180,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   updateItemQuantity: (cartItemId, newQuantity) => {
     if (newQuantity < 1) return;
 
-    // 1. Tandai item ini sedang di-update agar tidak ditimpa polling
+    // 1. Mark this item as being updated so polling doesn't overwrite it
     set(state => {
       const newUpdatingIds = new Set(state.updatingItemIds);
       newUpdatingIds.add(cartItemId);
@@ -198,10 +198,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       };
     });
 
-    // 2. Panggil debounce per item
+    // 2. Call debounce per item
     const debouncedFn = getDebouncedUpdate(cartItemId);
 
-    // Callback saat API sukses/gagal -> lepaskan status 'updating'
+    // Callback on API success/error -> release 'updating' lock
     const releaseLock = () => {
       set(state => {
         const newUpdatingIds = new Set(state.updatingItemIds);
@@ -227,9 +227,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       await api.delete(`/cart/items/${cartItemId}`);
       toast.success("Item dihapus dari keranjang");
     } catch (error) {
-      console.error("Gagal menghapus item:", error);
+      console.error("Failed to remove item:", error);
       toast.error("Gagal menghapus item");
-      set({ cart: originalCart }); // Rollback jika gagal
+      set({ cart: originalCart }); // Rollback if failed
     }
   },
 
@@ -299,7 +299,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     if (!cart || selectedItems.size === 0) {
       throw new Error("Tidak ada item yang dipilih untuk di-checkout.");
     }
-    // Ambil hanya item yang diceklis
+    // Get only selected items
     const itemsToOrder = cart.items
       .filter(item => selectedItems.has(item.id))
       .map(item => ({ productId: item.product.id, quantity: item.quantity }));
@@ -316,9 +316,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         paymentPreference,
       });
 
-      // Setelah sukses order, biasanya keranjang akan kosong di backend.
-      // Kita bisa refresh cart atau clear local state.
-      // Opsi teraman adalah fetch ulang untuk sinkronisasi.
+      // After successful order, cart is usually emptied in backend.
+      // We can refresh cart or clear local state.
+      // Safest option is to fetch again to sync.
       await get().fetchCart(true);
 
       set({ isLoading: false });

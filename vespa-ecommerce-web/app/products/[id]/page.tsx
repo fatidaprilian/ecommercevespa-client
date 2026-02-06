@@ -15,6 +15,7 @@ import { useWishlistStore } from '@/store/wishlist';
 import PriceDisplay from '@/components/molecules/PriceDisplay';
 import { RelatedProducts } from './RelatedProducts';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
     AlertDialog,
@@ -91,7 +92,7 @@ export default function ProductDetailPage() {
     const { addItem, isLoading: isCartLoading } = useCartStore();
     const { isAuthenticated } = useAuthStore();
     const { data: product, isLoading, error } = useProduct(productId);
-    
+
     const { toggleWishlist, isWishlisted } = useWishlistStore();
     const isInWishlist = isWishlisted(productId);
 
@@ -111,7 +112,7 @@ export default function ProductDetailPage() {
     // Thumbnail scroll states (Logic Desktop)
     const [scrollPosition, setScrollPosition] = useState(0);
     const thumbnailContainerRef = useRef<HTMLDivElement>(null);
-    const THUMBNAIL_HEIGHT = 108; 
+    const THUMBNAIL_HEIGHT = 108;
     const MAX_VISIBLE_THUMBNAILS = 5;
 
     useEffect(() => {
@@ -134,11 +135,11 @@ export default function ProductDetailPage() {
         e.preventDefault();
         const zoomFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
         const newScale = Math.min(Math.max(scale * zoomFactor, 1), 5);
-        
+
         if (newScale <= 1) {
             setPosition({ x: 0, y: 0 });
         }
-        
+
         setScale(newScale);
     };
 
@@ -216,7 +217,7 @@ export default function ProductDetailPage() {
         if (!container || !product?.images) return;
 
         const maxScroll = Math.max(0, (product.images.length - MAX_VISIBLE_THUMBNAILS) * THUMBNAIL_HEIGHT);
-        
+
         if (direction === 'down') {
             setScrollPosition(prev => Math.min(prev + THUMBNAIL_HEIGHT, maxScroll));
         } else {
@@ -243,37 +244,37 @@ export default function ProductDetailPage() {
                         Kembali
                     </Button>
                 </motion.div>
-            
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start mb-10">
-                    
+
                     {/* GALLERY SECTION */}
                     <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="lg:sticky lg:top-28 self-start w-full">
                         <div className="flex flex-col lg:flex-row-reverse gap-3 lg:gap-4">
-                            
+
                             {/* Main Image Area */}
                             <Dialog open={isZoomOpen} onOpenChange={handleOpenChange}>
                                 <DialogTrigger asChild>
-                                <motion.div
-                                    key={selectedImage}
-                                    className="relative flex-grow flex items-center justify-center bg-gray-100 aspect-square rounded-xl lg:rounded-2xl overflow-hidden cursor-pointer group w-full"
-                                >
-                                    {/* REVISI: Hanya render jika selectedImage ada. Jika null, tampil background abu (bg-gray-100) */}
-                                    {selectedImage && (
-                                        <Image
-                                            src={selectedImage}
-                                            alt={product.name}
-                                            fill
-                                            sizes="(max-width: 768px) 100vw, 50vw"
-                                            className="object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
-                                        />
-                                    )}
-                                    <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
-                                        <Search className="h-12 w-12 text-gray-400 opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
-                                    </div>
-                                </motion.div>
+                                    <motion.div
+                                        key={selectedImage}
+                                        className="relative flex-grow flex items-center justify-center bg-gray-100 aspect-square rounded-xl lg:rounded-2xl overflow-hidden cursor-pointer group w-full"
+                                    >
+                                        {/* REVISI: Hanya render jika selectedImage ada. Jika null, tampil background abu (bg-gray-100) */}
+                                        {selectedImage && (
+                                            <Image
+                                                src={selectedImage}
+                                                alt={product.name}
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, 50vw"
+                                                className="object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
+                                            />
+                                        )}
+                                        <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
+                                            <Search className="h-12 w-12 text-gray-400 opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
+                                        </div>
+                                    </motion.div>
                                 </DialogTrigger>
-                                
-                                <DialogContent 
+
+                                <DialogContent
                                     showCloseButton={false}
                                     className="max-w-none w-screen h-screen bg-transparent border-none shadow-none flex items-center justify-center p-0"
                                 >
@@ -286,41 +287,41 @@ export default function ProductDetailPage() {
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.max(prev / 1.2, 1))}><ZoomOut /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={resetImageState}><RefreshCw size={18} /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.min(prev * 1.2, 5))}><ZoomIn /></Button>
-                                        <Button onClick={() => handleOpenChange(false)} variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20"><X className="h-5 w-5"/></Button>
+                                        <Button onClick={() => handleOpenChange(false)} variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20"><X className="h-5 w-5" /></Button>
                                     </div>
-                                    
+
                                     <div
-                                    ref={imageRef}
-                                    className="w-full h-full flex items-center justify-center select-none relative"
-                                    onWheel={handleWheel}
-                                    onMouseDown={handleMouseDown}
-                                    onMouseMove={handleMouseMove}
-                                    onMouseUp={handleMouseUp}
-                                    onMouseLeave={handleMouseLeave}
-                                    style={{ cursor: scale > 1 ? 'grab' : 'zoom-in' }}
-                                >
-                                    {/* REVISI: Hanya render jika ada gambar */}
-                                    {selectedImage && (
-                                        <MotionImage
-                                            key={selectedImage}
-                                            src={selectedImage}
-                                            alt="Zoomed product"
-                                            width={1200} 
-                                            height={1200}
-                                            className="w-[95vw] h-[80vh] lg:w-[95vw] lg:h-[95vh] object-contain drop-shadow-2xl pointer-events-none"
+                                        ref={imageRef}
+                                        className="w-full h-full flex items-center justify-center select-none relative"
+                                        onWheel={handleWheel}
+                                        onMouseDown={handleMouseDown}
+                                        onMouseMove={handleMouseMove}
+                                        onMouseUp={handleMouseUp}
+                                        onMouseLeave={handleMouseLeave}
+                                        style={{ cursor: scale > 1 ? 'grab' : 'zoom-in' }}
+                                    >
+                                        {/* REVISI: Hanya render jika ada gambar */}
+                                        {selectedImage && (
+                                            <MotionImage
+                                                key={selectedImage}
+                                                src={selectedImage}
+                                                alt="Zoomed product"
+                                                width={1200}
+                                                height={1200}
+                                                className="w-[95vw] h-[80vh] lg:w-[95vw] lg:h-[95vh] object-contain drop-shadow-2xl pointer-events-none"
                                                 style={{
                                                     transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
                                                     transition: isDragging.current ? 'none' : 'transform 0.1s linear',
                                                 }}
                                                 draggable={false}
-                                        />
-                                    )}
-                                </div>
+                                            />
+                                        )}
+                                    </div>
                                 </DialogContent>
                             </Dialog>
 
                             {/* THUMBNAILS WRAPPER */}
-                            
+
                             {/* 1. DESKTOP VERSION (Hidden on Mobile) */}
                             <div className="hidden lg:flex relative flex-col w-24 flex-shrink-0">
                                 {showScrollButtons && canScrollUp && (
@@ -329,34 +330,34 @@ export default function ProductDetailPage() {
                                     </button>
                                 )}
 
-                                <div 
+                                <div
                                     ref={thumbnailContainerRef}
                                     className="flex flex-col gap-3 overflow-hidden relative p-2"
                                     style={{ height: showScrollButtons ? `${MAX_VISIBLE_THUMBNAILS * THUMBNAIL_HEIGHT - 12}px` : 'auto' }}
                                 >
-                                    <div 
+                                    <div
                                         className="flex flex-col gap-3 transition-transform duration-300 ease-out"
                                         style={{ transform: `translateY(-${scrollPosition}px)` }}
                                     >
                                         {product.images?.map((image) => (
-                                            <button 
-                                            key={`desktop-${image.id}`} // (Sesuaikan key untuk mobile: `mobile-${image.id}`)
-                                            onClick={() => setSelectedImage(image.url)} 
-                                            className={cn(
-                                                'relative aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
-                                                selectedImage === image.url ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' : 'ring-0'
-                                            )}
-                                        >
-                                            {/* REVISI: Cek jika URL ada */}
-                                            {image.url && (
-                                                <Image 
-                                                    src={image.url} 
-                                                    alt={`Thumbnail ${product.name}`} 
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            )}
-                                        </button>
+                                            <button
+                                                key={`desktop-${image.id}`} // (Sesuaikan key untuk mobile: `mobile-${image.id}`)
+                                                onClick={() => setSelectedImage(image.url)}
+                                                className={cn(
+                                                    'relative aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
+                                                    selectedImage === image.url ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' : 'ring-0'
+                                                )}
+                                            >
+                                                {/* REVISI: Cek jika URL ada */}
+                                                {image.url && (
+                                                    <Image
+                                                        src={image.url}
+                                                        alt={`Thumbnail ${product.name}`}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                )}
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
@@ -371,38 +372,38 @@ export default function ProductDetailPage() {
                             {/* 2. MOBILE VERSION (Hidden on Desktop) */}
                             <div className="flex lg:hidden w-full overflow-x-auto gap-3 p-1 scrollbar-hide">
                                 {product.images?.map((image) => (
-                                <button 
-                                    key={`mobile-${image.id}`} 
-                                    onClick={() => setSelectedImage(image.url)} 
-                                    className={cn(
-                                        'relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200',
-                                        selectedImage === image.url ? 'ring-2 ring-orange-400 ring-offset-1' : 'ring-0'
-                                    )}
-                                >
-                                    {/* PENTING: Cek dulu ada URL-nya atau tidak. Kalau tidak dicek, Next.js akan ERROR jika URL kosong */}
-                                    {image.url && (
-                                        <Image 
-                                            src={image.url} 
-                                            alt={`Thumbnail ${product.name}`} 
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    )}
-                                </button>
+                                    <button
+                                        key={`mobile-${image.id}`}
+                                        onClick={() => setSelectedImage(image.url)}
+                                        className={cn(
+                                            'relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200',
+                                            selectedImage === image.url ? 'ring-2 ring-orange-400 ring-offset-1' : 'ring-0'
+                                        )}
+                                    >
+                                        {/* PENTING: Cek dulu ada URL-nya atau tidak. Kalau tidak dicek, Next.js akan ERROR jika URL kosong */}
+                                        {image.url && (
+                                            <Image
+                                                src={image.url}
+                                                alt={`Thumbnail ${product.name}`}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        )}
+                                    </button>
                                 ))}
                             </div>
 
                         </div>
-                        
+
                         {product.brand && product.brand.logoUrl && (
-                            <Link 
-                                href={`/products?brandId=${product.brand.id}`} 
+                            <Link
+                                href={`/products?brandId=${product.brand.id}`}
                                 // REVISI SIZE: w-16 h-16 (Mobile) dan lg:w-20 lg:h-20 (Desktop)
                                 className="block mt-4 lg:mt-6 transition-opacity hover:opacity-70 relative w-20 h-20 lg:w-24 lg:h-24"
                             >
-                                <Image 
-                                    src={product.brand.logoUrl} 
-                                    alt={product.brand.name} 
+                                <Image
+                                    src={product.brand.logoUrl}
+                                    alt={product.brand.name}
                                     fill
                                     className="object-contain" // object-contain memastikan logo tidak terpotong
                                 />
@@ -415,11 +416,11 @@ export default function ProductDetailPage() {
                         <motion.h1 variants={itemVariants} className="text-2xl sm:text-3xl lg:text-5xl font-bold text-gray-800 mb-3 lg:mb-2 leading-tight">
                             {product.name}
                         </motion.h1>
-                        
+
                         {/* GRID UNTUK ALIGNMENT LABEL (Titik Dua Rapi) */}
                         <motion.div variants={itemVariants} className="mt-2 lg:mt-4 mb-4 lg:mb-6 p-3 lg:p-4 bg-gray-50 rounded-lg border border-gray-100">
                             <div className="grid grid-cols-[110px_1fr] lg:grid-cols-[130px_1fr] gap-y-2 lg:gap-y-3 text-sm lg:text-base">
-                                
+
                                 {/* 1. Part Number / SKU */}
                                 {product.sku && (
                                     <>
@@ -446,8 +447,8 @@ export default function ProductDetailPage() {
                                         <div className="text-gray-500 font-medium flex items-center h-full">Kategori</div>
                                         <div className="flex items-center">
                                             <span className="mr-1 text-gray-900">:</span>
-                                            <Link 
-                                                href={`/products?categoryId=${product.category.id}`} 
+                                            <Link
+                                                href={`/products?categoryId=${product.category.id}`}
                                                 className="text-orange-600 text-sm lg:text-base hover:underline hover:text-orange-700 transition-colors"
                                             >
                                                 {product.category.name}
@@ -457,31 +458,49 @@ export default function ProductDetailPage() {
                                 )}
                             </div>
                         </motion.div>
-                        
+
                         <Separator className="my-2 lg:my-4" />
-                        
+
                         <motion.div variants={itemVariants} className="mb-4 lg:mb-6">
                             <PriceDisplay priceInfo={product.priceInfo} className="text-3xl lg:text-4xl" />
                         </motion.div>
 
                         {/* Info Stok & Berat - Dipindah ke atas (Mobile) */}
                         <motion.div variants={itemVariants} className="text-sm text-gray-600 space-y-1.5 mb-4 lg:hidden">
-                            <div className="flex items-center gap-2"><Package size={16}/><span>Stok: <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}</span></span></div>
-                            <div className="flex items-center gap-2"><Ruler size={16}/><span>Berat: <span className="font-semibold text-gray-800">{product.weight || 'N/A'} gram</span></span></div>
+                            <div className="flex items-center gap-2"><Package size={16} /><span>Stok: <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}</span></span></div>
+                            <div className="flex items-center gap-2"><Ruler size={16} /><span>Berat: <span className="font-semibold text-gray-800">{product.weight || 'N/A'} gram</span></span></div>
                         </motion.div>
 
                         {/* Tombol Horizontal */}
                         <motion.div variants={itemVariants} className="flex flex-row items-center gap-3 lg:gap-4 mb-3 lg:mb-6">
                             <div className="flex items-center justify-center border rounded-lg h-12 w-32">
-                                <Button variant="ghost" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-3 h-full" disabled={quantity <= 1}><Minus size={16} /></Button>
-                                <span className="px-3 font-bold text-lg w-12 text-center">{quantity}</span>
-                                <Button variant="ghost" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} className="px-3 h-full" disabled={quantity >= product.stock}><Plus size={16} /></Button>
+                                <Button variant="ghost" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-3 h-full rounded-r-none border-r-0" disabled={quantity <= 1}><Minus size={16} /></Button>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={product.stock}
+                                    value={quantity}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        if (!isNaN(val) && val >= 1) {
+                                            setQuantity(Math.min(val, product.stock));
+                                        } else if (e.target.value === '') {
+                                            // Allow empty temporarily while typing, handle blur if needed or just keep previous valid
+                                            // For simplicity in this stack, usually better to not update if invalid or set to 1
+                                            // But user expects to be able to clear and type. 
+                                            // Let's stick to safe parsing:
+                                            setQuantity(1);
+                                        }
+                                    }}
+                                    className="h-full w-full rounded-none text-center border-0 px-0 focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-bold text-lg"
+                                />
+                                <Button variant="ghost" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} className="px-3 h-full rounded-l-none border-l-0" disabled={quantity >= product.stock}><Plus size={16} /></Button>
                             </div>
-                            
+
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button size="lg" className="h-12 flex-grow text-base bg-orange-500 hover:bg-orange-600 text-white" disabled={isAdded || product.stock === 0 || isCartLoading}>
-                                        {isAdded ? <><Check size={20} className="mr-2"/> Ditambahkan</> : <><ShoppingCart size={20} className="mr-2"/><span>{product.stock > 0 ? 'Masukkan ke Keranjang' : 'Stok Habis'}</span></>}
+                                        {isAdded ? <><Check size={20} className="mr-2" /> Ditambahkan</> : <><ShoppingCart size={20} className="mr-2" /><span>{product.stock > 0 ? 'Masukkan ke Keranjang' : 'Stok Habis'}</span></>}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
@@ -502,21 +521,21 @@ export default function ProductDetailPage() {
                         {/* Tombol Wishlist - Mobile lebih dekat */}
                         <motion.div variants={itemVariants} className="mt-3 lg:mt-6">
                             <Button onClick={handleToggleWishlist} variant="outline" className="w-full">
-                                <Heart className={cn("h-4 w-4 mr-2", isInWishlist ? "text-red-500 fill-red-500" : "text-gray-400" )} />
+                                <Heart className={cn("h-4 w-4 mr-2", isInWishlist ? "text-red-500 fill-red-500" : "text-gray-400")} />
                                 {isInWishlist ? 'Hapus dari Wishlist' : 'Tambah ke Wishlist'}
                             </Button>
                         </motion.div>
 
                         {/* Info Stok & Berat - Tetap dibawah untuk Desktop */}
                         <motion.div variants={itemVariants} className="text-sm text-gray-600 space-y-2 mt-6 hidden lg:block">
-                            <div className="flex items-center gap-2"><Package size={16}/><span>Stok: <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}</span></span></div>
-                            <div className="flex items-center gap-2"><Ruler size={16}/><span>Berat: <span className="font-semibold text-gray-800">{product.weight || 'N/A'} gram</span></span></div>
+                            <div className="flex items-center gap-2"><Package size={16} /><span>Stok: <span className={`font-bold ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{product.stock > 0 ? `${product.stock} Tersedia` : 'Stok Habis'}</span></span></div>
+                            <div className="flex items-center gap-2"><Ruler size={16} /><span>Berat: <span className="font-semibold text-gray-800">{product.weight || 'N/A'} gram</span></span></div>
                         </motion.div>
                     </motion.div>
                 </div>
 
                 <div className="mb-24">
-                    <Separator className="my-8 lg:my-16"/>
+                    <Separator className="my-8 lg:my-16" />
                     <h2 className="text-2xl lg:text-3xl font-bold text-center mb-6 lg:mb-8">DESKRIPSI PRODUK</h2>
                     <div className="w-full max-w-none lg:max-w-4xl mx-auto bg-gray-50 p-4 lg:p-8 rounded-lg overflow-hidden">
                         <div className="prose prose-sm sm:prose-base lg:prose-lg text-gray-700 max-w-full break-words">
@@ -541,7 +560,7 @@ export default function ProductDetailPage() {
                     {product.category && <RelatedProducts productId={product.id} type="category" value={product.category.id} title={`Anda Mungkin Juga Suka`} />}
                 </div>
 
-                <Separator className="my-8 lg:my-16"/>
+                <Separator className="my-8 lg:my-16" />
                 <RecentlyViewed currentProductId={productId} />
             </div>
         </div>

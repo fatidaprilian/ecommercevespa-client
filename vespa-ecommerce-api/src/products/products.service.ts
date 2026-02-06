@@ -5,7 +5,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config'; // <-- 1. IMPORT CONFIG SERVICE
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { Product, Prisma, Role } from '@prisma/client';
@@ -13,9 +13,7 @@ import { QueryProductDto } from './dto/query-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { DiscountsCalculationService } from 'src/discounts/discounts-calculation.service';
 import { UserPayload } from 'src/auth/interfaces/jwt.payload';
-// Import Service Kalkulator Baru
 import { PriceCalculatorService } from './price-calculator.service';
-// <-- IMPORT DTO BARU UNTUK BULK UPDATE
 import { BulkUpdateVisibilityDto } from './dto/bulk-update-visibility.dto';
 
 @Injectable()
@@ -23,24 +21,23 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private discountsCalcService: DiscountsCalculationService,
-    // private readonly accuratePricingService: AccuratePricingService, 
     private priceCalculator: PriceCalculatorService,
-    private configService: ConfigService, // <-- 2. INJECT CONFIG SERVICE
-  ) {}
+    private configService: ConfigService,
+  ) { }
 
-  // 👇👇👇 METHOD YANG SUDAH DI-REVISI (LOGIKA HARGA UMUM) 👇👇👇
+  // Process product with pricing logic (General logic)
   public async processProductWithPrice(product: any, user?: UserPayload) {
     let accuratePriceCategoryId: number | null = null;
 
     if (user?.id) {
-      // A. JIKA USER LOGIN: Ambil kategori harga dari database user
+      // A. IF USER IS LOGGED IN: Get price category from user database
       const fullUser = await this.prisma.user.findUnique({
         where: { id: user.id },
         select: { accuratePriceCategoryId: true, role: true, id: true },
       });
       accuratePriceCategoryId = fullUser?.accuratePriceCategoryId || null;
 
-      // FALLBACK LAMA: Jika tidak ada kategori Accurate, tapi dia Reseller
+      // LEGACY FALLBACK: If no Accurate category but is RESELLER
       if (!accuratePriceCategoryId && fullUser?.role === Role.RESELLER) {
         const priceInfo = await this.discountsCalcService.calculatePrice(
           fullUser as any,
@@ -58,20 +55,20 @@ export class ProductsService {
         };
       }
     } else {
-      // B. JIKA TIDAK LOGIN (GUEST): Gunakan kategori "Umum" dari ENV
+      // B. IF NOT LOGGED IN (GUEST): Use "General" category from ENV
       const defaultCatId = this.configService.get<string>('ACCURATE_DEFAULT_PRICE_CATEGORY_ID');
       if (defaultCatId) {
         accuratePriceCategoryId = Number(defaultCatId);
       }
     }
 
-    // 2. Panggil Calculator Service untuk hitung harga (Tier & Rules)
+    // 2. Call Calculator Service to calculate price (Tiers & Rules)
     const finalPrice = this.priceCalculator.calculateFinalPrice(
       product,
       accuratePriceCategoryId,
     );
 
-    // 3. Kembalikan data produk dengan harga final
+    // 3. Return product data with final price
     return {
       ...product,
       price: finalPrice,
@@ -81,11 +78,9 @@ export class ProductsService {
       },
     };
   }
-  // 👆👆👆 AKHIR REVISI 👆👆👆
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const { categoryId, brandId, images, sku, isVisible, ...productData } =
-      // <-- Destructure isVisible
       createProductDto;
 
     let finalSku = sku;
@@ -98,7 +93,7 @@ export class ProductsService {
     const data: Prisma.ProductCreateInput = {
       ...productData,
       sku: finalSku,
-      isVisible: isVisible, // <-- Tambahkan isVisible di data create
+      isVisible: isVisible,
       category: { connect: { id: categoryId } },
       ...(brandId && { brand: { connect: { id: brandId } } }),
       ...(images && { images: { create: images } }),
@@ -110,14 +105,13 @@ export class ProductsService {
         category: true,
         brand: true,
         images: true,
-        // Sertakan relasi rules kosong saat create
+        // Include empty relations rules on create
         priceTiers: true,
         priceAdjustmentRules: true,
       },
     });
   }
 
-  // ✅✅✅ HANYA BAGIAN INI YANG DIUBAH (FIX TS ERROR) ✅✅✅
   async findAll(
     queryDto: QueryProductDto,
     user?: UserPayload,
@@ -140,9 +134,7 @@ export class ProductsService {
 
     const isAdmin = user?.role === Role.ADMIN;
 
-    // 🔥🔥🔥 REVISI ULTRA-SAFE & TS-FRIENDLY 🔥🔥🔥
-    // Kita gunakan (isVisible as any) untuk membungkam error TS2367
-    // karena kita menangani kemungkinan runtime value berupa boolean ATAU string.
+    // Handle string/boolean overlap for 'isVisible' safely
     let finalIsVisible: boolean | undefined = undefined;
     if ((isVisible as any) === true || isVisible === 'true') {
       finalIsVisible = true;
@@ -150,22 +142,21 @@ export class ProductsService {
       finalIsVisible = false;
     }
 
-    // Handle includeHidden juga jika perlu (sama-sama string dari DTO baru)
+    // Handle includeHidden (also commonly string from DTO)
     const includeHiddenBool = (includeHidden as any) === true || includeHidden === 'true';
 
     if (finalIsVisible !== undefined) {
-      // Jika user mengirim filter ?isVisible=true atau ?isVisible=false
+      // If user specifically sends filter ?isVisible=true or ?isVisible=false
       conditions.push({ isVisible: finalIsVisible });
     } else {
-      // Default behavior jika filter TIDAK dikirim:
-      // - User biasa -> Hanya tampilkan yang aktif (isVisible: true)
-      // - Admin TANPA includeHidden=true -> Hanya tampilkan yang aktif
-      // - (Admin DENGAN includeHidden=true akan melewati blok ini dan menampilkan semua)
+      // Default behavior if filter is NOT sent:
+      // - Regular user -> Only show active (isVisible: true)
+      // - Admin WITHOUT includeHidden=true -> Only show active
+      // - (Admin WITH includeHidden=true will skip this block and show all)
       if (!isAdmin || !includeHiddenBool) {
         conditions.push({ isVisible: true });
       }
     }
-    // ✅✅✅ AKHIR PERUBAHAN ULTRA-SAFE ✅✅✅
 
     if (search) {
       conditions.push({
@@ -425,7 +416,6 @@ export class ProductsService {
     });
   }
 
-  // +++ METHOD BARU UNTUK BULK UPDATE +++
   async bulkUpdateVisibility(
     bulkUpdateVisibilityDto: BulkUpdateVisibilityDto,
   ) {
@@ -447,7 +437,6 @@ export class ProductsService {
       count: result.count,
     };
   }
-  // +++ AKHIR METHOD BARU +++
 
   async search(term: string) {
     if (!term || term.trim() === '') {

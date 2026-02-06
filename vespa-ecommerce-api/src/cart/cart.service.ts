@@ -5,6 +5,7 @@ import {
   NotFoundException,
   ForbiddenException,
   UnprocessableEntityException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddItemDto } from './dto/add-item.dto';
@@ -14,11 +15,13 @@ import { ProductsService } from 'src/products/products.service';
 
 @Injectable()
 export class CartService {
+  private readonly logger = new Logger(CartService.name);
+
   constructor(
     private prisma: PrismaService,
     private discountsCalcService: DiscountsCalculationService,
     private productsService: ProductsService,
-  ) {}
+  ) { }
 
   private async findOrCreateCart(userId: string) {
     let cart = await this.prisma.cart.findUnique({
@@ -35,7 +38,7 @@ export class CartService {
   async getCart(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException('User tidak ditemukan.');
+      throw new NotFoundException('User not found.');
     }
 
     const cart = await this.prisma.cart.findUnique({
@@ -71,24 +74,24 @@ export class CartService {
       cart.items.map(async (item) => {
         const processedProduct = await this.productsService.processProductWithPrice(
           item.product,
-          { 
-              id: user.id, 
-              email: user.email, 
-              role: user.role,
-              name: user.name || '' 
+          {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            name: user.name || ''
           }
         );
 
         return {
-            ...item,
-            product: processedProduct
+          ...item,
+          product: processedProduct
         };
       }),
     );
 
     return {
-        ...cart,
-        items: processedItems
+      ...cart,
+      items: processedItems
     };
   }
 
@@ -100,7 +103,7 @@ export class CartService {
       where: { id: productId },
     });
     if (!product) {
-      throw new NotFoundException(`Produk dengan ID ${productId} tidak ditemukan.`);
+      throw new NotFoundException(`Product with ID ${productId} not found.`);
     }
 
     const existingItem = await this.prisma.cartItem.findFirst({
@@ -111,7 +114,7 @@ export class CartService {
     const requestedTotalQty = qtyInCart + quantity;
 
     if (product.stock < requestedTotalQty) {
-      throw new UnprocessableEntityException(`Stok untuk produk ${product.name} tidak mencukupi.`);
+      throw new UnprocessableEntityException(`Insufficient stock for product ${product.name}.`);
     }
 
     if (existingItem) {
@@ -135,7 +138,7 @@ export class CartService {
     const { quantity } = updateItemDto;
     if (quantity < 1) {
       throw new ForbiddenException(
-        'Kuantitas tidak boleh kurang dari 1. Gunakan endpoint hapus untuk menghilangkan item.',
+        'Quantity cannot be less than 1. Use remove endpoint to delete item.',
       );
     }
 
@@ -145,12 +148,12 @@ export class CartService {
     });
     if (!item) {
       throw new ForbiddenException(
-        'Akses ditolak. Item keranjang tidak ditemukan atau bukan milik Anda.',
+        'Access denied. Cart item not found or does not belong to you.',
       );
     }
 
     if (item.product.stock < quantity) {
-      throw new UnprocessableEntityException(`Stok untuk produk ${item.product.name} tidak mencukupi.`);
+      throw new UnprocessableEntityException(`Insufficient stock for product ${item.product.name}.`);
     }
 
     await this.prisma.cartItem.update({
@@ -167,9 +170,8 @@ export class CartService {
     });
 
     if (!item) {
-      // Menggunakan console.warn standar saja jika Logger tidak diinisialisasi di versi bersih
-      console.warn(
-        `Upaya menghapus item keranjang yang tidak ada: ${cartItemId} untuk user: ${userId}`,
+      this.logger.warn(
+        `Attempt to remove non-existent cart item: ${cartItemId} for user: ${userId}`,
       );
       return this.getCart(userId);
     }
