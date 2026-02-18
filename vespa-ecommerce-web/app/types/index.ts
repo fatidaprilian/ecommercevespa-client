@@ -13,7 +13,7 @@ export type Category = {
 export type Brand = {
   id: string;
   name: string;
-  logoUrl?: string; 
+  logoUrl?: string;
 };
 
 export type PriceInfo = {
@@ -30,7 +30,7 @@ export type Product = {
   description: string | null;
   price: number;
   stock: number;
-  weight?: number; 
+  weight?: number;
   images: ProductImage[];
   category: Category;
   brand: Brand | null;
@@ -39,6 +39,8 @@ export type Product = {
   piaggioCode?: string | null;
   models?: string | null;
   // -----------------------------
+  isFeatured?: boolean;
+  isVisible?: boolean;
 };
 
 export type User = {
@@ -49,40 +51,50 @@ export type User = {
 };
 
 export type OrderItem = {
-    id: string;
-    quantity: number;
-    price: number;
-    product: Product;
+  id: string;
+  quantity: number;
+  price: number;
+  product: Product;
 }
 
 export type Payment = {
-    id: string;
-    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
-    method: 'MIDTRANS_SNAP' | 'MANUAL_TRANSFER'; 
-    transactionId?: string; 
-    proofOfPayment?: string; 
+  id: string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
+  method: 'MIDTRANS_SNAP' | 'MANUAL_TRANSFER';
+  transactionId?: string;
+  proofOfPayment?: string;
 }
 
 export type Shipment = {
-    id: string;
-    trackingNumber: string | null;
-    courier: string;
-    createdAt: string;
+  id: string;
+  trackingNumber: string | null;
+  courier: string;
+  createdAt: string;
 }
 
 export type Order = {
-    id: string;
-    orderNumber: string;
-    subtotal: number;
-    discountAmount: number;
-    taxAmount: number;
-    totalAmount: number;
-    shippingCost: number;
-    courier: string;
-    shippingAddress: string;
-    status: 'PENDING' | 'PAID' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED';
-    createdAt: string;
-    items: OrderItem[];
-    payment?: Payment;
-    shipment?: Shipment;
+  id: string;
+  orderNumber: string;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  shippingCost: number;
+  courier: string;
+  shippingAddress: string;
+  status: 'PENDING' | 'PAID' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED';
+  createdAt: string;
+  items: OrderItem[];
+  payment?: Payment;
+  shipment?: Shipment;
+};
+
+export type PaginatedProducts = {
+  data: Product[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
 };

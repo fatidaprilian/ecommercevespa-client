@@ -1,5 +1,5 @@
 'use client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import api from '../lib/api';
 import { PaginatedProducts } from '../types';
 
@@ -11,14 +11,17 @@ export interface ProductQueryParams {
   sortBy?: 'price' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
   search?: string;
+  excludeIds?: string[];
 }
 
 export const getProducts = async (params: ProductQueryParams): Promise<PaginatedProducts> => {
   const searchParams = new URLSearchParams();
-  
+
   Object.entries(params).forEach(([key, value]) => {
     if (value != null) {
       if (key === 'brandId' && Array.isArray(value)) {
+        value.forEach(id => searchParams.append(key, id));
+      } else if (key === 'excludeIds' && Array.isArray(value)) {
         value.forEach(id => searchParams.append(key, id));
       } else {
         searchParams.set(key, String(value));
@@ -34,7 +37,7 @@ export const useProducts = (params: ProductQueryParams, enabled: boolean = true)
   return useQuery({
     queryKey: ['products', params],
     queryFn: () => getProducts(params),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     enabled: enabled,
   });
 };

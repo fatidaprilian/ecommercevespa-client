@@ -28,6 +28,12 @@ export class QueryProductDto extends PaginationDto {
   brandId?: string[];
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(transformToArray)
+  excludeIds?: string[];
+
+  @IsOptional()
   @IsString()
   search?: string;
 

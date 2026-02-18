@@ -126,11 +126,16 @@ export class ProductsService {
       search,
       includeHidden, // string | undefined
       isVisible,     // string | undefined
+      excludeIds,
     } = queryDto;
 
     const skip = (Number(page) - 1) * Number(limit);
 
     const conditions: Prisma.ProductWhereInput[] = [];
+
+    if (excludeIds && excludeIds.length > 0) {
+      conditions.push({ id: { notIn: excludeIds } });
+    }
 
     const isAdmin = user?.role === Role.ADMIN;
 

@@ -9,6 +9,7 @@ import { useProducts, getProducts } from "@/hooks/use-products";
 import { useFeaturedProducts } from "@/hooks/use-featured-products"; // <--- IMPORT HOOK BARU
 import { Product } from "@/types";
 import { useAuthStore } from "@/store/auth";
+import api from "@/lib/api";
 
 import { ProductCard } from "@/components/molecules/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -47,36 +48,15 @@ const BestSellerSkeleton = () => (
     </div>
 );
 
-const BestSellerProducts = () => {
-    const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
-    // 1. Ambil data produk unggulan
-    const { data: featuredProducts, isLoading: isLoadingFeatured } = useFeaturedProducts(hasHydrated);
-
-    // 2. Ambil data produk reguler
-    const { data: regularProductsResponse, isLoading: isLoadingRegular, error } = useProducts(
-        { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 },
-        hasHydrated
-    );
-
-    // 3. Gabungkan dan filter duplikat
-    const combinedProducts = useMemo(() => {
-        if (!featuredProducts && !regularProductsResponse?.data) return [];
-
-        const featured = featuredProducts || [];
-        const regular = regularProductsResponse?.data || [];
-        
-        const featuredIds = new Set(featured.map(p => p.id));
-        
-        const uniqueRegularProducts = regular.filter(p => !featuredIds.has(p.id));
-
-        return [...featured, ...uniqueRegularProducts];
-    }, [featuredProducts, regularProductsResponse]);
-
-    const isLoading = (isLoadingFeatured || isLoadingRegular) && hasHydrated;
-
-    if (error) return null;
-
+const BestSellerProducts = ({
+    products,
+    isLoading
+}: {
+    products: Product[],
+    isLoading: boolean
+}) => {
+    // Component is now presentational
     return (
         <Section className="bg-white py-4 md:py-6">
             <div className="container mx-auto px-4">
@@ -94,9 +74,9 @@ const BestSellerProducts = () => {
                     </Button>
                 </div>
 
-                {isLoading || !hasHydrated ? <BestSellerSkeleton /> : (
+                {isLoading ? <BestSellerSkeleton /> : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                        {combinedProducts?.slice(0, 5).map((product: Product, index: number) => (
+                        {products.map((product: Product, index: number) => (
                             <motion.div
                                 key={product.id}
                                 initial={{ opacity: 1, y: 0 }}
@@ -107,7 +87,7 @@ const BestSellerProducts = () => {
                             >
                                 {product.isFeatured && (
                                     <div className="absolute top-2 left-2 z-10 bg-yellow-400 text-black px-2 py-1 text-xs font-bold rounded flex items-center gap-1">
-                                       <Star className="w-3 h-3" /> PILIHAN
+                                        <Star className="w-3 h-3" /> PILIHAN
                                     </div>
                                 )}
                                 <ProductCard product={product} />
@@ -120,10 +100,11 @@ const BestSellerProducts = () => {
     );
 };
 
-const SecondaryProducts = () => {
+const SecondaryProducts = ({ excludeIds }: { excludeIds: string[] }) => {
     const hasHydrated = useAuthStore((state) => state._hasHydrated);
+    // Use excludeIds in the query
     const { data: productsResponse, isLoading, error } = useProducts(
-        { sortBy: 'createdAt', sortOrder: 'asc', limit: 5 },
+        { sortBy: 'createdAt', sortOrder: 'asc', limit: 5, excludeIds },
         hasHydrated
     );
 
@@ -166,8 +147,36 @@ const SecondaryProducts = () => {
 };
 
 export default function HomePage() {
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, _hasHydrated: hasHydrated } = useAuthStore();
     const queryClient = useQueryClient();
+
+    // 1. Fetch Best Seller Data here
+    const { data: featuredProducts, isLoading: isLoadingFeatured } = useFeaturedProducts(hasHydrated);
+    const { data: regularProductsResponse, isLoading: isLoadingRegular } = useProducts(
+        { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 },
+        hasHydrated
+    );
+
+    // 2. Compute Combined Products (Logic lifted from BestSellerProducts)
+    const combinedBestSellers = useMemo(() => {
+        if (!featuredProducts && !regularProductsResponse?.data) return [];
+
+        const featured = featuredProducts || [];
+        const regular = regularProductsResponse?.data || [];
+
+        const featuredIds = new Set(featured.map(p => p.id));
+
+        const uniqueRegularProducts = regular.filter(p => !featuredIds.has(p.id));
+
+        return [...featured, ...uniqueRegularProducts].slice(0, 5); // Slice here to get exact 5
+    }, [featuredProducts, regularProductsResponse]);
+
+    const isBestSellerLoading = (isLoadingFeatured || isLoadingRegular) && hasHydrated;
+
+    // 3. Compute IDs to exclude
+    const bestSellerIds = useMemo(() => {
+        return combinedBestSellers.map(p => p.id);
+    }, [combinedBestSellers]);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -181,10 +190,9 @@ export default function HomePage() {
                 queryKey: ['products', { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 }],
                 queryFn: () => getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 10 }),
             });
-            queryClient.prefetchQuery({
-                queryKey: ['products', { sortBy: 'createdAt', sortOrder: 'asc', limit: 5 }],
-                queryFn: () => getProducts({ sortBy: 'createdAt', sortOrder: 'asc', limit: 5 }),
-            });
+            // Note: Prefetch for secondary products might need adjustment if logic changes, 
+            // but since excludeIds is dynamic, prefetching strict key might be tricky. 
+            // We can leave basic prefetch or update it if needed.
         }
     }, [isAuthenticated, queryClient]);
 
@@ -192,9 +200,12 @@ export default function HomePage() {
         <div className="min-h-screen bg-white">
             <HeroSection />
             <BrandShowcase />
-            <BestSellerProducts />
+            <BestSellerProducts
+                products={combinedBestSellers}
+                isLoading={isBestSellerLoading}
+            />
             <MiddleBanner />
-            <SecondaryProducts />
+            <SecondaryProducts excludeIds={bestSellerIds} />
         </div>
     );
 }
