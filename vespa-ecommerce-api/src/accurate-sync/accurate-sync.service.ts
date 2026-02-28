@@ -44,7 +44,7 @@ interface StockAdjustmentItem {
  */
 const parseAccurateCustomer = (rawCustomer: any): AccurateCustomer | null => {
   if (!rawCustomer) return null;
-  
+
   return {
     id: rawCustomer.id,
     name: rawCustomer.name,
@@ -84,7 +84,7 @@ export class AccurateSyncService {
     private readonly prisma: PrismaService,
     private readonly accurateService: AccurateService,
     @InjectQueue('accurate-sync-queue') private readonly syncQueue: Queue,
-  ) {}
+  ) { }
 
   async addSalesOrderJobToQueue(orderId: string) {
     this.logger.log(
@@ -164,7 +164,7 @@ export class AccurateSyncService {
         },
         select: {
           sku: true,
-          cost: true, 
+          cost: true,
         },
       });
 
@@ -419,8 +419,8 @@ export class AccurateSyncService {
     }
   }
 
-// 👇👇 GANTI METHOD INI SEPENUHNYA 👇👇
-async syncProductsFromAccurate() {
+  // 👇👇 GANTI METHOD INI SEPENUHNYA 👇👇
+  async syncProductsFromAccurate() {
     this.logger.log('WORKER: Starting product synchronization from Accurate...');
     try {
       const apiClient = await this.accurateService.getAccurateApiClient();
@@ -431,7 +431,7 @@ async syncProductsFromAccurate() {
 
       while (hasMore) {
         this.logger.log(`WORKER: Fetching product page ${page}...`);
-        
+
         // Request fields, termasuk availableToSell (Stok Bersih)
         const response = await apiClient.get('/accurate/api/item/list.do', {
           params: {
@@ -453,14 +453,14 @@ async syncProductsFromAccurate() {
         let pageSyncedCount = 0;
         for (const item of itemsFromAccurate) {
           if (item.itemType !== 'INVENTORY') continue;
-          
+
           try {
             // 1. AMBIL STOK BASIS DARI ACCURATE
             let baseStock = 0;
             if (item.availableToSell !== undefined && item.availableToSell !== null) {
-                baseStock = item.availableToSell;
+              baseStock = item.availableToSell;
             } else {
-                baseStock = item.quantity || 0; 
+              baseStock = item.quantity || 0;
             }
 
             const accurateItemIdStr = item.id.toString();
@@ -472,20 +472,20 @@ async syncProductsFromAccurate() {
             });
 
             if (existingByAccurateId && existingByAccurateId.sku !== item.no) {
-               this.logger.warn(`[SyncProduct] Mendeteksi perubahan SKU untuk ID ${accurateItemIdStr}. Lama: ${existingByAccurateId.sku} -> Baru: ${item.no}`);
-               
-               // Cek apakah SKU baru ini bentrok dengan produk lain (sangat jarang, tapi jaga-jaga)
-               const conflictSku = await this.prisma.product.findUnique({ where: { sku: item.no }});
-               if (conflictSku) {
-                 // Kalau bentrok, hapus yang lama/konflik agar bisa di-rename
-                 await this.prisma.product.delete({ where: { id: conflictSku.id } });
-               }
+              this.logger.warn(`[SyncProduct] Mendeteksi perubahan SKU untuk ID ${accurateItemIdStr}. Lama: ${existingByAccurateId.sku} -> Baru: ${item.no}`);
 
-               // Update SKU produk yang sudah ada agar match dengan Accurate
-               await this.prisma.product.update({
-                 where: { id: existingByAccurateId.id },
-                 data: { sku: item.no }
-               });
+              // Cek apakah SKU baru ini bentrok dengan produk lain (sangat jarang, tapi jaga-jaga)
+              const conflictSku = await this.prisma.product.findUnique({ where: { sku: item.no } });
+              if (conflictSku) {
+                // Kalau bentrok, hapus yang lama/konflik agar bisa di-rename
+                await this.prisma.product.delete({ where: { id: conflictSku.id } });
+              }
+
+              // Update SKU produk yang sudah ada agar match dengan Accurate
+              await this.prisma.product.update({
+                where: { id: existingByAccurateId.id },
+                data: { sku: item.no }
+              });
             }
 
             // 3. HITUNG PENGURANG LOKAL (HANYA ORDER WEB YANG BELUM SYNC)
@@ -496,7 +496,11 @@ async syncProductsFromAccurate() {
                   where: {
                     order: {
                       // Ambil order aktif yang menahan stok
-                      status: { in: ['PENDING', 'PAID', 'PROCESSING'] }
+                      status: { in: ['PENDING', 'PAID', 'PROCESSING'] },
+                      // Jangan hitung stok yang ditahan oleh order dengan pembayaran kedaluwarsa/gagal
+                      payment: {
+                        status: { notIn: ['FAILED', 'EXPIRED'] }
+                      }
                     }
                   },
                   select: {
@@ -519,14 +523,14 @@ async syncProductsFromAccurate() {
             const localPendingStock = existingProduct?.orderItems.reduce(
               (sum, orderItem) => {
                 const order = orderItem.order;
-                const isSynced = !!order.accurateSalesOrderNumber || 
-                                 !!order.accurateSalesInvoiceNumber || 
-                                 !!order.accurateSalesReceiptId;
+                const isSynced = !!order.accurateSalesOrderNumber ||
+                  !!order.accurateSalesInvoiceNumber ||
+                  !!order.accurateSalesReceiptId;
 
                 // Jika SUDAH sync -> Skip (Jangan kurangi lagi, cegah double counting)
                 // Jika BELUM sync -> Hitung sebagai pengurang
                 return isSynced ? sum : sum + orderItem.quantity;
-              }, 
+              },
               0
             ) || 0;
 
@@ -559,13 +563,13 @@ async syncProductsFromAccurate() {
                 accurateItemId: accurateItemIdStr,
               },
             });
-            
+
             pageSyncedCount++;
           } catch (upsertError) {
             this.logger.error(`WORKER: Failed to upsert product with SKU ${item.no}. Error: ${upsertError.message}`);
           }
         }
-        
+
         this.logger.log(`WORKER: Synced ${pageSyncedCount} products from page ${page}.`);
         totalSyncedCount += pageSyncedCount;
 
@@ -658,7 +662,7 @@ async syncProductsFromAccurate() {
         );
         throw new Error(
           invoiceResponse.data?.d?.[0] ||
-            'Failed to create Sales Invoice in Accurate.',
+          'Failed to create Sales Invoice in Accurate.',
         );
       }
       const invoiceId = invoiceResponse.data.r.id as number;
@@ -706,7 +710,7 @@ async syncProductsFromAccurate() {
         );
         throw new Error(
           receiptResponse.data?.d?.[0] ||
-            'Failed while saving Sales Receipt.',
+          'Failed while saving Sales Receipt.',
         );
       }
       const receiptId = receiptResponse.data.r.id as number;
@@ -799,7 +803,7 @@ async syncProductsFromAccurate() {
         '/accurate/api/customer/list.do',
         {
           params: {
-             // 👇👇 UPDATE FIELDS 👇👇
+            // 👇👇 UPDATE FIELDS 👇👇
             fields: this.CUSTOMER_FIELDS,
             'filter.customerNo.op': 'CONTAINS',
             'filter.customerNo.val[0]': customerNo,
@@ -834,7 +838,7 @@ async syncProductsFromAccurate() {
         '/accurate/api/customer/list.do',
         {
           params: {
-             // 👇👇 UPDATE FIELDS 👇👇
+            // 👇👇 UPDATE FIELDS 👇👇
             fields: this.CUSTOMER_FIELDS,
             'filter.customerNo.op': 'LIKE',
             'filter.customerNo.val[0]': `%${customerNo}%`,
@@ -880,7 +884,7 @@ async syncProductsFromAccurate() {
           '/accurate/api/customer/list.do',
           {
             params: {
-               // 👇👇 UPDATE FIELDS 👇👇
+              // 👇👇 UPDATE FIELDS 👇👇
               fields: this.CUSTOMER_FIELDS,
               [`filter.customerNo.op`]: operator,
               [`filter.customerNo.val[0]`]: filterValue,
@@ -921,7 +925,7 @@ async syncProductsFromAccurate() {
         '/accurate/api/customer/list.do',
         {
           params: {
-             // 👇👇 UPDATE FIELDS 👇👇
+            // 👇👇 UPDATE FIELDS 👇👇
             fields: this.CUSTOMER_FIELDS,
             'sp.page': 1,
             'sp.pageSize': 100,
@@ -970,7 +974,7 @@ async syncProductsFromAccurate() {
             '/accurate/api/customer/list.do',
             {
               params: {
-                 // 👇👇 UPDATE FIELDS 👇👇
+                // 👇👇 UPDATE FIELDS 👇👇
                 fields: this.CUSTOMER_FIELDS,
                 'sp.page': page,
                 'sp.pageSize': pageSize,
@@ -1154,30 +1158,30 @@ async syncProductsFromAccurate() {
         createPayload,
       );
 
-        if (createResponse.data?.s) {
-          const newAccurateCustomer = parseAccurateCustomer(createResponse.data.r);
-          
-          if (!newAccurateCustomer) {
-            throw new Error('Failed to parse customer data from Accurate response');
-          }
-          
-          this.logger.log(
-            `[Jalur Kreasi] Pelanggan baru berhasil dibuat: ${newAccurateCustomer.customerNo}`,
-          );
+      if (createResponse.data?.s) {
+        const newAccurateCustomer = parseAccurateCustomer(createResponse.data.r);
 
-          this.customerCache.set(newAccurateCustomer.customerNo, {
-            customer: newAccurateCustomer,
-            timestamp: Date.now(),
-          });
+        if (!newAccurateCustomer) {
+          throw new Error('Failed to parse customer data from Accurate response');
+        }
 
-          this.failedSearchCache.delete(customerIdToCreate);
+        this.logger.log(
+          `[Jalur Kreasi] Pelanggan baru berhasil dibuat: ${newAccurateCustomer.customerNo}`,
+        );
 
-          await this.prisma.user.update({
-            where: { id: user.id },
-            data: { accurateCustomerNo: newAccurateCustomer.customerNo },
-          });
-          return newAccurateCustomer;
-        } else {
+        this.customerCache.set(newAccurateCustomer.customerNo, {
+          customer: newAccurateCustomer,
+          timestamp: Date.now(),
+        });
+
+        this.failedSearchCache.delete(customerIdToCreate);
+
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { accurateCustomerNo: newAccurateCustomer.customerNo },
+        });
+        return newAccurateCustomer;
+      } else {
         const errorMessage =
           createResponse.data?.d?.[0] || 'Gagal membuat pelanggan di Accurate.';
         if (errorMessage.includes('Sudah ada data lain dengan ID Pelanggan')) {
@@ -1235,170 +1239,170 @@ async syncProductsFromAccurate() {
   }
 
   // 👇👇👇 TAMBAHAN METHOD BARU - syncPriceAdjustmentRules 👇👇👇
-@Cron(CronExpression.EVERY_HOUR)
-async syncPriceAdjustmentRules() {
-  this.logger.log('WORKER: Memulai sinkronisasi Aturan Harga (Tiers & Rules)...');
-  // 1. Catat waktu mulai untuk penanda cleaning nanti
-  const syncStartTime = new Date();
+  @Cron(CronExpression.EVERY_HOUR)
+  async syncPriceAdjustmentRules() {
+    this.logger.log('WORKER: Memulai sinkronisasi Aturan Harga (Tiers & Rules)...');
+    // 1. Catat waktu mulai untuk penanda cleaning nanti
+    const syncStartTime = new Date();
 
-  try {
-    const apiClient = await this.accurateService.getAccurateApiClient();
+    try {
+      const apiClient = await this.accurateService.getAccurateApiClient();
 
-    // 2. Ambil Daftar ID Dokumen Aktif
-    const listResponse = await apiClient.get(
-      '/accurate/api/sellingprice-adjustment/list.do',
-      {
-        params: {
-          fields: 'id,number',
-          'filter.suspended.op': 'EQUAL',
-          'filter.suspended.val': false,
+      // 2. Ambil Daftar ID Dokumen Aktif
+      const listResponse = await apiClient.get(
+        '/accurate/api/sellingprice-adjustment/list.do',
+        {
+          params: {
+            fields: 'id,number',
+            'filter.suspended.op': 'EQUAL',
+            'filter.suspended.val': false,
+          },
         },
-      },
-    );
-
-    if (!listResponse.data?.s) {
-      throw new Error('Gagal mengambil daftar sellingprice-adjustment.');
-    }
-
-    // ======================= PERUBAHAN DI SINI =======================
-    // Sortir terlebih dahulu berdasarkan nomor dokumen.
-    // Tujuan: dokumen dengan nomor paling besar diproses TERAKHIR,
-    // sehingga harga/set terbaru yang menang (override yang lama).
-    const documentList = (listResponse.data.d || []).sort((a, b) =>
-      (a.number || '').localeCompare(b.number || ''),
-    );
-    // ===================== AKHIR PERUBAHAN =========================
-
-    this.logger.log(`Ditemukan ${documentList.length} dokumen penyesuaian aktif.`);
-
-    let tiersSynced = 0;
-    let rulesSynced = 0;
-
-    // 3. Loop Dokumen & Update Data (Sekarang sudah terurut)
-    for (const doc of documentList) {
-      // Delay sedikit agar tidak memberondong server Accurate
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      const detailResponse = await apiClient.get(
-        '/accurate/api/sellingprice-adjustment/detail.do',
-        { params: { id: doc.id } },
       );
 
-      if (!detailResponse.data?.s || !detailResponse.data?.d) continue;
-      const adj = detailResponse.data.d;
+      if (!listResponse.data?.s) {
+        throw new Error('Gagal mengambil daftar sellingprice-adjustment.');
+      }
 
-      // Pastikan ada target kategori pelanggan
-      if (!adj.priceCategory?.id) continue;
-      const customerCategoryId = adj.priceCategory.id;
+      // ======================= PERUBAHAN DI SINI =======================
+      // Sortir terlebih dahulu berdasarkan nomor dokumen.
+      // Tujuan: dokumen dengan nomor paling besar diproses TERAKHIR,
+      // sehingga harga/set terbaru yang menang (override yang lama).
+      const documentList = (listResponse.data.d || []).sort((a, b) =>
+        (a.number || '').localeCompare(b.number || ''),
+      );
+      // ===================== AKHIR PERUBAHAN =========================
 
-      // Tanggal efektif
-      const startDate = adj.transDate
-        ? new Date(adj.transDate.split('/').reverse().join('-'))
-        : new Date();
+      this.logger.log(`Ditemukan ${documentList.length} dokumen penyesuaian aktif.`);
 
-      if (!adj.detailItem) continue;
+      let tiersSynced = 0;
+      let rulesSynced = 0;
 
-      for (const detail of adj.detailItem) {
-        const accurateItemId = detail.item?.id?.toString();
-        if (!accurateItemId) continue;
+      // 3. Loop Dokumen & Update Data (Sekarang sudah terurut)
+      for (const doc of documentList) {
+        // Delay sedikit agar tidak memberondong server Accurate
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-        // Cari ID produk lokal berdasarkan accurateItemId
-        const localProduct = await this.prisma.product.findUnique({
-          where: { accurateItemId },
-          select: { id: true },
-        });
-        if (!localProduct) continue;
+        const detailResponse = await apiClient.get(
+          '/accurate/api/sellingprice-adjustment/detail.do',
+          { params: { id: doc.id } },
+        );
 
-        // === KASUS A: Harga Tetap (Tier) ===
-        // (Sudah pakai >= 0 dan simpan nama promo + lastSyncedAt)
-        if (adj.salesAdjustmentType === 'ITEM_PRICE_TYPE' && detail.price >= 0) {
-          await this.prisma.productPriceTier.upsert({
-            where: {
-              productId_accuratePriceCategoryId: {
+        if (!detailResponse.data?.s || !detailResponse.data?.d) continue;
+        const adj = detailResponse.data.d;
+
+        // Pastikan ada target kategori pelanggan
+        if (!adj.priceCategory?.id) continue;
+        const customerCategoryId = adj.priceCategory.id;
+
+        // Tanggal efektif
+        const startDate = adj.transDate
+          ? new Date(adj.transDate.split('/').reverse().join('-'))
+          : new Date();
+
+        if (!adj.detailItem) continue;
+
+        for (const detail of adj.detailItem) {
+          const accurateItemId = detail.item?.id?.toString();
+          if (!accurateItemId) continue;
+
+          // Cari ID produk lokal berdasarkan accurateItemId
+          const localProduct = await this.prisma.product.findUnique({
+            where: { accurateItemId },
+            select: { id: true },
+          });
+          if (!localProduct) continue;
+
+          // === KASUS A: Harga Tetap (Tier) ===
+          // (Sudah pakai >= 0 dan simpan nama promo + lastSyncedAt)
+          if (adj.salesAdjustmentType === 'ITEM_PRICE_TYPE' && detail.price >= 0) {
+            await this.prisma.productPriceTier.upsert({
+              where: {
+                productId_accuratePriceCategoryId: {
+                  productId: localProduct.id,
+                  accuratePriceCategoryId: customerCategoryId,
+                },
+              },
+              update: {
+                price: detail.price,
+                name: `Promo ${adj.number}`, // Simpan nomor SPA sebagai nama promo
+                lastSyncedAt: new Date(),    // Tandai waktu sync
+              },
+              create: {
                 productId: localProduct.id,
                 accuratePriceCategoryId: customerCategoryId,
+                price: detail.price,
+                name: `Promo ${adj.number}`,
+                lastSyncedAt: new Date(),
               },
-            },
-            update: {
-              price: detail.price,
-              name: `Promo ${adj.number}`, // Simpan nomor SPA sebagai nama promo
-              lastSyncedAt: new Date(),    // Tandai waktu sync
-            },
-            create: {
-              productId: localProduct.id,
-              accuratePriceCategoryId: customerCategoryId,
-              price: detail.price,
-              name: `Promo ${adj.number}`,
-              lastSyncedAt: new Date(),
-            },
-          });
-          tiersSynced++;
-        }
+            });
+            tiersSynced++;
+          }
 
-        // === KASUS B: Diskon Persen (Rule) ===
-        else if (
-          detail.itemDiscPercent !== null &&
-          detail.itemDiscPercent !== undefined &&
-          parseFloat(detail.itemDiscPercent) >= 0
-        ) {
-          const uniqueRuleId = `RULE-${adj.id}-${accurateItemId}`;
+          // === KASUS B: Diskon Persen (Rule) ===
+          else if (
+            detail.itemDiscPercent !== null &&
+            detail.itemDiscPercent !== undefined &&
+            parseFloat(detail.itemDiscPercent) >= 0
+          ) {
+            const uniqueRuleId = `RULE-${adj.id}-${accurateItemId}`;
 
-          await this.prisma.priceAdjustmentRule.upsert({
-            where: { accurateRuleId: uniqueRuleId },
-            update: {
-              name: `Promo ${adj.number} (${adj.priceCategory.name})`,
-              accuratePriceCategoryId: customerCategoryId,
-              productId: localProduct.id,
-              accurateItemId,
-              discountType: 'PERCENTAGE',
-              discountValue: parseFloat(detail.itemDiscPercent),
-              startDate,
-              isActive: !adj.suspended,
-              lastSyncedAt: new Date(), // supaya nggak ikut kehapus saat cleaning
-              priority: 1,
-            },
-            create: {
-              accurateRuleId: uniqueRuleId,
-              name: `Promo ${adj.number} (${adj.priceCategory.name})`,
-              accuratePriceCategoryId: customerCategoryId,
-              productId: localProduct.id,
-              accurateItemId,
-              discountType: 'PERCENTAGE',
-              discountValue: parseFloat(detail.itemDiscPercent),
-              startDate,
-              isActive: !adj.suspended,
-              lastSyncedAt: new Date(),
-              priority: 1,
-            },
-          });
-          rulesSynced++;
+            await this.prisma.priceAdjustmentRule.upsert({
+              where: { accurateRuleId: uniqueRuleId },
+              update: {
+                name: `Promo ${adj.number} (${adj.priceCategory.name})`,
+                accuratePriceCategoryId: customerCategoryId,
+                productId: localProduct.id,
+                accurateItemId,
+                discountType: 'PERCENTAGE',
+                discountValue: parseFloat(detail.itemDiscPercent),
+                startDate,
+                isActive: !adj.suspended,
+                lastSyncedAt: new Date(), // supaya nggak ikut kehapus saat cleaning
+                priority: 1,
+              },
+              create: {
+                accurateRuleId: uniqueRuleId,
+                name: `Promo ${adj.number} (${adj.priceCategory.name})`,
+                accuratePriceCategoryId: customerCategoryId,
+                productId: localProduct.id,
+                accurateItemId,
+                discountType: 'PERCENTAGE',
+                discountValue: parseFloat(detail.itemDiscPercent),
+                startDate,
+                isActive: !adj.suspended,
+                lastSyncedAt: new Date(),
+                priority: 1,
+              },
+            });
+            rulesSynced++;
+          }
         }
       }
-    }
 
-    // 4. AUTO-CLEANING RULES
-    // Hapus rules yang waktu sync-nya lebih lama dari waktu mulai job ini
-    const deletedRules = await this.prisma.priceAdjustmentRule.deleteMany({
-      where: {
-        lastSyncedAt: {
-          lt: syncStartTime,
+      // 4. AUTO-CLEANING RULES
+      // Hapus rules yang waktu sync-nya lebih lama dari waktu mulai job ini
+      const deletedRules = await this.prisma.priceAdjustmentRule.deleteMany({
+        where: {
+          lastSyncedAt: {
+            lt: syncStartTime,
+          },
         },
-      },
-    });
+      });
 
-    this.logger.log(
-      `✅ SYNC SELESAI: ${tiersSynced} Tiers diupdate, ${rulesSynced} Rules diupdate.`,
-    );
-    if (deletedRules.count > 0) {
-      this.logger.log(`🧹 CLEANING: ${deletedRules.count} rules usang berhasil dihapus.`);
+      this.logger.log(
+        `✅ SYNC SELESAI: ${tiersSynced} Tiers diupdate, ${rulesSynced} Rules diupdate.`,
+      );
+      if (deletedRules.count > 0) {
+        this.logger.log(`🧹 CLEANING: ${deletedRules.count} rules usang berhasil dihapus.`);
+      }
+
+      return { tiers: tiersSynced, rules: rulesSynced, cleanedRules: deletedRules.count };
+    } catch (error: any) {
+      this.logger.error(`Gagal sinkronisasi pricing: ${error.message}`, error.stack);
+      return { error: error.message };
     }
-
-    return { tiers: tiersSynced, rules: rulesSynced, cleanedRules: deletedRules.count };
-  } catch (error: any) {
-    this.logger.error(`Gagal sinkronisasi pricing: ${error.message}`, error.stack);
-    return { error: error.message };
   }
-}
 
 
 }

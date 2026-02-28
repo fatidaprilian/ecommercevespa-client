@@ -33,9 +33,10 @@ const getDebouncedUpdate = (cartItemId: string) => {
         try {
           await api.patch(`/cart/items/${cartItemId}`, { quantity });
           onSuccess();
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to sync quantity:", error);
-          toast.error('Gagal memperbarui keranjang.');
+          const message = error.response?.data?.message || 'Gagal memperbarui kuantitas keranjang.';
+          toast.error(message);
           onError();
         }
       }, 750)
@@ -210,7 +211,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       });
     };
 
-    debouncedFn(newQuantity, releaseLock, releaseLock);
+    if (debouncedFn) {
+      debouncedFn(newQuantity, releaseLock, releaseLock);
+    }
   },
 
   removeItem: async (cartItemId) => {

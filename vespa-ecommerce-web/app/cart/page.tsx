@@ -46,6 +46,18 @@ export default function CartPage() {
   }, [isAuthenticated, fetchCart]);
   // End polling logic
 
+  // Auto-unselect items that become out of stock
+  useEffect(() => {
+    if (!cart?.items) return;
+
+    cart.items.forEach(item => {
+      if (item.quantity > item.product.stock && selectedItems.has(item.id)) {
+        // Automatically unselect if it's out of stock
+        toggleItemSelected(item.id);
+      }
+    });
+  }, [cart?.items, selectedItems, toggleItemSelected]);
+
   const items = cart?.items || [];
   const isAllSelected = items.length > 0 && selectedItems.size === items.length;
   const selectedCartItems = items.filter(item => selectedItems.has(item.id));
@@ -132,12 +144,13 @@ export default function CartPage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -50, transition: { duration: 0.3 } }}
-                      className={`flex items-start gap-4 p-6 transition-colors ${selectedItems.has(cartItemId) ? 'bg-blue-50/50' : 'bg-white'}`}
+                      className={`flex items-start gap-4 p-6 transition-colors ${selectedItems.has(cartItemId) ? 'bg-blue-50/50' : 'bg-white'} ${quantity > product.stock ? 'opacity-70 border border-red-200 bg-red-50/20' : ''}`}
                     >
                       <Checkbox
                         className="mt-1 flex-shrink-0"
                         checked={selectedItems.has(cartItemId)}
                         onCheckedChange={() => toggleItemSelected(cartItemId)}
+                        disabled={quantity > product.stock}
                       />
                       <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 overflow-hidden rounded-lg border bg-gray-100">
                         {product.images?.[0]?.url && (
@@ -154,6 +167,11 @@ export default function CartPage() {
                         <div>
                           <h3 className="font-semibold text-base sm:text-lg text-gray-800 leading-tight">{product.name}</h3>
                           <PriceDisplay priceInfo={product.priceInfo} className="text-lg sm:text-xl" />
+                          {quantity > product.stock && (
+                            <p className="text-red-600 text-sm font-medium mt-1">
+                              {product.stock === 0 ? 'Stok produk ini telah habis.' : `Stok tidak mencukupi (Tersisa: ${product.stock})`}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center">
@@ -201,8 +219,13 @@ export default function CartPage() {
                   <span>Total</span>
                   <span>{formatPrice(totalSelectedPrice)}</span>
                 </div>
-                <Button asChild size="lg" className={`w-full mt-6 text-base ${selectedCartItems.length === 0 ? 'cursor-not-allowed' : ''}`} disabled={selectedCartItems.length === 0}>
-                  <Link href="/checkout">
+                {selectedCartItems.some(i => i.quantity > i.product.stock) && (
+                  <p className="text-red-500 text-sm mt-3 text-center">
+                    Ada produk dengan stok tidak mencukupi. Sesuaikan jumlah atau hapus dari pilihan.
+                  </p>
+                )}
+                <Button asChild size="lg" className={`w-full mt-6 text-base ${selectedCartItems.length === 0 || selectedCartItems.some(i => i.quantity > i.product.stock) ? 'cursor-not-allowed opacity-50' : ''}`} disabled={selectedCartItems.length === 0 || selectedCartItems.some(i => i.quantity > i.product.stock)}>
+                  <Link href={selectedCartItems.length > 0 && !selectedCartItems.some(i => i.quantity > i.product.stock) ? "/checkout" : "#"}>
                     Lanjutkan ke Checkout ({totalSelectedItems})
                     <ArrowRight size={18} className="ml-2" />
                   </Link>
