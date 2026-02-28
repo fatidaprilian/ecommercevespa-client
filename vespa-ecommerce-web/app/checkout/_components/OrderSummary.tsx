@@ -74,6 +74,21 @@ export function OrderSummary({
     const courier = `${selectedShippingOption.courier_name.toUpperCase()} - ${selectedShippingOption.courier_service_name}`;
 
     try {
+      // Guard: validate stock for all selected items before hitting the API.
+      // This catches stale-cart scenarios (e.g. item added 2 weeks ago, now stock is 0).
+      const itemsToCheck = cart?.items?.filter(i => selectedItems.has(i.id)) || [];
+      const outOfStockItems = itemsToCheck.filter(i => i.quantity > i.product.stock);
+
+      if (outOfStockItems.length > 0) {
+        const names = outOfStockItems.map(i => i.product.name).join(', ');
+        toast.error(
+          `Stok tidak mencukupi untuk: ${names}. Keranjang akan diperbarui.`,
+          { duration: 5000 }
+        );
+        router.push('/cart');
+        setLoadingMethod(null);
+        return;
+      }
       const newOrder = await createOrder(
         fullAddress,
         selectedShippingOption.price,
