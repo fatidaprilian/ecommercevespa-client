@@ -46,17 +46,22 @@ export default function CartPage() {
   }, [isAuthenticated, fetchCart]);
   // End polling logic
 
-  // Auto-unselect items that become out of stock
+  // Auto-unselect or auto-adjust items that become out of stock
   useEffect(() => {
     if (!cart?.items) return;
 
     cart.items.forEach(item => {
-      if (item.quantity > item.product.stock && selectedItems.has(item.id)) {
-        // Automatically unselect if it's out of stock
-        toggleItemSelected(item.id);
+      if (item.quantity > item.product.stock) {
+        if (item.product.stock > 0) {
+          // Adjust to max available stock automatically
+          updateItemQuantity(item.id, item.product.stock);
+        } else if (selectedItems.has(item.id)) {
+          // Automatically unselect if it's completely out of stock
+          toggleItemSelected(item.id);
+        }
       }
     });
-  }, [cart?.items, selectedItems, toggleItemSelected]);
+  }, [cart?.items, selectedItems, toggleItemSelected, updateItemQuantity]);
 
   const items = cart?.items || [];
   const isAllSelected = items.length > 0 && selectedItems.size === items.length;
@@ -167,9 +172,10 @@ export default function CartPage() {
                         <div>
                           <h3 className="font-semibold text-base sm:text-lg text-gray-800 leading-tight">{product.name}</h3>
                           <PriceDisplay priceInfo={product.priceInfo} className="text-lg sm:text-xl" />
+                          <p className="text-sm text-gray-500 mt-1">Sisa Stok: {product.stock}</p>
                           {quantity > product.stock && (
                             <p className="text-red-600 text-sm font-medium mt-1">
-                              {product.stock === 0 ? 'Stok produk ini telah habis.' : `Stok tidak mencukupi (Tersisa: ${product.stock})`}
+                              {product.stock === 0 ? 'Stok produk ini telah habis.' : `Stok otomatis disesuaikan (Sisa: ${product.stock})`}
                             </p>
                           )}
                         </div>
