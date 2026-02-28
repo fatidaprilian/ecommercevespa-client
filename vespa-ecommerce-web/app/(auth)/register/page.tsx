@@ -21,6 +21,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,24 +41,29 @@ export default function RegisterPage() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError('Konfirmasi password tidak cocok.');
+      return;
+    }
+
     // --- TAMBAHAN ---
     // Validasi token CAPTCHA di frontend sebelum kirim
     if (!turnstileToken) {
       setError("Silakan verifikasi bahwa Anda bukan robot.");
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
       // (Logika Asli dimodifikasi untuk mengirim token)
-      await api.post('/auth/register', { 
-        name, 
-        email, 
+      await api.post('/auth/register', {
+        name,
+        email,
         password,
         turnstileToken // --- TAMBAHAN: Kirim token ke backend ---
       });
-      
+
       // (Logika Asli)
       toast.success('Email verifikasi telah dikirim!');
       setIsVerificationOpen(true);
@@ -77,13 +83,13 @@ export default function RegisterPage() {
       }
 
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <>
-      <VerificationDialog 
+      <VerificationDialog
         isOpen={isVerificationOpen}
         onClose={() => setIsVerificationOpen(false)}
         email={email}
@@ -139,6 +145,19 @@ export default function RegisterPage() {
                 disabled={isLoading}
                 className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#52616B] transition-all"
                 placeholder="Minimal 8 karakter"
+              />
+            </div>
+
+            <div className="relative">
+              <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={isLoading}
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#52616B] transition-all"
+                placeholder="Konfirmasi password"
               />
             </div>
 
