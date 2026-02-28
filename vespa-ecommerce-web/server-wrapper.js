@@ -1,39 +1,46 @@
 /**
- * Custom Server Wrapper for Next.js Standalone
+ * Advanced Server Wrapper for Next.js Standalone + Cloudflare
  * 
- * Issue: Cloudflare 522 Connection Timed Out on Static Assets
- * Cause: Node.js default keepAliveTimeout (5s) is shorter than Cloudflare's expectation (100s).
- * When Cloudflare tries to reuse a connection that Node.js has closed, it results in a 522 error.
- * Next.js standalone mode does not natively expose server timeout configurations.
- * 
- * Fix: Patch the HTTP/HTTPS server prototype to enforce a longer keepAliveTimeout before
- * starting the Next.js server.js.
+ * 1. Overrides KeepAliveTimeout to 120s to surpass Cloudflare's 100s timeout.
+ * 2. Overrides HeadersTimeout to 121s.
+ * 3. Logs incoming requests for debugging 522 issues.
  */
 
 const http = require('http');
 const https = require('https');
 
-const KEEPALIVE_TIMEOUT = 65000; // 65 seconds (must be > Cloudflare's 60s/100s expectation)
-const HEADERS_TIMEOUT = 66000;   // 66 seconds (must be > keepAliveTimeout)
+// Cloudflare's keep-alive timeout is usually 100s (100,000ms).
+// Node.js must keep the connection open slightly longer than Cloudflare
+// otherwise Node closes the connection while CF is about to reuse it ~ 522 Error.
+const KEEPALIVE_TIMEOUT = 120000;
+const HEADERS_TIMEOUT = 121000;
 
-// Patch HTTP
-const originalHttpListen = http.Server.prototype.listen;
-http.Server.prototype.listen = function (...args) {
-    this.keepAliveTimeout = KEEPALIVE_TIMEOUT;
-    this.headersTimeout = HEADERS_TIMEOUT;
-    console.log(`[server-wrapper] Applied HTTP keepAliveTimeout: ${this.keepAliveTimeout}ms`);
-    return originalHttpListen.apply(this, args);
-};
+function patchServer(ServerClass, protocol) {
+    const originalListen = ServerClass.prototype.listen;
+    ServerClass.prototype.listen = function (...args) {
+        this.keepAliveTimeout = KEEPALIVE_TIMEOUT;
+        this.headersTimeout = HEADERS_TIMEOUT;
+        console.log(`[server-wrapper] Applied ${protocol} keepAliveTimeout: ${this.keepAliveTimeout}ms`);
 
-// Patch HTTPS (just in case)
-const originalHttpsListen = https.Server.prototype.listen;
-https.Server.prototype.listen = function (...args) {
-    this.keepAliveTimeout = KEEPALIVE_TIMEOUT;
-    this.headersTimeout = HEADERS_TIMEOUT;
-    console.log(`[server-wrapper] Applied HTTPS keepAliveTimeout: ${this.keepAliveTimeout}ms`);
-    return originalHttpsListen.apply(this, args);
-};
+        // Hook into 'request' to log what's actually hitting Node.js
+        this.on('request', (req, res) => {
+            const start = Date.now();
+            res.on('finish', () => {
+                const duration = Date.now() - start;
+                // Only log static assets or API to reduce noise, or log everything if needed.
+                // But for diagnosing 522 on statics, let's log everything quickly:
+                if (req.url.includes('/_next/static/')) {
+                    console.log(`[static-access] ${res.statusCode} ${req.method} ${req.url} - ${duration}ms`);
+                }
+            });
+        });
 
-// Now actually run the built Next.js server
-console.log('[server-wrapper] Starting Next.js standalone server...');
+        return originalListen.apply(this, args);
+    };
+}
+
+patchServer(http.Server, 'HTTP');
+patchServer(https.Server, 'HTTPS');
+
+console.log('[server-wrapper] Booting up Next.js standalone server...');
 require('./server.js');
