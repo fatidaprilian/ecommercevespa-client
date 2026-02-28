@@ -92,8 +92,24 @@ export function OrderSummary({
       } else {
         throw new Error('Respons pesanan tidak valid.');
       }
-    } catch (error) {
-      console.error("Gagal melanjutkan ke pembayaran:", error);
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Gagal membuat pesanan.";
+
+      // If the error is stock-related (thrown by backend), redirect user back to cart
+      // so they can see the auto-adjusted quantities and re-confirm before retrying.
+      const isStockError =
+        message.toLowerCase().includes('stok') ||
+        message.toLowerCase().includes('stock') ||
+        message.toLowerCase().includes('insufficient') ||
+        message.toLowerCase().includes('tidak mencukupi');
+
+      if (isStockError) {
+        toast.error(`Stok tidak mencukupi. Keranjang Anda akan diperbarui otomatis.`, { duration: 5000 });
+        router.push('/cart');
+      } else {
+        toast.error(message);
+      }
+
       setLoadingMethod(null); // Reset state loading saat error
     }
   };

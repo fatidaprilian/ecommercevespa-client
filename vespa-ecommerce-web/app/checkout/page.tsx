@@ -19,7 +19,7 @@ import { getVatPercentage } from '@/services/settingsService';
 import { useProfile } from '@/hooks/useProfile';
 
 export default function CheckoutPage() {
-    const { cart, selectedItems } = useCartStore();
+    const { cart, selectedItems, fetchCart } = useCartStore();
     // 👇 AMBIL setAuth DAN token UNTUK UPDATE STATE
     const { isAuthenticated, setAuth, token } = useAuthStore();
     // 👇 AMBIL refetch DARI HOOK
@@ -33,6 +33,16 @@ export default function CheckoutPage() {
 
     const selectedCartItems =
         cart?.items?.filter((item) => selectedItems.has(item.id)) || [];
+
+    // Silent cart polling every 5s to keep stock data fresh during checkout
+    useEffect(() => {
+        if (isAuthenticated) {
+            const intervalId = setInterval(() => {
+                fetchCart(true);
+            }, 5000);
+            return () => clearInterval(intervalId);
+        }
+    }, [isAuthenticated, fetchCart]);
 
     // 👇 EFEK KHUSUS: SINKRONISASI DATA USER OTOMATIS
     useEffect(() => {
