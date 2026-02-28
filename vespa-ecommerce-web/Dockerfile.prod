@@ -40,9 +40,9 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./_next
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
+COPY --chown=nextjs:nodejs server-wrapper.js ./server-wrapper.js
 
 USER nextjs
 
@@ -60,4 +60,4 @@ LABEL maintainer="fatidaprilian" \
 
 ENTRYPOINT ["dumb-init", "--"]
 
-CMD ["node", "server.js"]
+CMD ["node", "server-wrapper.js"]
