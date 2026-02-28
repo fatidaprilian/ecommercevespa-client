@@ -30,12 +30,12 @@ interface OrderSummaryProps {
   vatPercentage: number;
 }
 
-export function OrderSummary({ 
-  subtotal, 
-  taxAmount, 
-  shippingCost, 
+export function OrderSummary({
+  subtotal,
+  taxAmount,
+  shippingCost,
   totalAmount, // Ini adalah total dasar
-  selectedAddress, 
+  selectedAddress,
   selectedShippingOption,
   vatPercentage,
 }: OrderSummaryProps) {
@@ -56,53 +56,52 @@ export function OrderSummary({
 
   // --- (Modifikasi handleCreateOrder untuk menerima preferensi) ---
   const handleCreateOrder = async (preference: PaymentPreference | null) => {
-      if (!selectedAddress || !selectedShippingOption) {
-        toast.error("Alamat dan layanan pengiriman harus dipilih.");
-        return;
-      }
-      
-      // Tentukan state loading berdasarkan tombol yang diklik
-      if (preference === PaymentPreference.CREDIT_CARD) {
-        setLoadingMethod('cc');
-      } else if (preference === PaymentPreference.OTHER) {
-        setLoadingMethod('other');
+    if (!selectedAddress || !selectedShippingOption) {
+      toast.error("Alamat dan layanan pengiriman harus dipilih.");
+      return;
+    }
+
+    // Tentukan state loading berdasarkan tombol yang diklik
+    if (preference === PaymentPreference.CREDIT_CARD) {
+      setLoadingMethod('cc');
+    } else if (preference === PaymentPreference.OTHER) {
+      setLoadingMethod('other');
+    } else {
+      setLoadingMethod('reseller'); // Untuk Reseller
+    }
+
+    const fullAddress = `${selectedAddress.street}, ${selectedAddress.district}, ${selectedAddress.city}, ${selectedAddress.province}, ${selectedAddress.postalCode}`;
+    const courier = `${selectedShippingOption.courier_name.toUpperCase()} - ${selectedShippingOption.courier_service_name}`;
+
+    try {
+      const newOrder = await createOrder(
+        fullAddress,
+        selectedShippingOption.price,
+        courier,
+        selectedAddress.postalCode,
+        selectedAddress.districtId,
+        preference || undefined
+      );
+
+      // Logika redirect/toast tetap sama
+      if (user?.role === 'RESELLER') {
+        toast.success("Pesanan berhasil dibuat dan dikirim ke admin!");
+        router.push(`/orders/${newOrder.id}`);
+      } else if (newOrder && newOrder.redirect_url) {
+        window.location.href = newOrder.redirect_url;
       } else {
-        setLoadingMethod('reseller'); // Untuk Reseller
+        throw new Error('Respons pesanan tidak valid.');
       }
-      
-      const fullAddress = `${selectedAddress.street}, ${selectedAddress.district}, ${selectedAddress.city}, ${selectedAddress.province}, ${selectedAddress.postalCode}`;
-      const courier = `${selectedShippingOption.courier_name.toUpperCase()} - ${selectedShippingOption.courier_service_name}`;
-      
-      try {
-        const newOrder = await createOrder(
-          fullAddress, 
-          selectedShippingOption.price, 
-          courier, 
-          selectedAddress.postalCode,
-          selectedAddress.districtId,
-          preference
-        );
-        
-        // Logika redirect/toast tetap sama
-        if (user?.role === 'RESELLER') {
-            toast.success("Pesanan berhasil dibuat dan dikirim ke admin!");
-            router.push(`/orders/${newOrder.id}`);
-        } else if (newOrder && newOrder.redirect_url) {
-            window.location.href = newOrder.redirect_url;
-        } else {
-            throw new Error('Respons pesanan tidak valid.');
-        }
-      } catch (error) {
-        toast.error("Gagal memproses pesanan. Silakan coba lagi.");
-        console.error("Gagal melanjutkan ke pembayaran:", error);
-        setLoadingMethod(null); // Reset state loading saat error
-      }
-    };
+    } catch (error) {
+      console.error("Gagal melanjutkan ke pembayaran:", error);
+      setLoadingMethod(null); // Reset state loading saat error
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 sticky top-28">
       <h2 className="text-xl font-bold border-b pb-4 mb-4">Ringkasan Pesanan</h2>
-      
+
       {/* ... (Bagian daftar item tidak berubah) ... */}
       <div className="space-y-3 max-h-60 overflow-y-auto pr-2 mb-4">
         {cart?.items
@@ -128,15 +127,15 @@ export function OrderSummary({
               </div>
               <span className="font-medium pl-2">{formatPrice(Number(item.product.price) * item.quantity)}</span>
             </div>
-        ))}
+          ))}
       </div>
-      
+
       <div className="border-t mt-4 pt-4 space-y-2">
         <div className="flex justify-between text-gray-600">
           <span>Subtotal ({totalItems} item)</span>
           <span className="font-semibold">{formatPrice(subtotal)}</span>
         </div>
-        
+
         <div className="flex justify-between text-gray-600">
           <span>PPN ({vatPercentage > 0 ? vatPercentage : '...'}%)</span>
           <span className="font-semibold">{formatPrice(taxAmount)}</span>
@@ -158,13 +157,13 @@ export function OrderSummary({
       {/* --- (Logika Tombol Pembayaran yang Diubah) --- */}
       <div className="mt-6 space-y-3">
         {/* Tampilkan tombol berdasarkan role user */}
-        
+
         {/* JIKA ROLE RESELLER (Logika Asli) */}
         {user?.role === 'RESELLER' && (
-          <Button 
+          <Button
             onClick={() => handleCreateOrder(null)}
-            size="lg" 
-            className="w-full" 
+            size="lg"
+            className="w-full"
             disabled={!selectedAddress || !selectedShippingOption || !!loadingMethod} // Disable jika sedang loading
           >
             {loadingMethod === 'reseller' ? <Loader2 className="mr-2 animate-spin" /> : <PackageCheck className="mr-2" />}
@@ -176,11 +175,11 @@ export function OrderSummary({
         {user?.role === 'MEMBER' && (
           <>
             {/* Tombol Bayar Metode Lain */}
-            <Button 
+            <Button
               onClick={() => handleCreateOrder(PaymentPreference.OTHER)}
-              size="lg" 
+              size="lg"
               variant="outline" // Buat sebagai tombol sekunder
-              className="w-full flex justify-between items-center" 
+              className="w-full flex justify-between items-center"
               disabled={!selectedAddress || !selectedShippingOption || !!loadingMethod} // Disable jika salah satu sedang loading
             >
               <div className='flex items-center'>
@@ -189,11 +188,11 @@ export function OrderSummary({
               </div>
               <span className='font-bold'>{formatPrice(totalAmount)}</span>
             </Button>
-            
+
             {/* Tombol Bayar Kartu Kredit */}
-            <Button 
+            <Button
               onClick={() => handleCreateOrder(PaymentPreference.CREDIT_CARD)}
-              size="lg" 
+              size="lg"
               className="w-full h-auto flex flex-col items-start py-3" // Buat tombol lebih tinggi untuk 2 baris teks
               disabled={!selectedAddress || !selectedShippingOption || !!loadingMethod}
             >
