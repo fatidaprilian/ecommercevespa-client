@@ -30,9 +30,9 @@ export default function LoginPage() {
   const [isForgotPassOpen, setIsForgotPassOpen] = useState(false);
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
 
-  // --- TAMBAHAN ---
   // State untuk menyimpan token dari Cloudflare Turnstile
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [isTurnstileExpired, setIsTurnstileExpired] = useState(false);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,20 +46,20 @@ export default function LoginPage() {
       setError("Silakan verifikasi bahwa Anda bukan robot.");
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
       // 1. Login (dengan token CAPTCHA)
-      const { data } = await api.post('/auth/login', { 
-        email, 
+      const { data } = await api.post('/auth/login', {
+        email,
         password,
         turnstileToken // --- TAMBAHAN: Kirim token ke backend ---
       });
-      
+
       // 2. Simpan token ke state (Logika Asli)
       setAuth(null, data.access_token);
-      
+
       // 3. Invalidate query (Logika Asli)
       await queryClient.invalidateQueries();
 
@@ -68,31 +68,31 @@ export default function LoginPage() {
       setTimeout(() => {
         router.push('/');
       }, 1500);
-      
+
     } catch (err: any) {
 
       if (err.response?.status === 429) {
         setError('Terlalu banyak percobaan. Silakan coba lagi dalam satu menit.');
       } else {
         const errorMessage = err.response?.data?.message || 'Email atau password salah.';
-        
+
         if (errorMessage.includes('belum terverifikasi')) {
-          toast.error(errorMessage); 
-          setIsVerificationOpen(true); 
-          setError(null); 
+          toast.error(errorMessage);
+          setIsVerificationOpen(true);
+          setError(null);
         } else {
           setError(errorMessage);
         }
       }
 
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <>
-      <ForgotPasswordDialog 
+      <ForgotPasswordDialog
         isOpen={isForgotPassOpen}
         onClose={() => setIsForgotPassOpen(false)}
       />
@@ -104,21 +104,21 @@ export default function LoginPage() {
       />
 
       <div className="flex justify-center items-center min-h-screen bg-[#F0F5F9] px-4 pt-20">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="w-full max-w-md p-8 md:p-10 space-y-6 bg-white rounded-2xl shadow-2xl border"
         >
           <div className="text-center">
-              <h2 className="text-4xl font-bold text-gray-800 font-playfair">
+            <h2 className="text-4xl font-bold text-gray-800 font-playfair">
               Selamat Datang
-              </h2>
-              <p className="text-gray-500 mt-2">Masuk untuk melanjutkan ke surga Vespa.</p>
+            </h2>
+            <p className="text-gray-500 mt-2">Masuk untuk melanjutkan ke surga Vespa.</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="email"
                 value={email}
@@ -131,7 +131,7 @@ export default function LoginPage() {
             </div>
             <div>
               <div className="relative">
-                <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
+                <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="password"
                   value={password}
@@ -143,8 +143,8 @@ export default function LoginPage() {
                 />
               </div>
               <div className="text-right mt-2">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsForgotPassOpen(true)}
                   className="text-sm font-medium text-[#52616B] hover:underline"
                 >
@@ -153,17 +153,23 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-1">
               <Turnstile
                 sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                onVerify={(token) => setTurnstileToken(token)}
+                refreshExpired="auto"
+                onVerify={(token) => { setTurnstileToken(token); setIsTurnstileExpired(false); }}
                 onError={() => setError("Gagal memuat CAPTCHA. Coba refresh halaman.")}
-                onExpire={() => setTurnstileToken(null)}
+                onExpire={() => { setTurnstileToken(null); setIsTurnstileExpired(true); }}
               />
+              {isTurnstileExpired && (
+                <p className="text-amber-600 text-xs text-center">
+                  Verifikasi CAPTCHA kedaluwarsa. Tunggu sebentar, sedang diperbarui otomatis...
+                </p>
+              )}
             </div>
 
             {error && (
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-red-600 text-sm text-center bg-red-100 p-3 rounded-md"
@@ -173,7 +179,7 @@ export default function LoginPage() {
             )}
 
             {successMessage && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center justify-center gap-2 text-green-700 text-sm text-center bg-green-100 p-3 rounded-md"
@@ -190,7 +196,7 @@ export default function LoginPage() {
               disabled={isLoading || !turnstileToken}
               className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-bold text-white bg-[#52616B] hover:bg-[#1E2022] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#52616B] transition-all disabled:bg-gray-400"
             >
-              {isLoading ? <Loader2 className="animate-spin"/> : <LogIn size={20} />}
+              {isLoading ? <Loader2 className="animate-spin" /> : <LogIn size={20} />}
               <span>{isLoading ? 'Memproses...' : 'Masuk'}</span>
             </motion.button>
           </form>
