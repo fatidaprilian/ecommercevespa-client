@@ -68,6 +68,8 @@ const formatDateToAccurate = (date: Date): string => {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const SYNC_PRODUCTS_JOB_ID = 'sync-products-singleton';
 const SYNC_PRODUCTS_LONG_RUNNING_THRESHOLD_MS = 10 * 60 * 1000;
+const SALES_ORDER_RECOVERY_LOOKBACK_MINUTES = 5;
+const SALES_ORDER_RECOVERY_BATCH_SIZE = 20;
 
 @Injectable()
 export class AccurateSyncService {
@@ -341,6 +343,22 @@ export class AccurateSyncService {
       return { skipped: true, reason: 'User is not a reseller' };
     }
     try {
+      const latestOrderState = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        select: { accurateSalesOrderNumber: true, orderNumber: true },
+      });
+
+      if (latestOrderState?.accurateSalesOrderNumber) {
+        this.logger.log(
+          `SKIPPED: Sales Order creation for Order ID: ${orderId} - already linked to ${latestOrderState.accurateSalesOrderNumber} (pre-create recheck).`,
+        );
+        return {
+          skipped: true,
+          reason: 'Order already linked before create request',
+          salesOrderNumber: latestOrderState.accurateSalesOrderNumber,
+        };
+      }
+
       const dbInfo = await this.prisma.accurateOAuth.findFirst();
       if (!dbInfo || !dbInfo.branchName) {
         throw new InternalServerErrorException(
@@ -448,6 +466,44 @@ export class AccurateSyncService {
     } else {
       this.logger.log(
         'CRON JOB: Skipping "sync-products" job addition, already exists in queue.',
+      );
+    }
+  }
+
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async scheduleSalesOrderRecovery() {
+    const recoveryThreshold = new Date(
+      Date.now() - SALES_ORDER_RECOVERY_LOOKBACK_MINUTES * 60 * 1000,
+    );
+
+    const pendingResellerOrders = await this.prisma.order.findMany({
+      where: {
+        accurateSalesOrderNumber: null,
+        createdAt: { lte: recoveryThreshold },
+        status: { in: ['PENDING', 'PAID', 'PROCESSING'] },
+        user: { role: 'RESELLER' },
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        createdAt: true,
+      },
+      take: SALES_ORDER_RECOVERY_BATCH_SIZE,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (pendingResellerOrders.length === 0) {
+      return;
+    }
+
+    this.logger.warn(
+      `CRON JOB: Found ${pendingResellerOrders.length} reseller order(s) without Accurate SO. Re-queueing recovery jobs...`,
+    );
+
+    for (const pendingOrder of pendingResellerOrders) {
+      await this.addSalesOrderJobToQueue(pendingOrder.id);
+      this.logger.log(
+        `CRON JOB: Recovery re-queued create-sales-order for order ${pendingOrder.orderNumber}.`,
       );
     }
   }
