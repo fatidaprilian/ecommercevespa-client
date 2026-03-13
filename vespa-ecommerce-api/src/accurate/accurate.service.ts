@@ -11,6 +11,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 @Injectable()
 export class AccurateService {
     private readonly logger = new Logger(AccurateService.name);
+    private readonly REQUEST_TIMEOUT_MS = 30000;
 
     private readonly clientId: string;
     private readonly clientSecret: string;
@@ -219,6 +220,7 @@ export class AccurateService {
                 'Authorization': `Bearer ${token.accessToken}`,
                 'X-Session-ID': dbInfo.dbSession,
             },
+            timeout: this.REQUEST_TIMEOUT_MS,
             // Disable auto-redirect to handle 308 manually (update DB host)
             maxRedirects: 0,
             // Treat 308 as error so it hits the interceptor
@@ -298,6 +300,32 @@ export class AccurateService {
             return null;
         } catch (error) {
             this.logger.error(`Error mengambil detail Faktur Penjualan untuk ${invoiceNumber}:`, error.response?.data || error.message);
+            return null;
+        }
+    }
+
+    public async getSalesOrderByNumber(salesOrderNumber: string): Promise<any | null> {
+        try {
+            this.logger.log(`Mengambil detail Sales Order untuk nomor: ${salesOrderNumber}`);
+            const apiClient = await this.getAccurateApiClient();
+
+            const response = await apiClient.get('/accurate/api/sales-order/detail.do', {
+                params: {
+                    number: salesOrderNumber,
+                },
+            });
+
+            if (response.data?.s && response.data?.d) {
+                return response.data.d;
+            }
+
+            this.logger.warn(`Tidak ada Sales Order ditemukan dengan nomor: ${salesOrderNumber} menggunakan /detail.do`);
+            return null;
+        } catch (error) {
+            this.logger.error(
+                `Error mengambil detail Sales Order untuk ${salesOrderNumber}:`,
+                error.response?.data || error.message,
+            );
             return null;
         }
     }

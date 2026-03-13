@@ -327,7 +327,7 @@ export class WebhooksService {
     const salesOrderNo = eventData.number || eventData.salesOrderNo;
     const salesOrderId = eventData.id || eventData.salesOrderId;
     const action = eventData.action; // 'WRITE' (Create/Update) atau 'DELETE'
-    const poNumber = eventData.poNumber; // Ambil PO Number dari payload jika ada
+    let poNumber = eventData.poNumber; // Ambil PO Number dari payload jika ada
 
     this.logger.log(
       `Processing Sales Order webhook: ${salesOrderNo} (ID: ${salesOrderId}) - Action: ${action}`,
@@ -338,6 +338,30 @@ export class WebhooksService {
     let order = await this.prisma.order.findFirst({
       where: { accurateSalesOrderNumber: salesOrderNo },
     });
+
+    if (!order && action !== 'DELETE' && !poNumber && salesOrderNo) {
+      this.logger.log(
+        `Sales Order ${salesOrderNo} tidak membawa poNumber di payload. Mencoba fetch detail SO dari Accurate untuk fallback linking...`,
+      );
+      const salesOrderDetail =
+        await this.accurateService.getSalesOrderByNumber(salesOrderNo);
+
+      poNumber =
+        salesOrderDetail?.poNumber ||
+        salesOrderDetail?.customerPoNumber ||
+        salesOrderDetail?.customerPO ||
+        salesOrderDetail?.customerPoNo;
+
+      if (poNumber) {
+        this.logger.log(
+          `Fallback PO Number ditemukan dari detail SO ${salesOrderNo}: ${poNumber}`,
+        );
+      } else {
+        this.logger.warn(
+          `Detail SO ${salesOrderNo} tidak memiliki PO reference untuk fallback linking.`,
+        );
+      }
+    }
 
     // Fallback khusus ACTION WRITE/CREATE (Bukan Delete):
     // Jika belum ketemu (mungkin delay sync), dan ada poNumber di payload, coba cari pakai poNumber

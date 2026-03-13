@@ -35,3 +35,12 @@ Thumbs.db
 # File temporary dan cache
 .npm
 .pnp*
+
+# Agent instruction contexts (keep private, do not publish)
+.gemini/
+.agent-context/
+.agents/
+AGENTS.md
+.cursorrules
+.windsurfrules
+.github/copilot-instructions.md

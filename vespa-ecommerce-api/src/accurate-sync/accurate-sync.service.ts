@@ -66,6 +66,8 @@ const formatDateToAccurate = (date: Date): string => {
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const SYNC_PRODUCTS_JOB_ID = 'sync-products-singleton';
+const SYNC_PRODUCTS_LONG_RUNNING_THRESHOLD_MS = 10 * 60 * 1000;
 
 @Injectable()
 export class AccurateSyncService {
@@ -94,6 +96,7 @@ export class AccurateSyncService {
       'create-sales-order',
       { orderId },
       {
+        jobId: `create-sales-order:${orderId}`,
         removeOnComplete: true,
         removeOnFail: 10,
         attempts: 3,
@@ -321,6 +324,16 @@ export class AccurateSyncService {
         `Order with ID ${orderId} not found during job processing.`,
       );
     }
+    if (order.accurateSalesOrderNumber) {
+      this.logger.log(
+        `SKIPPED: Sales Order creation for Order ID: ${orderId} - already linked to ${order.accurateSalesOrderNumber}.`,
+      );
+      return {
+        skipped: true,
+        reason: 'Order already has accurate sales order number',
+        salesOrderNumber: order.accurateSalesOrderNumber,
+      };
+    }
     if (order.user.role !== 'RESELLER') {
       this.logger.log(
         `SKIPPED: Sales Order creation for Order ID: ${orderId} - User ${order.user.email} is not a RESELLER (role: ${order.user.role})`,
@@ -405,12 +418,32 @@ export class AccurateSyncService {
       (job) => job.name === 'sync-products',
     );
 
+    const longRunningSyncJob = activeJobs.find((job) => {
+      if (job.name !== 'sync-products' || !job.processedOn) {
+        return false;
+      }
+      return Date.now() - job.processedOn > SYNC_PRODUCTS_LONG_RUNNING_THRESHOLD_MS;
+    });
+
+    if (longRunningSyncJob) {
+      const runningSeconds = Math.round(
+        (Date.now() - (longRunningSyncJob.processedOn || Date.now())) / 1000,
+      );
+      this.logger.warn(
+        `CRON JOB: Detected long-running "sync-products" job (ID: ${longRunningSyncJob.id}) running for ~${runningSeconds}s.`,
+      );
+    }
+
     if (!existingSyncJob) {
       this.logger.log('CRON JOB: Adding "sync-products" job to the queue.');
       await this.syncQueue.add(
         'sync-products',
         {},
-        { removeOnComplete: true, removeOnFail: 10 },
+        {
+          jobId: SYNC_PRODUCTS_JOB_ID,
+          removeOnComplete: true,
+          removeOnFail: 10,
+        },
       );
     } else {
       this.logger.log(
