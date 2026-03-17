@@ -6,7 +6,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccurateService } from '../accurate/accurate.service';
@@ -70,6 +70,13 @@ const SYNC_PRODUCTS_JOB_ID = 'sync-products-singleton';
 const SYNC_PRODUCTS_LONG_RUNNING_THRESHOLD_MS = 10 * 60 * 1000;
 const SALES_ORDER_RECOVERY_LOOKBACK_MINUTES = 5;
 const SALES_ORDER_RECOVERY_BATCH_SIZE = 20;
+const PRODUCT_SYNC_BLOCKING_JOB_STATES = new Set([
+  'active',
+  'waiting',
+  'delayed',
+  'prioritized',
+  'waiting-children',
+]);
 
 @Injectable()
 export class AccurateSyncService {
@@ -430,44 +437,71 @@ export class AccurateSyncService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async scheduleProductSync() {
-    const waitingJobs = await this.syncQueue.getJobs(['wait', 'delayed']);
-    const activeJobs = await this.syncQueue.getActive();
-    const existingSyncJob = [...waitingJobs, ...activeJobs].find(
-      (job) => job.name === 'sync-products',
-    );
+    const existingSyncJob = await this.syncQueue.getJob(SYNC_PRODUCTS_JOB_ID);
 
-    const longRunningSyncJob = activeJobs.find((job) => {
-      if (job.name !== 'sync-products' || !job.processedOn) {
-        return false;
+    if (existingSyncJob) {
+      const existingJobState = await existingSyncJob.getState();
+
+      if (PRODUCT_SYNC_BLOCKING_JOB_STATES.has(existingJobState)) {
+        this.logBlockingProductSyncJob(existingSyncJob, existingJobState);
+        this.logger.log(
+          `CRON JOB: Skipping "sync-products" job addition, singleton job is still ${existingJobState}.`,
+        );
+        return;
       }
-      return Date.now() - job.processedOn > SYNC_PRODUCTS_LONG_RUNNING_THRESHOLD_MS;
-    });
 
-    if (longRunningSyncJob) {
-      const runningSeconds = Math.round(
-        (Date.now() - (longRunningSyncJob.processedOn || Date.now())) / 1000,
-      );
       this.logger.warn(
-        `CRON JOB: Detected long-running "sync-products" job (ID: ${longRunningSyncJob.id}) running for ~${runningSeconds}s.`,
+        `CRON JOB: Removing stale "sync-products" singleton job ${existingSyncJob.id} with state ${existingJobState} before re-queueing.`,
       );
+      await existingSyncJob.remove();
     }
 
-    if (!existingSyncJob) {
-      this.logger.log('CRON JOB: Adding "sync-products" job to the queue.');
-      await this.syncQueue.add(
-        'sync-products',
-        {},
-        {
-          jobId: SYNC_PRODUCTS_JOB_ID,
-          removeOnComplete: true,
-          removeOnFail: 10,
-        },
+    this.logger.log('CRON JOB: Adding "sync-products" job to the queue.');
+    await this.syncQueue.add(
+      'sync-products',
+      {},
+      {
+        jobId: SYNC_PRODUCTS_JOB_ID,
+        removeOnComplete: true,
+        removeOnFail: 10,
+      },
+    );
+  }
+
+  private logBlockingProductSyncJob(
+    existingSyncJob: Job,
+    existingJobState: string,
+  ) {
+    if (existingJobState === 'active' && existingSyncJob.processedOn) {
+      const runningDurationMs = Date.now() - existingSyncJob.processedOn;
+      if (runningDurationMs <= SYNC_PRODUCTS_LONG_RUNNING_THRESHOLD_MS) {
+        return;
+      }
+
+      const runningSeconds = Math.round(runningDurationMs / 1000);
+      this.logger.warn(
+        `CRON JOB: Detected long-running "sync-products" job (ID: ${existingSyncJob.id}) running for ~${runningSeconds}s.`,
       );
-    } else {
-      this.logger.log(
-        'CRON JOB: Skipping "sync-products" job addition, already exists in queue.',
-      );
+      return;
     }
+
+    if (
+      !['waiting', 'delayed', 'prioritized', 'waiting-children'].includes(
+        existingJobState,
+      )
+    ) {
+      return;
+    }
+
+    const waitingDurationMs = Date.now() - existingSyncJob.timestamp;
+    if (waitingDurationMs <= SYNC_PRODUCTS_LONG_RUNNING_THRESHOLD_MS) {
+      return;
+    }
+
+    const waitingSeconds = Math.round(waitingDurationMs / 1000);
+    this.logger.warn(
+      `CRON JOB: Detected stalled "sync-products" job (ID: ${existingSyncJob.id}) in state ${existingJobState} for ~${waitingSeconds}s. Worker pickup should be checked.`,
+    );
   }
 
   @Cron(CronExpression.EVERY_10_MINUTES)
