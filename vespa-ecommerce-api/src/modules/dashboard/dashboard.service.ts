@@ -28,7 +28,13 @@ export class DashboardService {
       },
       where: {
         status: {
-          in: [OrderStatus.PAID, OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED],
+          in: [
+            OrderStatus.PAID,
+            OrderStatus.PROCESSING,
+            OrderStatus.SHIPPED,
+            OrderStatus.DELIVERED,
+            OrderStatus.COMPLETED,
+          ],
         },
         createdAt: {
           gte: firstDayOfMonth,

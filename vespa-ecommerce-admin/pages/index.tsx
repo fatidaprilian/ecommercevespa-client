@@ -57,7 +57,7 @@ export default function DashboardPage() {
         { title: 'Produk', value: stats?.totalProducts ?? '...', icon: Package, color: 'text-blue-500', bgColor: 'bg-blue-100' },
         { title: 'Pesanan', value: stats?.totalOrdersCount ?? '...', icon: ShoppingCart, color: 'text-green-500', bgColor: 'bg-green-100' },
         { title: 'Pelanggan', value: stats?.totalUsers ?? '...', icon: Users, color: 'text-orange-500', bgColor: 'bg-orange-100' },
-        { title: 'Pendapatan', value: stats ? formatPrice(stats.monthlyRevenue) : '...', icon: DollarSign, color: 'text-purple-500', bgColor: 'bg-purple-100' },
+        { title: 'Pendapatan Bulan Ini', value: stats ? formatPrice(stats.monthlyRevenue) : '...', icon: DollarSign, color: 'text-purple-500', bgColor: 'bg-purple-100' },
     ];
 
 
