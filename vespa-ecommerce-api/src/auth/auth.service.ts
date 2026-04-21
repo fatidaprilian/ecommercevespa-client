@@ -31,8 +31,6 @@ import { AccuratePricingService } from '../accurate-pricing/accurate-pricing.ser
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  // Keep turnstileSecretKey logic if you intend to use it later,
-  // otherwise, you can remove it and related parts if only admin login is needed now.
   private readonly turnstileSecretKey: string | undefined; // Make optional if not always needed
 
   constructor(
@@ -50,9 +48,8 @@ export class AuthService {
     this.turnstileSecretKey = this.configService.get<string>(
       'TURNSTILE_SECRET_KEY',
     );
-    // Add a check or warning if the key is missing but Turnstile logic is kept
     if (!this.turnstileSecretKey) {
-        this.logger.warn('TURNSTILE_SECRET_KEY environment variable is not set. CAPTCHA verification will fail.');
+        this.logger.warn('TURNSTILE_SECRET_KEY environment variable is not set. Registration CAPTCHA verification will fail.');
     }
   }
 
@@ -89,24 +86,7 @@ export class AuthService {
   }
   // --- End Helper ---
 
-  // --- validateUser (Original logic, keep Turnstile check if needed for regular users) ---
   async validateUser(loginDto: LoginDto): Promise<any> {
-    // --- Add Turnstile Validation (Only if this method is for regular users) ---
-    // Make sure loginDto includes turnstileToken if this check is active
-     if (!loginDto.turnstileToken){
-        this.logger.error(`Login attempt missing CAPTCHA token for email: ${loginDto.email}`);
-        throw new UnauthorizedException('Verifikasi CAPTCHA gagal (token hilang).');
-     }
-     const isHuman = await this.verifyTurnstileToken(loginDto.turnstileToken);
-     if (!isHuman) {
-       this.logger.warn(
-         `Login attempt failed CAPTCHA for email: ${loginDto.email}`,
-       );
-       throw new UnauthorizedException('Verifikasi CAPTCHA gagal.');
-     }
-     this.logger.log(`CAPTCHA verified successfully for login: ${loginDto.email}`);
-    // --- End Turnstile Validation ---
-
     const user = await this.usersService.findByEmail(loginDto.email);
 
     if (user && (await bcrypt.compare(loginDto.password, user.password))) {
@@ -128,7 +108,6 @@ export class AuthService {
     }
     return null;
   }
-  // --- End validateUser ---
 
 
   // --- Method Baru untuk Validasi Admin (Tanpa Turnstile) ---

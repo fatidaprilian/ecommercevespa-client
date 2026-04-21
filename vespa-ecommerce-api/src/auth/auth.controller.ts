@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 // import { Response } from 'express'; // Original comment: Hapus 'Response' jika tidak digunakan lagi
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -31,7 +32,8 @@ export class AuthController {
 
   // --- Endpoint Login Pengguna Biasa (Original logic, uses LocalAuthGuard) ---
   @Public()
-  @UseGuards(LocalAuthGuard) // Guard for regular users (expects turnstileToken)
+  @UseGuards(LocalAuthGuard) // Guard for regular users
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK) // Keep HttpCode OK (200)
   async login(@Request() req) {
@@ -53,6 +55,7 @@ export class AuthController {
   // --- Endpoint BARU untuk Login Admin ---
   @Public()
   @UseGuards(AdminLocalAuthGuard) // Use the new Admin Guard (no turnstileToken check)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('admin/login')          // New endpoint route
   @HttpCode(HttpStatus.OK)
   async adminLogin(@Request() req) {

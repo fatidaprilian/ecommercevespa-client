@@ -4,12 +4,17 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
+import {
+  LogIn,
+  Mail,
+  KeyRound,
+  Loader2,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-
-// --- TAMBAHAN ---
-import Turnstile from 'react-turnstile'; // Import komponen CAPTCHA
 
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -20,6 +25,7 @@ import { VerificationDialog } from '../_components/VerificationDialog';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,31 +36,18 @@ export default function LoginPage() {
   const [isForgotPassOpen, setIsForgotPassOpen] = useState(false);
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
 
-  // State untuk menyimpan token dari Cloudflare Turnstile
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [isTurnstileExpired, setIsTurnstileExpired] = useState(false);
-
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
 
-    // --- TAMBAHAN ---
-    // Validasi token CAPTCHA di frontend sebelum kirim
-    if (!turnstileToken) {
-      setError("Silakan verifikasi bahwa Anda bukan robot.");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // 1. Login (dengan token CAPTCHA)
+      // 1. Login
       const { data } = await api.post('/auth/login', {
         email,
         password,
-        turnstileToken // --- TAMBAHAN: Kirim token ke backend ---
       });
 
       // 2. Simpan token ke state (Logika Asli)
@@ -133,14 +126,29 @@ export default function LoginPage() {
               <div className="relative">
                 <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
-                  type="password"
+                  type={isPasswordVisible ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#52616B] transition-all"
+                  className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#52616B] transition-all"
                   placeholder="Password Anda"
                 />
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordVisible((currentState) => !currentState)}
+                  disabled={isLoading}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-[#52616B] disabled:cursor-not-allowed"
+                  aria-label={
+                    isPasswordVisible ? 'Sembunyikan password' : 'Tampilkan password'
+                  }
+                >
+                  {isPasswordVisible ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
               <div className="text-right mt-2">
                 <button
@@ -151,21 +159,6 @@ export default function LoginPage() {
                   Lupa Password?
                 </button>
               </div>
-            </div>
-
-            <div className="flex flex-col items-center gap-1">
-              <Turnstile
-                sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                refreshExpired="auto"
-                onVerify={(token) => { setTurnstileToken(token); setIsTurnstileExpired(false); }}
-                onError={() => setError("Gagal memuat CAPTCHA. Coba refresh halaman.")}
-                onExpire={() => { setTurnstileToken(null); setIsTurnstileExpired(true); }}
-              />
-              {isTurnstileExpired && (
-                <p className="text-amber-600 text-xs text-center">
-                  Verifikasi CAPTCHA kedaluwarsa. Tunggu sebentar, sedang diperbarui otomatis...
-                </p>
-              )}
             </div>
 
             {error && (
@@ -193,7 +186,7 @@ export default function LoginPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              disabled={isLoading || !turnstileToken}
+              disabled={isLoading}
               className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-bold text-white bg-[#52616B] hover:bg-[#1E2022] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#52616B] transition-all disabled:bg-gray-400"
             >
               {isLoading ? <Loader2 className="animate-spin" /> : <LogIn size={20} />}

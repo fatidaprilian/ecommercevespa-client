@@ -40,7 +40,13 @@ Thumbs.db
 .gemini/
 .agent-context/
 .agents/
+.agent-override.md
+.agentic-backup/
+.cursor/
+.zed/
 AGENTS.md
 .cursorrules
 .windsurfrules
 .github/copilot-instructions.md
+mcp.json
+scripts/mcp-server.mjs
