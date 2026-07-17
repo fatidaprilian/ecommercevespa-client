@@ -21,6 +21,7 @@ export class HomepageBannersService {
 
   findAll() {
     return this.prisma.homePageBanner.findMany({
+      include: { brand: { select: { id: true, name: true, logoUrl: true } } },
       orderBy: {
         createdAt: 'desc',
       },
@@ -30,6 +31,7 @@ export class HomepageBannersService {
   findAllActive() {
     return this.prisma.homePageBanner.findMany({
       where: { isActive: true },
+      include: { brand: { select: { id: true, name: true, logoUrl: true } } },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -37,6 +39,7 @@ export class HomepageBannersService {
   async findOne(id: string) {
     const banner = await this.prisma.homePageBanner.findUnique({
       where: { id },
+      include: { brand: { select: { id: true, name: true, logoUrl: true } } },
     });
     if (!banner) {
       throw new NotFoundException(`Banner dengan ID ${id} tidak ditemukan.`);

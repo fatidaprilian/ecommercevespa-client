@@ -12,6 +12,7 @@ export interface Banner {
   linkUrl?: string;
   type: 'HERO' | 'MIDDLE';
   isActive: boolean;
+  brandId?: string;
 }
 
 const getActiveBanners = async (): Promise<Banner[]> => {

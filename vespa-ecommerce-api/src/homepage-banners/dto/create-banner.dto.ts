@@ -36,4 +36,8 @@ export class CreateBannerDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsString()
+  @IsOptional()
+  brandId?: string;
 }

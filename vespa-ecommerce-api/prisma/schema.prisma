@@ -104,10 +104,11 @@ model UserCategoryDiscount {
 }
 
 model Brand {
-  id       String    @id @default(cuid())
-  name     String    @unique
-  logoUrl  String?
-  products Product[]
+  id              String           @id @default(cuid())
+  name            String           @unique
+  logoUrl         String?
+  products        Product[]
+  homepageBanners HomePageBanner[]
 }
 
 model Product {
@@ -393,6 +394,8 @@ model HomePageBanner {
   linkUrl   String?
   type      BannerType
   isActive  Boolean    @default(true)
+  brandId   String?
+  brand     Brand?     @relation(fields: [brandId], references: [id])
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }

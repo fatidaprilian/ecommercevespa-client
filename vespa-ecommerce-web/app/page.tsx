@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useProducts, getProducts } from "@/hooks/use-products";
 import { useFeaturedProducts } from "@/hooks/use-featured-products"; // <--- IMPORT HOOK BARU
+import { useBanners } from "@/hooks/use-banners";
 import { Product } from "@/types";
 import { useAuthStore } from "@/store/auth";
 import api from "@/lib/api";
@@ -100,11 +101,14 @@ const BestSellerProducts = ({
     );
 };
 
-const SecondaryProducts = ({ excludeIds }: { excludeIds: string[] }) => {
+const SecondaryProducts = ({ excludeIds, brandId }: { excludeIds: string[]; brandId?: string }) => {
     const hasHydrated = useAuthStore((state) => state._hasHydrated);
-    // Use excludeIds in the query
+    // If brandId is set, filter by brand; otherwise show latest products
+    const queryParams = brandId
+        ? { sortBy: 'createdAt' as const, sortOrder: 'desc' as const, limit: 5, excludeIds, brandId: [brandId] }
+        : { sortBy: 'createdAt' as const, sortOrder: 'desc' as const, limit: 5, excludeIds };
     const { data: productsResponse, isLoading, error } = useProducts(
-        { sortBy: 'createdAt', sortOrder: 'desc', limit: 5, excludeIds },
+        queryParams,
         hasHydrated
     );
 
@@ -157,6 +161,11 @@ export default function HomePage() {
         hasHydrated
     );
 
+    // Fetch banners to get middle banner's brandId
+    const { data: banners } = useBanners();
+    const middleBanner = banners?.find((b) => b.type === 'MIDDLE');
+    const middleBrandId = middleBanner?.brandId;
+
     // 2. Compute Combined Products (Logic lifted from BestSellerProducts)
     const combinedBestSellers = useMemo(() => {
         if (!featuredProducts && !regularProductsResponse?.data) return [];
@@ -205,7 +214,7 @@ export default function HomePage() {
                 isLoading={isBestSellerLoading}
             />
             <MiddleBanner />
-            <SecondaryProducts excludeIds={bestSellerIds} />
+            <SecondaryProducts excludeIds={bestSellerIds} brandId={middleBrandId} />
         </div>
     );
 }

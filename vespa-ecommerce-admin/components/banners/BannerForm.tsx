@@ -3,15 +3,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Loader2, Save, UploadCloud, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Save, UploadCloud, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 import { createBanner, updateBanner, Banner, BannerData } from '@/services/bannerService';
+import { getBrands } from '@/services/brandService';
 import { uploadImage } from '@/services/productService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,6 +20,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 const bannerSchema = z.object({
   title: z.string().nullable().optional().transform(e => e === "" ? null : e),
@@ -27,6 +31,7 @@ const bannerSchema = z.object({
   linkUrl: z.string().nullable().optional().transform(e => e === "" ? null : e),
   type: z.enum(['HERO', 'MIDDLE']),
   isActive: z.boolean().default(true),
+  brandId: z.string().nullable().optional().transform(e => e === "" ? null : e),
 });
 
 type BannerFormValues = z.infer<typeof bannerSchema>;
@@ -39,6 +44,8 @@ export function BannerForm({ initialData }: BannerFormProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
+  const [brandSearch, setBrandSearch] = useState('');
+  const [brandOpen, setBrandOpen] = useState(false);
 
   const form = useForm<BannerFormValues>({
     resolver: zodResolver(bannerSchema),
@@ -49,8 +56,29 @@ export function BannerForm({ initialData }: BannerFormProps) {
       linkUrl: initialData?.linkUrl || '',
       type: initialData?.type || 'HERO',
       isActive: initialData?.isActive ?? true,
+      brandId: initialData?.brandId || '',
     },
   });
+
+  const watchedType = form.watch('type');
+
+  const { data: brandsResponse } = useQuery({
+    queryKey: ['brands', { page: 1, search: brandSearch }],
+    queryFn: () => getBrands({ page: 1, search: brandSearch }),
+    enabled: watchedType === 'MIDDLE',
+  });
+  const brands = brandsResponse?.data ?? [];
+
+  const selectedBrandName = (() => {
+    const currentBrandId = form.watch('brandId');
+    if (!currentBrandId) return null;
+    // Check from fetched brands list
+    const found = brands.find(b => b.id === currentBrandId);
+    if (found) return found.name;
+    // Check from initialData
+    if (initialData?.brand?.id === currentBrandId) return initialData.brand.name;
+    return null;
+  })();
 
   const mutation = useMutation({
     mutationFn: (data: BannerData) => 
@@ -141,7 +169,13 @@ export function BannerForm({ initialData }: BannerFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipe Banner</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={(value) => {
+                    field.onChange(value);
+                    // Clear brandId when switching away from MIDDLE
+                    if (value !== 'MIDDLE') {
+                      form.setValue('brandId', null);
+                    }
+                  }} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih tipe" />
@@ -156,6 +190,72 @@ export function BannerForm({ initialData }: BannerFormProps) {
                 </FormItem>
               )}
             />
+
+            {watchedType === 'MIDDLE' && (
+              <FormField
+                control={form.control}
+                name="brandId"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Merk Terkait (Opsional)</FormLabel>
+                    <Popover open={brandOpen} onOpenChange={setBrandOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={brandOpen}
+                            className={cn(
+                              "w-full max-w-sm justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {selectedBrandName ?? "Pilih merk..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full max-w-sm p-0">
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Cari merk..."
+                            value={brandSearch}
+                            onValueChange={setBrandSearch}
+                          />
+                          <CommandList>
+                            <CommandEmpty>Merk tidak ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {brands.map((brand) => (
+                                <CommandItem
+                                  key={brand.id}
+                                  value={brand.id}
+                                  onSelect={() => {
+                                    form.setValue('brandId', brand.id === field.value ? null : brand.id);
+                                    setBrandOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === brand.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {brand.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+                      Jika dipilih, produk dari merk ini akan ditampilkan di bawah banner di homepage.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             
             <FormField
               control={form.control}

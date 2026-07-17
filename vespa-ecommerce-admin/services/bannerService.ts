@@ -8,6 +8,8 @@ export interface Banner {
   linkUrl: string | null;
   type: 'HERO' | 'MIDDLE';
   isActive: boolean;
+  brandId: string | null;
+  brand?: { id: string; name: string; logoUrl?: string } | null;
 }
 
 // Tipe data ini digunakan saat membuat atau memperbarui banner.
