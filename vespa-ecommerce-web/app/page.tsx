@@ -104,7 +104,7 @@ const SecondaryProducts = ({ excludeIds }: { excludeIds: string[] }) => {
     const hasHydrated = useAuthStore((state) => state._hasHydrated);
     // Use excludeIds in the query
     const { data: productsResponse, isLoading, error } = useProducts(
-        { sortBy: 'createdAt', sortOrder: 'asc', limit: 5, excludeIds },
+        { sortBy: 'createdAt', sortOrder: 'desc', limit: 5, excludeIds },
         hasHydrated
     );
 
