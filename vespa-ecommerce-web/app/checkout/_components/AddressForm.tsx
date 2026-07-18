@@ -91,7 +91,7 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
 
             const itemsPayload = selectedCartItems.map(item => ({
                 name: item.product.name.substring(0, 49),
-                value: item.product.priceInfo?.finalPrice || item.product.price,
+                value: Math.max(1, item.product.priceInfo?.finalPrice ?? item.product.price),
                 quantity: item.quantity,
                 weight: item.product.weight || 1000
             }));
