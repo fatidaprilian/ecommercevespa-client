@@ -56,11 +56,13 @@ api.interceptors.response.use(
   // 2. ERROR HANDLER: Menangani error 401
   (error) => {
     if (error.response && error.response.status === 401) {
-      const { setAuth } = useAuthStore.getState();
+      const { isAuthenticated, setAuth } = useAuthStore.getState();
       const { clearClientCart } = useCartStore.getState();
       const { clearWishlist } = useWishlistStore.getState();
 
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      // Hanya redirect ke login jika user SEBELUMNYA sudah login (session expired).
+      // Jangan redirect jika user memang belum login (guest browsing).
+      if (isAuthenticated && typeof window !== 'undefined' && window.location.pathname !== '/login') {
         setAuth(null); 
         clearClientCart();   
         clearWishlist();     
