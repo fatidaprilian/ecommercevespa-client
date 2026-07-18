@@ -11,7 +11,10 @@ async function main() {
   // === SEED ADMIN USER (KODE ANDA YANG SUDAH ADA) ===
   // ============================================
   const saltRounds = 10;
-  const password = 'Xsv31&fhst19'; 
+  const password = process.env.ADMIN_SEED_PASSWORD; 
+  if (!password) {
+    throw new Error('ADMIN_SEED_PASSWORD wajib diisi di .env untuk menjalankan seed.');
+  }
   const hashedPassword = await bcrypt.hash(password, saltRounds);
 
   const adminUser = await prisma.user.upsert({
@@ -27,7 +30,7 @@ async function main() {
   });
 
   console.log(`Created admin user: ${adminUser.email}`);
-  console.log(`Login with password: ${password}`); 
+  console.log(`Admin user created/updated successfully.`);
 
   // ============================================
   // === SEED CMS PAGES (KODE BARU) ===

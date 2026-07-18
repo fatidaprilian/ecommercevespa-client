@@ -1,8 +1,9 @@
 // file: vespa-ecommerce-api/src/webhooks/webhooks.controller.ts
 
-import { Controller, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Logger, UseGuards } from '@nestjs/common';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { WebhooksService } from './webhooks.service';
+import { AccurateWebhookGuard } from './guards/accurate-webhook.guard';
 
 @Controller('webhooks')
 export class WebhooksController {
@@ -11,6 +12,7 @@ export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
   @Public()
+  @UseGuards(AccurateWebhookGuard)
   @Post('accurate')
   @HttpCode(HttpStatus.OK)
   async handleAccurateWebhook(@Body() payload: any) {
