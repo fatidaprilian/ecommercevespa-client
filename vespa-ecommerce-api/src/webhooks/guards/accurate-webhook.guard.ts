@@ -11,8 +11,11 @@ export class AccurateWebhookGuard implements CanActivate {
     const expected = this.configService.get<string>('ACCURATE_WEBHOOK_TOKEN');
     const received = req.query.token;
 
-    if (!expected || !received) {
-        throw new UnauthorizedException('Missing Webhook Token');
+    if (!expected) {
+        throw new UnauthorizedException('Missing Webhook Token (Not found in Server Env)');
+    }
+    if (!received) {
+        throw new UnauthorizedException('Missing Webhook Token (Not found in URL query)');
     }
 
     const a = Buffer.from(String(received));
