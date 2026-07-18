@@ -30,7 +30,7 @@ const formSchema = z.object({
     .or(z.literal(''))
     .transform(value => value === '' ? undefined : value),
 });
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.input<typeof formSchema>;
 
 interface PageEditorProps {
   slug: string;

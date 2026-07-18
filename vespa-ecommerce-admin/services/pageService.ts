@@ -1,6 +1,7 @@
 // services/pageService.ts
 import api from '@/lib/api';
-import { PaginatedBrands, PaginatedCategories } from '@/types';
+import { PaginatedBrands } from '@/services/brandService';
+import { PaginatedCategories } from '@/services/categoryService';
 
 // CMS Page Types and Functions
 export interface CmsPage {

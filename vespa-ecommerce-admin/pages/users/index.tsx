@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { MoreHorizontal, Edit, Trash2, Search, Percent, Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw, User as UserIcon, Calendar, Mail } from 'lucide-react';
 // 👇 IMPORT TOAST DARI SONNER
 import { toast } from "sonner"; 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import api from '@/lib/api';
 
 import { Button } from '@/components/ui/button';
@@ -27,12 +27,12 @@ interface User extends UserType {
     accuratePriceCategoryId?: number | null;
 }
 
-const pageVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
-const itemVariants = {
+const pageVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const itemVariants: Variants = {
   hidden: { y: 20, opacity: 0 },
   visible: { y: 0, opacity: 1, transition: { ease: 'easeOut', duration: 0.4 } },
   exit: { opacity: 0, transition: { ease: 'easeIn', duration: 0.2 } },
-};
+} as any;
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 const RoleBadge = ({ role }: { role: string }) => {
     const roleStyles: { [key: string]: string } = { ADMIN: 'bg-red-100 text-red-800', RESELLER: 'bg-blue-100 text-blue-800', MEMBER: 'bg-gray-100 text-gray-800' };
@@ -87,7 +87,7 @@ export default function UsersPage() {
   const queryFn = activeTab === 'active' ? getActiveUsers : getInactiveUsers;
   const { data: usersData, isLoading, isError, error } = useQuery<User[], Error>({
       queryKey: ['users', activeTab],
-      queryFn: queryFn,
+      queryFn: queryFn as () => Promise<User[]>,
   });
   const users = usersData;
 
@@ -95,7 +95,7 @@ export default function UsersPage() {
     if (!users) return [];
     if (!searchTerm) return users;
     const lowercasedTerm = searchTerm.toLowerCase();
-    return users.filter(user =>
+    return users.filter((user: User) =>
       (user.name?.toLowerCase() || '').includes(lowercasedTerm) ||
       user.email.toLowerCase().includes(lowercasedTerm)
     );
@@ -106,8 +106,7 @@ export default function UsersPage() {
     const startIndex = (page - 1) * ITEMS_PER_PAGE;
     return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredUsers, page]);
-
-  // 👇 LOGIKA MUTATION
+  
   const refreshCategoriesMutation = useMutation({
     mutationFn: async () => {
       const toastId = toast.loading('Menghubungkan ke Accurate...');

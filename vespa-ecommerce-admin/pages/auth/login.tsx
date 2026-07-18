@@ -52,12 +52,11 @@ export default function LoginPage() {
       // --- THE ONLY CHANGE IS HERE ---
       const response = await api.post('/auth/admin/login', values);
 
-      const { access_token } = response.data;
       if (response.status === 200) {
         toast.success(response.data?.message || 'Login successful!');
         router.push("/"); // Redirect to the admin dashboard
       } else {
-        throw new Error("Token tidak diterima dari server.");
+        throw new Error("Gagal login.");
       }
 
     } catch (err: any) {

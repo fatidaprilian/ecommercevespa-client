@@ -460,19 +460,19 @@ function OrderItems({ order }: { order: Order }) {
               <TableCell colSpan={4} className="text-right">
                 Subtotal
               </TableCell>
-              <TableCell className="text-right">{formatPrice(order.subtotal)}</TableCell>
+              <TableCell className="text-right">{formatPrice(order.subtotal ?? 0)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell colSpan={4} className="text-right">
                 Diskon
               </TableCell>
-              <TableCell className="text-right">- {formatPrice(order.discountAmount)}</TableCell>
+              <TableCell className="text-right">- {formatPrice(order.discountAmount ?? 0)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell colSpan={4} className="text-right">
                 PPN
               </TableCell>
-              <TableCell className="text-right">{formatPrice(order.taxAmount)}</TableCell>
+              <TableCell className="text-right">{formatPrice(order.taxAmount ?? 0)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell colSpan={4} className="text-right">

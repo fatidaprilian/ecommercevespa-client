@@ -34,6 +34,9 @@ export interface Order {
   orderNumber: string;
   totalAmount: number;
   shippingCost: number;
+  subtotal?: number;
+  discountAmount?: number;
+  taxAmount?: number;
   shippingAddress: string;
   destinationPostalCode?: string;
   destinationAreaId?: string;

@@ -50,8 +50,8 @@ export default function LoginPage() {
         password,
       });
 
-      // 2. Simpan token ke state (Logika Asli)
-      setAuth(null, data.access_token);
+      // 2. Simpan user ke state
+      setAuth(data.user);
 
       // 3. Invalidate query (Logika Asli)
       await queryClient.invalidateQueries();
