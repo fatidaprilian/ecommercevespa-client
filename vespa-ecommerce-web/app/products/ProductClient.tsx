@@ -467,9 +467,9 @@ export default function ProductClient() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
-          className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-10"
+          className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-10"
         >
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-4 -mx-4 px-4 w-full md:w-auto">
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 w-full lg:flex-1">
             <Button
               variant={
                 !queryParams.categoryId || queryParams.categoryId.length === 0
@@ -497,7 +497,7 @@ export default function ProductClient() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3 md:gap-4 flex-shrink-0 w-full md:w-auto justify-between md:justify-end">
+          <div className="flex items-center gap-3 md:gap-4 flex-shrink-0 w-full lg:w-auto justify-end">
             {/* <FilterPopup
               onApplyFilters={handleApplyFilters}
               currentFilters={{ categoryId: queryParams.categoryId, brandId: queryParams.brandId }}

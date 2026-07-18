@@ -5,7 +5,7 @@ import { IsArray, IsInt, IsNotEmpty, IsNumber, IsString, Min, ValidateNested } f
 
 class ItemDto {
     @IsString() @IsNotEmpty() name: string;
-    @IsNumber() @Min(1) value: number;
+    @IsNumber() @Min(0) value: number;
     @IsInt() @Min(1) quantity: number;
     @IsInt() @Min(1) weight: number;
 }

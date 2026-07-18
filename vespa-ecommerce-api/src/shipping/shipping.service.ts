@@ -155,7 +155,7 @@ export class ShippingService {
       items: items.map(item => ({
           name: item.name.substring(0, 49),
           description: "Vespa Parts",
-          value: Math.round(item.value),
+          value: Math.max(1, Math.round(item.value)),
           quantity: item.quantity,
           weight: item.weight,
           length: 10,
