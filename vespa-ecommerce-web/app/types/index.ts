@@ -98,3 +98,23 @@ export type PaginatedProducts = {
     lastPage: number;
   };
 };
+
+export type PaginatedBrands = {
+  data: Brand[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
+};
+
+export type PaginatedCategories = {
+  data: Category[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
+};

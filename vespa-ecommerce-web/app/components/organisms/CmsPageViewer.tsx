@@ -57,6 +57,10 @@ export default function CmsPageViewer({ slug }: { slug: string }) {
     );
   }
 
+  if (!page) {
+    return null;
+  }
+
   return (
     <div className="bg-white min-h-screen">
       {page.bannerImageUrl && (

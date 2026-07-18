@@ -21,7 +21,7 @@ import { useProfile } from '@/hooks/useProfile';
 export default function CheckoutPage() {
     const { cart, selectedItems, fetchCart } = useCartStore();
     // 👇 AMBIL setAuth DAN token UNTUK UPDATE STATE
-    const { isAuthenticated, setAuth, token } = useAuthStore();
+    const { isAuthenticated, setAuth } = useAuthStore();
     // 👇 AMBIL refetch DARI HOOK
     const { refetch } = useProfile();
     const router = useRouter();
@@ -49,15 +49,15 @@ export default function CheckoutPage() {
         if (isAuthenticated) {
             // 1. Ambil data terbaru dari server (Backend sudah cek DB)
             refetch().then((result) => {
-                // 2. Jika data berhasil didapat & token ada
-                if (result.data && token) {
+                // 2. Jika data berhasil didapat
+                if (result.data) {
                     // 3. PAKSA UPDATE penyimpanan browser (Store) dengan Role terbaru
                     // Ini yang bikin UI langsung berubah tanpa relogin!
-                    setAuth(result.data, token);
+                    setAuth(result.data);
                 }
             });
         }
-    }, [isAuthenticated, refetch, setAuth, token]);
+    }, [isAuthenticated, refetch, setAuth]);
 
     useEffect(() => {
         const fetchVat = async () => {

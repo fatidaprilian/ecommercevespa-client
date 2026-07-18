@@ -38,13 +38,12 @@ export default function AuthNav() {
       // Hanya jalankan jika state (dari localStorage) bilang user terautentikasi
       if (isAuthenticated) {
         try {
-          // Cek apakah data 'user' di state masih kosong, meskipun 'isAuthenticated' true
-          const token = useAuthStore.getState().token;
-          if (!useAuthStore.getState().user && token) {
-              // Panggil API untuk mendapatkan data profil sekaligus memvalidasi token
+          // Cek apakah data 'user' di state masih kosong
+          if (!useAuthStore.getState().user) {
+              // Panggil API untuk mendapatkan data profil sekaligus memvalidasi token dari cookie
               const profileRes = await api.get('/users/profile');
               // Jika berhasil, simpan data user ke state ZUSTAND
-              setAuth(profileRes.data, token);
+              setAuth(profileRes.data);
           }
 
           // Setelah memastikan user ada, ambil data keranjang dan wishlist
@@ -56,7 +55,7 @@ export default function AuthNav() {
         } catch (error: any) {
           console.error("AuthNav: Gagal sync/fetch profile:", error.message);
           // Jika gagal (misal token expired), bersihkan state
-          setAuth(null, null);
+          setAuth(null);
           clearClientCart();
           clearWishlist();
         }

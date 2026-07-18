@@ -556,7 +556,7 @@ export default function Navbar() {
                                                                 </div>
                                                             ) : (
                                                                 categories?.map(
-                                                                    (category) => {
+                                                                    (category: Category) => {
                                                                         const Icon =
                                                                             getCategoryIcon(
                                                                                 category.name,

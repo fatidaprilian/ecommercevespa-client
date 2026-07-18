@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { logoutUser } from '@/services/userService';
+import { logoutAdmin } from '@/services/userService';
 
 function cn(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
@@ -30,7 +30,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const handleLogout = async () => {
     try {
-      await logoutUser();
+      await logoutAdmin();
       toast.success('Anda berhasil logout.');
       router.push('/auth/login');
     } catch (error) {

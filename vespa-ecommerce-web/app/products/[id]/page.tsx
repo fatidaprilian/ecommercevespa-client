@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import DOMPurify from 'isomorphic-dompurify';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { ShoppingCart, Check, Minus, Plus, Package, Ruler, ArrowLeft, Heart, Search, X, ZoomIn, ZoomOut, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -80,7 +80,7 @@ const containerVariants = {
     },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
 };
@@ -557,8 +557,8 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div>
-                    {product.brand && <RelatedProducts productId={product.id} type="brand" value={product.brand.id} title={`Produk Lainnya dari ${product.brand.name}`} />}
-                    {product.category && <RelatedProducts productId={product.id} type="category" value={product.category.id} title={`Anda Mungkin Juga Suka`} />}
+                    {product.brand && <RelatedProducts productId={product.id} type="brand" title={`Produk Lainnya dari ${product.brand.name}`} />}
+                    {product.category && <RelatedProducts productId={product.id} type="category" title={`Anda Mungkin Juga Suka`} />}
                 </div>
 
                 <Separator className="my-8 lg:my-16" />

@@ -39,11 +39,11 @@ const addressSchema = z.object({
         id: z.string(), 
         label: z.string()
       },
-      { required_error: "Area harus dipilih." }
+      { message: "Area harus dipilih." }
   ),
   postalCode: z.string().min(5, "Kode pos harus 5 digit."),
   phone: z.string().regex(phoneRegex, 'Format nomor telepon tidak valid (contoh: 0812...).'),
-  isDefault: z.boolean().default(false),
+  isDefault: z.boolean(),
 });
 
 type AddressFormValues = z.infer<typeof addressSchema>;
@@ -114,7 +114,9 @@ export function AddressDialog({ initialData, onSave, onClose }: AddressDialogPro
       postalCode: data.postalCode,
       phone: data.phone,
       isDefault: data.isDefault,
+      provinceId: '',
       province,
+      cityId: '',
       city,
       districtId: data.area.id,
       district,

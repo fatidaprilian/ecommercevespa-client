@@ -13,4 +13,5 @@ export interface ManualPaymentMethod {
 
 export const getActivePaymentMethods = async (): Promise<ManualPaymentMethod[]> => {
   const { data } = await api.get('/payment-methods'); 
+  return data;
 };

@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateMyProfile } from '@/services/userService';
-import { useAuthStore } from '@/store/auth'; 
+import { useAuthStore } from '@/store/auth';
 
 const profileSchema = z.object({
   name: z.string().min(3, 'Nama minimal 3 karakter.'),
@@ -33,7 +33,7 @@ const passwordSchema = z.object({
 export default function ProfilPage() {
   const queryClient = useQueryClient();
   const { data: user, isLoading: isLoadingProfile } = useProfile();
-  
+
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: { name: '', email: '' },
@@ -42,7 +42,7 @@ export default function ProfilPage() {
   const passwordForm = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
   });
-  
+
   useEffect(() => {
     if (user) {
       profileForm.reset({ name: user.name, email: user.email });
@@ -54,9 +54,7 @@ export default function ProfilPage() {
     onSuccess: (updatedUser) => {
       toast.success("Profil berhasil diperbarui!");
       queryClient.setQueryData(['my-profile'], updatedUser);
-      
-      const currentToken = useAuthStore.getState().token;
-      useAuthStore.getState().setAuth(updatedUser, currentToken);
+      useAuthStore.getState().setAuth(updatedUser);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Gagal memperbarui profil.");
@@ -70,7 +68,7 @@ export default function ProfilPage() {
   const onPasswordSubmit = (values: z.infer<typeof passwordSchema>) => {
     console.log(values);
     toast.success("Password berhasil diubah!");
-    passwordForm.reset({currentPassword: '', newPassword: '', confirmPassword: ''});
+    passwordForm.reset({ currentPassword: '', newPassword: '', confirmPassword: '' });
   };
 
   if (isLoadingProfile) {
@@ -78,7 +76,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
@@ -86,7 +84,7 @@ export default function ProfilPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl flex items-center gap-3"><User/> Informasi Pribadi</CardTitle>
+          <CardTitle className="text-2xl flex items-center gap-3"><User /> Informasi Pribadi</CardTitle>
           <CardDescription>Perbarui nama dan alamat email Anda.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -108,7 +106,7 @@ export default function ProfilPage() {
               )} />
               <div className="flex justify-end">
                 <Button type="submit" disabled={profileMutation.isPending}>
-                  {profileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                  {profileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Simpan Perubahan
                 </Button>
               </div>
@@ -116,10 +114,10 @@ export default function ProfilPage() {
           </Form>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl flex items-center gap-3"><KeyRound/> Ganti Password</CardTitle>
+          <CardTitle className="text-2xl flex items-center gap-3"><KeyRound /> Ganti Password</CardTitle>
           <CardDescription>Pastikan Anda menggunakan password yang kuat.</CardDescription>
         </CardHeader>
         <CardContent>
