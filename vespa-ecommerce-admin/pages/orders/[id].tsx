@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Loader2,
   User,
-  Package,
   MapPin,
   Truck,
   CheckCircle,
@@ -139,17 +138,18 @@ const createShipment = async ({
 // =====================
 
 function ShipmentTracking({ order }: { order: Order }) {
-  if (!order.shipment?.trackingNumber || !order.courier) {
-    return null;
-  }
-  const courierCode = order.courier.split(' - ')[0].trim().toLowerCase();
-  const waybillId = order.shipment.trackingNumber;
+  const courierCode = order.courier ? order.courier.split(' - ')[0].trim().toLowerCase() : '';
+  const waybillId = order.shipment?.trackingNumber || '';
 
   const { data: trackingInfo, isLoading, isError } = useQuery<TrackingDetails>({
     queryKey: ['tracking', waybillId, courierCode],
     queryFn: () => getTrackingDetails(waybillId, courierCode),
     enabled: !!waybillId && !!courierCode,
   });
+
+  if (!waybillId || !order.courier) {
+    return null;
+  }
 
   // Normalize & sort events so the latest is at the bottom (for the timeline)
   const events =

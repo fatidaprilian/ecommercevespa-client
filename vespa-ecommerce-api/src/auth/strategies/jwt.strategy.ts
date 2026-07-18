@@ -34,7 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       // Extract from cookie 'auth_token', fallback to Authorization header
       jwtFromRequest: (req: Request) => {
-        let token = null;
+        let token: string | null = null;
         if (req && req.cookies) {
           token = req.cookies['auth_token'];
         }

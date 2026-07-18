@@ -53,7 +53,7 @@ export default function CategoriesClient() {
         animate="show"
         className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
       >
-        {categories?.map((cat: Category) => {
+        {categories?.map((cat: Category & { imageUrl?: string }) => {
           const Icon = categoryIcons[cat.name] || categoryIcons.default;
           const imageSrc = cat.imageUrl || `https://source.unsplash.com/400x500/?${cat.name.split(' ')[0].toLowerCase()}`;
 
