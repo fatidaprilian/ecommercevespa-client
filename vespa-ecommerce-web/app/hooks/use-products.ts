@@ -6,7 +6,7 @@ import { PaginatedProducts } from '../types';
 export interface ProductQueryParams {
   page?: number;
   limit?: number;
-  categoryId?: string;
+  categoryId?: string[];
   brandId?: string[];
   sortBy?: 'price' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
@@ -20,6 +20,8 @@ export const getProducts = async (params: ProductQueryParams): Promise<Paginated
   Object.entries(params).forEach(([key, value]) => {
     if (value != null) {
       if (key === 'brandId' && Array.isArray(value)) {
+        value.forEach(id => searchParams.append(key, id));
+      } else if (key === 'categoryId' && Array.isArray(value)) {
         value.forEach(id => searchParams.append(key, id));
       } else if (key === 'excludeIds' && Array.isArray(value)) {
         value.forEach(id => searchParams.append(key, id));

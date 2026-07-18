@@ -1,10 +1,9 @@
 'use client';
 
-import { motion } from 'framer-motion';
-// Impor ikon, 'MapPin' telah dihapus
+import { motion, Variants } from 'framer-motion';
 import { Phone, Mail, Instagram } from 'lucide-react';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -12,12 +11,12 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { y: 20, opacity: 0 },
   show: { y: 0, opacity: 1, transition: { duration: 0.5 } },
 };
 
-const slideInUp = {
+const slideInUp: Variants = {
   hidden: { y: 50, opacity: 0 },
   show: { y: 0, opacity: 1, transition: { duration: 0.7, ease: 'easeOut' } },
 };

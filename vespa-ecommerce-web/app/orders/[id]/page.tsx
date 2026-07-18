@@ -273,7 +273,6 @@ export default function OrderDetailPage() {
       case 'SHIPPED':
         return { text: 'Dikirim', color: 'bg-blue-100 text-blue-800' };
       case 'DELIVERED':
-      case 'COMPLETED':
         return { text: 'Selesai', color: 'bg-green-100 text-green-800' };
       case 'CANCELLED':
         return { text: 'Dibatalkan', color: 'bg-red-100 text-red-800' };
@@ -447,8 +446,7 @@ export default function OrderDetailPage() {
 
             {/* Tracking Pengiriman */}
             {(order.status === 'SHIPPED' ||
-              order.status === 'DELIVERED' ||
-              order.status === 'COMPLETED') && (
+              order.status === 'DELIVERED') && (
               <ShipmentTracking order={order} />
             )}
 

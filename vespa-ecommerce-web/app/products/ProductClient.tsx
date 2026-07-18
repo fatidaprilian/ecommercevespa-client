@@ -116,9 +116,6 @@ function FilterPopup({
       {
         id: '__null__',
         name: 'Lainnya (Tanpa Kategori)',
-        imageUrl: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       },
       ...baseCategories,
     ];
@@ -396,9 +393,6 @@ export default function ProductClient() {
       selected.push({
         id: '__null__',
         name: 'Lainnya (Tanpa Kategori)',
-        imageUrl: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       });
     }
     return selected;

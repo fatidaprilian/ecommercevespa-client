@@ -52,7 +52,7 @@ export default function OrdersPage() {
     queryKey: ['my-orders', page, debouncedSearchTerm],
     queryFn: () => getMyOrders({ page, search: debouncedSearchTerm }),
     enabled: isAuthenticated,
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
 
   const orders = ordersResponse?.data;
@@ -132,7 +132,7 @@ export default function OrdersPage() {
               variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
               className="space-y-6"
             >
-              {(isLoading ? Array.from({ length: 5 }) : orders)?.map((order: Order, index) => {
+              {(isLoading ? (Array.from({ length: 5 }) as Order[]) : orders)?.map((order: Order, index: number) => {
                 if (!order) { 
                     return <SkeletonCard key={index} />;
                 }
