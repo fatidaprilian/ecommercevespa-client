@@ -1,10 +1,12 @@
 // src/common/filters/http-exception.filter.ts
 
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'; // Ditambahkan HttpStatus
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: HttpException, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -32,8 +34,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exception.message || HttpStatus[status] || 'Internal server error';
     }
 
-    // Pastikan log ini muncul di console backend saat error 409 terjadi
-    console.error(`[HttpExceptionFilter] Status: ${status}, Path: ${request.url}, Message:`, message);
+    // Log using NestJS Logger (structured, without leaking to client)
+    this.logger.error(
+      `Status: ${status}, Path: ${request.method} ${request.url}, Message: ${JSON.stringify(message)}`,
+    );
 
     response.status(status).json({
       statusCode: status,

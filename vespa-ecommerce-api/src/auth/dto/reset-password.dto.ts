@@ -1,7 +1,7 @@
 // file: src/auth/dto/reset-password.dto.ts
 
 // --- TAMBAHKAN 'Length' DI SINI ---
-import { IsNotEmpty, IsString, MinLength, Length } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength, Matches, Length } from 'class-validator';
 
 export class ResetPasswordDto {
   @IsString()
@@ -11,6 +11,9 @@ export class ResetPasswordDto {
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(8, { message: 'Password baru minimal 8 karakter.' })
+  @MinLength(8, { message: 'Password minimal 8 karakter' })
+  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+    message: 'Password harus mengandung huruf besar, huruf kecil, dan angka/karakter spesial',
+  })
   password: string;
 }

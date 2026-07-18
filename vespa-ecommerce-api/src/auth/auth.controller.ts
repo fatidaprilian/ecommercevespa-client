@@ -5,13 +5,13 @@ import {
   Post,
   Body,
   UseGuards,
-  Request,
-  // Res, // Original comment: Hapus 'Res' jika tidak digunakan lagi
+  Res,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-// import { Response } from 'express'; // Original comment: Hapus 'Response' jika tidak digunakan lagi
+import { Response, Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
@@ -36,17 +36,19 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK) // Keep HttpCode OK (200)
-  async login(@Request() req) {
-    // req.user comes from LocalStrategy (which calls validateUser via AuthService)
-    const { access_token } = await this.authService.login(req.user); //
+  async login(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
+    const { access_token } = await this.authService.login(req.user as any);
 
-    // Original comment: Hapus blok kode cookie ini
-    // response.cookie('access_token', access_token, { ... });
+    res.cookie('auth_token', access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
-    // Keep original response structure
     return {
       message: 'Login berhasil',
-      access_token: access_token,
+      user: req.user,
     };
   }
   // --- End Regular User Login ---
@@ -58,12 +60,19 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('admin/login')          // New endpoint route
   @HttpCode(HttpStatus.OK)
-  async adminLogin(@Request() req) {
-    // req.user comes from AdminLocalStrategy (which calls validateAdminUser via AuthService)
-    const { access_token } = await this.authService.login(req.user); // login() method can be reused
+  async adminLogin(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
+    const { access_token } = await this.authService.login(req.user as any);
+    
+    res.cookie('auth_token', access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return {
       message: 'Admin login berhasil',
-      access_token: access_token,
+      user: req.user,
     };
   }
   // --- Akhir Endpoint Admin ---
@@ -84,17 +93,19 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async verifyEmail(
     @Body() verificationDto: EmailVerificationDto,
-    // @Res({ passthrough: true }) response: Response, // Original comment: Hapus ini
+    @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.verifyEmailToken(verificationDto); //
+    const result = await this.authService.verifyEmailToken(verificationDto);
 
-    // Original comment: Hapus blok kode cookie ini
-    // response.cookie('access_token', result.access_token, { ... });
+    res.cookie('auth_token', result.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
-    // Keep original response structure
     return {
       message: 'Verifikasi email berhasil!',
-      access_token: result.access_token,
     };
   }
   // --- End verify-email ---
@@ -144,9 +155,16 @@ export class AuthController {
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
-  async logout(/*@Res({ passthrough: true }) response: Response*/) { // Original comment: Hapus Parameter @Res
-    // Original comment: Hapus baris ini jika cookie sudah tidak digunakan sama sekali
-    // response.clearCookie('access_token');
+  async logout(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
+    const token = req.cookies?.auth_token || req.headers.authorization?.split(' ')[1];
+    if (token) {
+      await this.authService.logout(token);
+    }
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
     return { message: 'Logout berhasil' };
   }
   // --- End logout ---

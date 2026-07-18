@@ -12,6 +12,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { UsersModule } from './users/users.module';
 import { ProductsModule } from './products/products.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -135,6 +136,12 @@ import { CmsPagesModule } from './cms-pages/cms-pages.module';
       useClass: ThrottlerGuard,
     },
     // --- End Throttler Global Guard ---
+    // --- Global JWT Auth Guard ---
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    // --- End Global JWT Auth Guard ---
   ],
 })
 export class AppModule {}

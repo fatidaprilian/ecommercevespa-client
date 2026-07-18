@@ -5,21 +5,26 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UserPayload } from '../interfaces/jwt.payload';
-// Import PrismaService untuk cek database
 import { PrismaService } from '../../prisma/prisma.service';
+import { Request } from 'express';
+import { createClient, RedisClientType } from 'redis';
 
 export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
   name: string;
+  jti?: string;
+  iat?: number;
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly redisClient: RedisClientType;
+
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService, // 👈 Inject Prisma di sini
+    private readonly prisma: PrismaService,
   ) {
     const jwtSecret = configService.get<string>('JWT_SECRET');
     if (!jwtSecret) {
@@ -27,11 +32,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      // Logika ekstraksi token tetap sama sesuai request
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // Extract from cookie 'auth_token', fallback to Authorization header
+      jwtFromRequest: (req: Request) => {
+        let token = null;
+        if (req && req.cookies) {
+          token = req.cookies['auth_token'];
+        }
+        if (!token && req.headers.authorization) {
+          token = req.headers.authorization.split(' ')[1];
+        }
+        return token;
+      },
       ignoreExpiration: false,
       secretOrKey: jwtSecret,
     });
+
+    this.redisClient = createClient({
+      url: `redis://${this.configService.get<string>('REDIS_HOST')}:${this.configService.get<string>('REDIS_PORT')}`,
+      password: this.configService.get<string>('REDIS_PASSWORD'),
+    });
+    this.redisClient.connect().catch(console.error);
   }
 
   /**
@@ -39,22 +59,36 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * REVISI: Sekarang kita cek ke Database untuk mendapatkan data user terbaru.
    */
   async validate(payload: JwtPayload): Promise<UserPayload> {
-    // 👇 Query ke DB berdasarkan ID (payload.sub)
-    // Ini sangat cepat karena menggunakan Primary Key
+    // Check if token is blacklisted in Redis (H1)
+    if (payload.jti) {
+      const isBlacklisted = await this.redisClient.get(`bl_${payload.jti}`);
+      if (isBlacklisted) {
+        throw new UnauthorizedException('Token ini telah di-logout (Blacklisted).');
+      }
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: {
         id: true,
         email: true,
-        role: true, // ✨ Ambil role terbaru dari DB, bukan dari token
+        role: true, 
         name: true,
-        isActive: true, // Bonus: Cek apakah user aktif
+        isActive: true, 
+        lastPasswordResetAt: true,
       },
     });
 
-    // Jika user dihapus atau di-nonaktifkan/banned, tolak akses (401 Unauthorized)
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User tidak ditemukan atau tidak aktif.');
+    }
+
+    // Check if the token was issued before the last password reset (H2)
+    if (user.lastPasswordResetAt && payload.iat) {
+      const lastResetTimestamp = Math.floor(user.lastPasswordResetAt.getTime() / 1000);
+      if (payload.iat < lastResetTimestamp) {
+        throw new UnauthorizedException('Session kedaluwarsa karena password telah diubah.');
+      }
     }
 
     // Kembalikan data terbaru dari Database

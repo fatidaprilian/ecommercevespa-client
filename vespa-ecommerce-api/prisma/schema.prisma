@@ -53,6 +53,7 @@ model User {
   verificationTokenExpires  DateTime?
   passwordResetToken        String?
   passwordResetTokenExpires DateTime?
+  lastPasswordResetAt       DateTime?
   defaultDiscountPercentage Float                    @default(0)
   productDiscounts          UserProductDiscount[]
   categoryDiscounts         UserCategoryDiscount[]

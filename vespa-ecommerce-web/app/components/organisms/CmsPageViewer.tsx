@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Loader2, ServerCrash } from 'lucide-react';
 import Image from 'next/image';
 import api from '@/lib/api';
+import DOMPurify from 'isomorphic-dompurify';
 
 interface CmsPage {
   slug: string;
@@ -92,7 +93,7 @@ export default function CmsPageViewer({ slug }: { slug: string }) {
           <motion.div 
             variants={itemVariants}
             className="prose prose-lg max-w-none text-gray-700"
-            dangerouslySetInnerHTML={{ __html: page.content }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(page.content) }}
           />
         </motion.div>
       </div>

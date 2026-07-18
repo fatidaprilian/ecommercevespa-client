@@ -7,6 +7,7 @@ import api from '@/lib/api'; // Ensure this path points to your API client insta
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import toast from 'react-hot-toast';
 
 import { Button } from "@/components/ui/button"; // Ensure path is correct
 import {
@@ -49,15 +50,11 @@ export default function LoginPage() {
     setError(null);
     try {
       // --- THE ONLY CHANGE IS HERE ---
-      // Changed the endpoint from '/auth/login' to '/auth/admin/login'
       const response = await api.post('/auth/admin/login', values);
-      // -----------------------------
 
       const { access_token } = response.data;
-      if (access_token) {
-        // Store the token (e.g., in localStorage or context/state management)
-        localStorage.setItem('admin-token', access_token); // Or your preferred storage method
-        console.log("Admin Login: Token disimpan.");
+      if (response.status === 200) {
+        toast.success(response.data?.message || 'Login successful!');
         router.push("/"); // Redirect to the admin dashboard
       } else {
         throw new Error("Token tidak diterima dari server.");

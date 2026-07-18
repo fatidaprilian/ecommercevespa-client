@@ -14,7 +14,8 @@ import { ConfigService } from '@nestjs/config'; // Keep this import if used else
 import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import axios from 'axios'; // Keep this import if used elsewhere
+import { createClient, RedisClientType } from 'redis';
+import axios from 'axios';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { EmailService } from 'src/email/email.service';
@@ -31,7 +32,8 @@ import { AccuratePricingService } from '../accurate-pricing/accurate-pricing.ser
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly turnstileSecretKey: string | undefined; // Make optional if not always needed
+  private readonly turnstileSecretKey: string | undefined;
+  private readonly redisClient: RedisClientType;
 
   constructor(
     private usersService: UsersService,
@@ -51,6 +53,14 @@ export class AuthService {
     if (!this.turnstileSecretKey) {
         this.logger.warn('TURNSTILE_SECRET_KEY environment variable is not set. Registration CAPTCHA verification will fail.');
     }
+
+    // Initialize Redis client for token blacklist
+    this.redisClient = createClient({
+      url: `redis://${this.configService.get<string>('REDIS_HOST')}:${this.configService.get<string>('REDIS_PORT')}`,
+      password: this.configService.get<string>('REDIS_PASSWORD'),
+    });
+    this.redisClient.on('error', (err) => this.logger.error('Redis Auth Client Error', err));
+    this.redisClient.connect().catch(console.error);
   }
 
   // --- Helper function to verify Turnstile token (Keep if needed for user login/register) ---
@@ -141,6 +151,7 @@ export class AuthService {
       sub: user.id,
       role: user.role,
       name: user.name,
+      jti: crypto.randomUUID(), // Unik ID untuk token agar bisa di-blacklist
     };
     return {
       access_token: this.jwtService.sign(payload),
@@ -177,7 +188,7 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    const verificationToken = crypto.randomInt(100000, 999999).toString();
+    const verificationToken = crypto.randomBytes(3).toString('hex').toUpperCase();
     const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     // Destructure to avoid passing turnstileToken to prisma create
@@ -242,7 +253,7 @@ export class AuthService {
     if (user.emailVerified)
       throw new BadRequestException('Email sudah terverifikasi.');
 
-    const verificationToken = crypto.randomInt(100000, 999999).toString();
+    const verificationToken = crypto.randomBytes(3).toString('hex').toUpperCase();
     const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     await this.prisma.user.update({
@@ -316,7 +327,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (user) {
-        const passwordResetToken = crypto.randomInt(100000, 999999).toString();
+        const passwordResetToken = crypto.randomBytes(3).toString('hex').toUpperCase();
         const passwordResetTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
 
         await this.prisma.user.update({
@@ -383,11 +394,28 @@ export class AuthService {
         password: hashedPassword,
         passwordResetToken: null,
         passwordResetTokenExpires: null,
+        lastPasswordResetAt: new Date(), // Revoke all old sessions (H2)
       },
     });
 
     return { message: 'Password berhasil direset. Silakan login kembali.' };
   }
   // --- End resetPassword ---
+
+  // --- logout (Blacklist JTI) ---
+  async logout(token: string) {
+    try {
+      const decoded: any = this.jwtService.decode(token);
+      if (decoded && decoded.jti && decoded.exp) {
+        const remainingTime = decoded.exp - Math.floor(Date.now() / 1000);
+        if (remainingTime > 0) {
+          await this.redisClient.setEx(`bl_${decoded.jti}`, remainingTime, '1');
+          this.logger.debug(`Token ${decoded.jti} di-blacklist selama ${remainingTime} detik.`);
+        }
+      }
+    } catch (error) {
+      this.logger.error('Gagal melakukan blacklist token saat logout', error);
+    }
+  }
 
 } // End of AuthService class

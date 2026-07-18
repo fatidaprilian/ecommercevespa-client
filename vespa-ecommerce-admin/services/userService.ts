@@ -106,10 +106,9 @@ export const toggleUserActiveStatus = async (id: string): Promise<{ message: str
  * Logs out the current user (if applicable, usually handled by clearing tokens).
  * (Original logic unchanged)
  */
-export const logoutUser = async (): Promise<void> => {
-  // This might just clear local storage/state rather than calling an API endpoint
-  // Kept the original API call logic if it exists
-  // await api.post('/auth/logout');
-  // Usually, you'd clear the token storage here:
-  localStorage.removeItem('admin-token'); // Assuming this is where you store it
+export const logoutAdmin = () => {
+  // Token clearance is now handled via API response cookies (res.clearCookie in backend)
+  // Just optionally hit the /auth/logout endpoint if it exists
+  api.post('/auth/logout').catch(() => {});
+  window.location.href = '/auth/login';
 };

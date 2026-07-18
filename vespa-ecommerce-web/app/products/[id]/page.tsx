@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import DOMPurify from 'isomorphic-dompurify';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Check, Minus, Plus, Package, Ruler, ArrowLeft, Heart, Search, X, ZoomIn, ZoomOut, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -541,7 +542,7 @@ export default function ProductDetailPage() {
                         <div className="prose prose-sm sm:prose-base lg:prose-lg text-gray-700 max-w-full break-words">
                             {product.description ? (
                                 <div className="w-full overflow-x-auto">
-                                    <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: product.description }} />
+                                    <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }} />
                                 </div>
                             ) : (
                                 <p>Tidak ada deskripsi untuk produk ini.</p>

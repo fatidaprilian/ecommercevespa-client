@@ -55,12 +55,8 @@ const copyToClipboard = (text: string, label: string) => {
 };
 
 function ShipmentTracking({ order }: { order: Order }) {
-  if (!order.shipment?.trackingNumber || !order.courier) {
-    return null;
-  }
-
-  const courierCode = order.courier.split(' - ')[0].trim().toLowerCase();
-  const waybillId = order.shipment.trackingNumber;
+  const courierCode = order.courier?.split(' - ')[0].trim().toLowerCase() || '';
+  const waybillId = order.shipment?.trackingNumber || '';
 
   const {
     data: trackingInfo,
@@ -71,6 +67,10 @@ function ShipmentTracking({ order }: { order: Order }) {
     queryFn: () => getTrackingDetails(waybillId, courierCode),
     enabled: !!waybillId && !!courierCode,
   });
+
+  if (!waybillId || !order.courier) {
+    return null;
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

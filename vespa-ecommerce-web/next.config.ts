@@ -31,8 +31,8 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96],
     
     // Support SVG Brand
-    dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // dangerouslyAllowSVG is no longer recommended unless properly sanitized.
+    // contentSecurityPolicy is removed.
 
     remotePatterns: [
       {
@@ -74,13 +74,7 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 };
 
 export default nextConfig;
