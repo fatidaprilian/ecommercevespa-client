@@ -11,7 +11,7 @@ import {
   EyeOff, Eye, X 
 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { toast } from "sonner";
 
 import api from '@/lib/api';
@@ -45,7 +45,7 @@ const pageVariants = {
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { y: 20, opacity: 0 },
   visible: { y: 0, opacity: 1, transition: { ease: 'easeOut', duration: 0.4 } },
   exit: { opacity: 0, transition: { ease: 'easeIn', duration: 0.2 } },

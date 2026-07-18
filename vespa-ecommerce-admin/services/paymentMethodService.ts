@@ -8,6 +8,8 @@ export interface PaymentMethod {
   accountNumber: string;
   logoUrl?: string;
   isActive: boolean;
+  accurateBankNo?: string;
+  accurateBankName?: string;
 }
 
 export type PaymentMethodData = Omit<PaymentMethod, 'id'>;
