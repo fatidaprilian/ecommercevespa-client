@@ -32,11 +32,11 @@ const addressSchema = z.object({
   street: z.string().min(10, "Alamat jalan lengkap minimal 10 karakter."),
   area: z.object(
       { id: z.string(), label: z.string() },
-      { required_error: "Area harus dipilih." }
+      { message: "Area harus dipilih." }
   ),
   postalCode: z.string().min(5, "Kode pos harus 5 digit."),
   phone: z.string().regex(phoneRegex, 'Format nomor telepon tidak valid.'),
-  isDefault: z.boolean().default(false),
+  isDefault: z.boolean(),
 });
 
 type AddressFormValues = z.infer<typeof addressSchema>;

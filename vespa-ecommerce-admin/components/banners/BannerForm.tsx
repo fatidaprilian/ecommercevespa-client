@@ -30,7 +30,7 @@ const bannerSchema = z.object({
   imageUrl: z.string().url('URL Gambar tidak valid.').min(1, 'Gambar wajib di-upload.'),
   linkUrl: z.string().nullable().transform(e => e === "" ? null : e),
   type: z.enum(['HERO', 'MIDDLE']),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
   brandId: z.string().nullable().transform(e => e === "" ? null : e),
 });
 
