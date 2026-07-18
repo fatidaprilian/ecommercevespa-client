@@ -25,13 +25,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 
 const bannerSchema = z.object({
-  title: z.string().nullable().optional().transform(e => e === "" ? null : e),
-  subtitle: z.string().nullable().optional().transform(e => e === "" ? null : e),
+  title: z.string().nullable().transform(e => e === "" ? null : e),
+  subtitle: z.string().nullable().transform(e => e === "" ? null : e),
   imageUrl: z.string().url('URL Gambar tidak valid.').min(1, 'Gambar wajib di-upload.'),
-  linkUrl: z.string().nullable().optional().transform(e => e === "" ? null : e),
+  linkUrl: z.string().nullable().transform(e => e === "" ? null : e),
   type: z.enum(['HERO', 'MIDDLE']),
   isActive: z.boolean().default(true),
-  brandId: z.string().nullable().optional().transform(e => e === "" ? null : e),
+  brandId: z.string().nullable().transform(e => e === "" ? null : e),
 });
 
 type BannerFormValues = z.infer<typeof bannerSchema>;

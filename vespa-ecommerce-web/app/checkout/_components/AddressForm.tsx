@@ -51,13 +51,14 @@ export function AddressForm({ onShippingSelect, selectedAddress, setSelectedAddr
     const { data: addresses, isLoading: isLoadingAddresses } = useQuery({
         queryKey: ['addresses'],
         queryFn: getAddresses,
-        onSuccess: (data) => {
-            if (!selectedAddress && Array.isArray(data) && data.length > 0) {
-                const defaultAddress = data.find(addr => addr.isDefault) || data[0];
-                setSelectedAddress(defaultAddress);
-            }
-        }
     });
+
+    useEffect(() => {
+        if (addresses && !selectedAddress && Array.isArray(addresses) && addresses.length > 0) {
+            const defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0];
+            setSelectedAddress(defaultAddress);
+        }
+    }, [addresses, selectedAddress, setSelectedAddress]);
     
     useEffect(() => {
         const fetchShippingCosts = async () => {
