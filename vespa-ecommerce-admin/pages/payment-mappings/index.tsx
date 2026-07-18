@@ -93,7 +93,7 @@ function PaymentMappingForm({ mapping, onClose }: { mapping?: PaymentMapping; on
 
   const onSubmit = (data: FormValues) => {
     const [no, name] = data.accurateBankData.split('|');
-    const payload = {
+    const payload: any = {
         ...data,
         accurateBankNo: no,
         accurateBankName: name,

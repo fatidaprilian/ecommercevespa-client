@@ -44,7 +44,7 @@ export default function NewProductPage() {
   const { data: brandsResponse, isLoading: isLoadingBrands } = useQuery({ queryKey: ['brands'], queryFn: () => getBrands() });
 
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productFormSchema),
+    resolver: zodResolver(productFormSchema) as any,
     defaultValues: { name: '', sku: '', price: 0, stock: 0, weight: 1000, description: '', piaggioCode: '', models: '', categoryId: '', brandId: '', images: [] },
   });
 

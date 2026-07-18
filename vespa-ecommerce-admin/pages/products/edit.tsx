@@ -40,7 +40,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
   const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productFormSchema),
+    resolver: zodResolver(productFormSchema) as any,
     defaultValues: {
       name: initialData.name || '',
       sku: initialData.sku || '',

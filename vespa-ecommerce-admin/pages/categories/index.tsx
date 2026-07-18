@@ -127,7 +127,7 @@ export default function CategoriesPage() {
                     <motion.tr variants={itemVariants}>
                       <TableCell colSpan={2} className="text-center h-24 text-red-500">{(error as Error).message}</TableCell> {/* colSpan diubah ke 2 */}
                     </motion.tr>
-                  ) : categories?.length > 0 ? (
+                  ) : categories && categories.length > 0 ? (
                     categories.map((category) => (
                       <motion.tr key={category.id} variants={itemVariants}>
                         {/* <TableCell>

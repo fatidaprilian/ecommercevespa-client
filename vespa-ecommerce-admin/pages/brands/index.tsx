@@ -111,7 +111,7 @@ export default function BrandsPage() {
                     <motion.tr variants={itemVariants}>
                       <TableCell colSpan={3} className="text-center h-24 text-red-500">{(error as Error).message}</TableCell>
                     </motion.tr>
-                  ) : brands?.length > 0 ? (
+                  ) : brands && brands.length > 0 ? (
                     brands.map((brand) => (
                       <motion.tr key={brand.id} variants={itemVariants}>
                         <TableCell>

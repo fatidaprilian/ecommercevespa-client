@@ -15,7 +15,11 @@ export interface Product {
   images?: { url: string }[];
   createdAt: string;
   updatedAt: string;
-  isVisible: boolean; 
+  isVisible: boolean;
+  isFeatured?: boolean;
+  category?: any;
+  piaggioCode?: string;
+  models?: string;
 }
 
 export interface PaginatedProducts {

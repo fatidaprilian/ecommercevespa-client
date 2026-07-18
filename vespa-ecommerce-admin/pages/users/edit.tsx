@@ -52,7 +52,7 @@ function EditUserForm({ user }: { user: User }) {
     const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
     const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(formSchema) as any,
         defaultValues: {
             name: user.name,
             email: user.email,
@@ -82,7 +82,7 @@ function EditUserForm({ user }: { user: User }) {
     }, []);
 
     const mutation = useMutation({
-        mutationFn: (values: Omit<FormValues, 'email'>) => updateUser(id as string, values),
+        mutationFn: (values: any) => updateUser(id as string, values),
         onSuccess: () => {
             toast.success('Data pengguna berhasil diperbarui!');
             queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -97,10 +97,10 @@ function EditUserForm({ user }: { user: User }) {
     const onSubmit = (values: FormValues) => {
         const { email, ...updateData } = values;
         
-        if (!updateData.accurateCustomerNo) updateData.accurateCustomerNo = null;
-        if (!updateData.accuratePriceCategoryId) updateData.accuratePriceCategoryId = null;
+        if (!updateData.accurateCustomerNo) (updateData as any).accurateCustomerNo = null;
+        if (!updateData.accuratePriceCategoryId) (updateData as any).accuratePriceCategoryId = null;
         
-        mutation.mutate(updateData);
+        mutation.mutate(updateData as any);
     };
 
     return (

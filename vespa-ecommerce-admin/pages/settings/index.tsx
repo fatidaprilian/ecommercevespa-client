@@ -433,13 +433,16 @@ export default function SettingsPage() {
         queryKey: ['settings'],
         queryFn: getAllSettings,
         refetchOnWindowFocus: false,
-        onSuccess: (data) => {
-            const currentPostalCode = data.find(s => s.key === 'BITESHIP_ORIGIN_POSTAL_CODE')?.value;
+    });
+
+    useEffect(() => {
+        if (allSettings) {
+            const currentPostalCode = allSettings.find(s => s.key === 'BITESHIP_ORIGIN_POSTAL_CODE')?.value;
             if (currentPostalCode) {
                 setOriginPostalCode(currentPostalCode);
             }
         }
-    });
+    }, [allSettings]);
 
     const currentOriginLabel = allSettings?.find(s => s.key === 'BITESHIP_ORIGIN_AREA_LABEL')?.value;
 
