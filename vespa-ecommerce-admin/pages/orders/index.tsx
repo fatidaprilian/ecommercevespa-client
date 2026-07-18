@@ -1,7 +1,7 @@
 // file: vespa-ecommerce-admin/pages/orders/index.tsx
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Eye, Search, ChevronLeft, ChevronRight, Loader2, MoreHorizontal, Edit } from 'lucide-react';
@@ -70,7 +70,7 @@ export default function OrdersPage() {
   } = useQuery<PaginatedOrders, Error>({
     queryKey: ['orders', page, debouncedSearchTerm],
     queryFn: () => getOrders({ page, search: debouncedSearchTerm }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const orders = ordersResponse?.data;

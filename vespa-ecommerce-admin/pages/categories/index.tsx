@@ -1,7 +1,7 @@
 // pages/categories/index.tsx
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
@@ -43,7 +43,7 @@ export default function CategoriesPage() {
   const { data: categoriesResponse, isLoading, isError, error } = useQuery<PaginatedCategories, Error>({
     queryKey: ['categories', page, debouncedSearchTerm],
     queryFn: () => getCategories({ page: page, search: debouncedSearchTerm }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const categories = categoriesResponse?.data;

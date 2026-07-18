@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -97,7 +97,7 @@ function DefaultDiscountForm({ userId }: { userId: string }) {
     });
 
     const form = useForm<DefaultDiscountFormValues>({
-        resolver: zodResolver(defaultDiscountSchema),
+        resolver: zodResolver(defaultDiscountSchema) as any,
         defaultValues: { defaultDiscountPercentage: 0 },
     });
 
@@ -156,7 +156,7 @@ function CategoryDiscountSection({ userId }: { userId: string }) {
     const { data: discountsData, isLoading } = useQuery({
         queryKey: ['discounts', 'categories', userId, page],
         queryFn: () => getDiscounts(userId, page, 5),
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
     
     const mutation = useMutation({
@@ -224,7 +224,7 @@ function ProductDiscountSection({ userId }: { userId: string }) {
     const { data: discountsData, isLoading } = useQuery({
         queryKey: ['discounts', 'products', userId, page],
         queryFn: () => getDiscounts(userId, page, 5),
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
     
     const mutation = useMutation({
@@ -284,7 +284,7 @@ function ProductDiscountSection({ userId }: { userId: string }) {
 
 function SetDiscountDialog({ isOpen, onClose, itemName, onSubmit }: { isOpen: boolean, onClose: () => void, itemName: string, onSubmit: (discount: number) => void }) {
     const form = useForm<SetDiscountFormValues>({
-        resolver: zodResolver(setDiscountSchema),
+        resolver: zodResolver(setDiscountSchema) as any,
         defaultValues: { discountPercentage: 10 },
     });
     
@@ -343,7 +343,7 @@ function CategoryPicker({ onSelect }: { onSelect: (category: Category) => void }
 
     const { data: categoriesResponse, isLoading } = useQuery<PaginatedCategories, Error>({
         queryKey: ['categories', 1, debouncedSearchTerm],
-        queryFn: () => getCategories({ page: 1, search: debouncedSearchTerm, limit: 20 }),
+        queryFn: () => getCategories({ page: 1, search: debouncedSearchTerm }),
     });
     const categories = categoriesResponse?.data;
 
