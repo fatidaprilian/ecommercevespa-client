@@ -33,7 +33,7 @@ const HeroCarousel = () => {
   if (isLoading) {
     return (
       <section className="w-full relative overflow-hidden">
-        <Skeleton className="w-full h-56 md:h-96 lg:h-[500px]" />
+        <Skeleton className="w-full aspect-[16/9] md:aspect-[21/9] lg:aspect-[3/1] max-w-[80%] mx-auto" />
       </section>
     );
   }
@@ -49,7 +49,7 @@ const HeroCarousel = () => {
           {displayItems.map((item, index) => (
             <CarouselItem key={`${item.id}-${index}`} className="pl-0 basis-full md:basis-[85%] lg:basis-[80%]">
               <Link href={item.linkUrl || '#'}>
-                <div className="relative w-full h-56 md:h-96 lg:h-[500px]">
+                <div className="relative w-full aspect-[16/9] md:aspect-[21/9] lg:aspect-[3/1]">
                   <Image
                     src={item.imageUrl}
                     alt={item.title || 'Promotional Banner'}
