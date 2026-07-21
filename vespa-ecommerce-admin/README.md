@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vespa Ecommerce Admin (Dashboard)
 
-## Getting Started
+The frontend application for the Admin Dashboard. This is where administrators can manage products, view orders, handle static content (CMS), and monitor sales statistics. It is built using **Next.js (Pages Router)**.
 
-First, run the development server:
+## Core Technologies
 
+- **Framework:** [Next.js](https://nextjs.org/) (Pages Router)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **UI Components:** [Radix UI](https://www.radix-ui.com/)
+- **Rich Text Editor:** [Tiptap](https://tiptap.dev/) (For CMS page management)
+- **Data Fetching:** TanStack React Query / Axios
+- **Form & Validation:** React Hook Form + Zod
+- **Authentication Management:** JS-Cookie
+
+---
+
+## Main Directory Structure
+
+This project utilizes the Next.js **Pages Router** architecture.
+
+- `pages/` - Every file in this directory automatically becomes a route (e.g., `pages/auth/login.tsx` maps to `/auth/login`).
+  - `pages/api/` - (Optional) Next.js built-in API routes.
+- `components/` - User interface components. Many of these are built on top of Radix UI primitives.
+  - `components/settings/` - Contains complex components such as the `PageEditor` (Tiptap).
+- `lib/` - Contains utility functions, custom formatters, and helpers.
+- `services/` - Contains files handling API calls and Axios instances configured to communicate with the main backend.
+- `public/` - Static assets.
+
+---
+
+## Development Guide
+
+### 1. System Prerequisites
+- Node.js v22+
+- The Backend API (`vespa-ecommerce-api`) must be running. Ensure that the API has CORS enabled for the admin port (which defaults to `3003`).
+
+### 2. Environment Configuration (`.env.local`)
+Create or copy `.env.local`:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Key Variables:**
+- `NEXT_PUBLIC_API_URL`: The URL for the main backend API (example: `http://localhost:3001/api/v1`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Running the Application
+```bash
+# Install dependencies
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Development Server (using Turbopack)
+npm run dev
 
-## Learn More
+# Production Build & Start
+npm run build
+npm run start
+```
+By default, the Admin panel will run at `http://localhost:3003` (this port is specified in the `dev` script inside `package.json` using the `-p 3003` flag).
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Authentication
+The Admin Dashboard is integrated with the backend API. Upon successful login, the authorization token is saved using `js-cookie` and automatically attached to every outgoing request via Axios Interceptors located in the `services/` directory.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Important: If you log in using the default admin account (provided by the backend seeding process), make sure to change the password immediately after deployment for security reasons.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Content Management System (CMS)
+This application includes a Rich Text editor powered by **Tiptap**. This feature is utilized on pages like "About Us", "Terms & Conditions", and "Privacy Policy", allowing administrators to manage content that is directly rendered on the Storefront application.
