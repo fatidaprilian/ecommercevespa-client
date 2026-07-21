@@ -10,6 +10,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  CarouselDots,
 } from '@/components/ui/carousel';
 import { useBanners } from '@/hooks/use-banners';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -81,8 +82,9 @@ const HeroCarousel = () => {
             </CarouselItem>
           ))}
         </CarouselContent>
-        <CarouselPrevious className="absolute top-1/2 -translate-y-1/2 left-4 md:left-8 flex text-white border-white/30 bg-black/20 hover:bg-black/40" />
-        <CarouselNext className="absolute top-1/2 -translate-y-1/2 right-4 md:right-8 flex text-white border-white/30 bg-black/20 hover:bg-black/40" />
+        <CarouselPrevious className="hidden md:flex absolute top-1/2 -translate-y-1/2 left-4 md:left-8 text-white border-white/30 bg-black/20 hover:bg-black/40" />
+        <CarouselNext className="hidden md:flex absolute top-1/2 -translate-y-1/2 right-4 md:right-8 text-white border-white/30 bg-black/20 hover:bg-black/40" />
+        <CarouselDots className="absolute bottom-4 left-0 right-0 z-10" />
       </Carousel>
     </section>
   );
