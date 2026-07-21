@@ -48,7 +48,7 @@ const HeroCarousel = () => {
       <Carousel opts={{ loop: true, align: 'center' }} className="w-full">
         <CarouselContent>
           {displayItems.map((item, index) => (
-            <CarouselItem key={`${item.id}-${index}`} className="pl-0 basis-full">
+            <CarouselItem key={`${item.id}-${index}`} className="pl-0 basis-full max-w-[1206px]">
               <Link href={item.linkUrl || '#'}>
                 <div className="relative w-full aspect-[3/1]">
                   <Image
@@ -82,9 +82,13 @@ const HeroCarousel = () => {
             </CarouselItem>
           ))}
         </CarouselContent>
-        <CarouselPrevious className="hidden md:flex absolute top-1/2 -translate-y-1/2 left-4 md:left-8 text-white border-white/30 bg-black/20 hover:bg-black/40" />
-        <CarouselNext className="hidden md:flex absolute top-1/2 -translate-y-1/2 right-4 md:right-8 text-white border-white/30 bg-black/20 hover:bg-black/40" />
-        <CarouselDots className="absolute bottom-4 left-0 right-0 z-10" />
+        <div className="absolute inset-0 pointer-events-none flex justify-center">
+          <div className="relative w-full max-w-[1206px] h-full pointer-events-none">
+            <CarouselPrevious className="pointer-events-auto hidden md:flex absolute top-1/2 -translate-y-1/2 left-4 text-white border-white/30 bg-black/20 hover:bg-black/40" />
+            <CarouselNext className="pointer-events-auto hidden md:flex absolute top-1/2 -translate-y-1/2 right-4 text-white border-white/30 bg-black/20 hover:bg-black/40" />
+            <CarouselDots className="pointer-events-auto absolute bottom-4 left-0 right-0 z-10" />
+          </div>
+        </div>
       </Carousel>
     </section>
   );
