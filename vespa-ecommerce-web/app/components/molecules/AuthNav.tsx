@@ -63,6 +63,16 @@ export default function AuthNav() {
          // Bersihkan state jika tidak terautentikasi setelah hidrasi
          clearClientCart();
          clearWishlist();
+         
+         // PATCH: Pembersih Otomatis (Auto-Cleaner) untuk bug cookie nyangkut.
+         // Jika frontend mengira user adalah guest, panggil backend logout SATU KALI
+         // untuk memastikan cookie lama yang tertinggal benar-benar mati.
+         if (typeof window !== 'undefined' && !localStorage.getItem('cookie_cleared_v1')) {
+           api.post('/auth/logout').catch(() => {});
+           localStorage.setItem('cookie_cleared_v1', 'true');
+           queryClient.clear(); // Bersihkan cache harga lama
+           console.log("Auto-cleaner: Sisa cookie lama telah dibersihkan.");
+         }
       }
     };
 
