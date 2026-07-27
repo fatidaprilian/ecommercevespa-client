@@ -89,6 +89,7 @@ export class AuthController {
 
   // --- verify-email (Original logic) ---
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(
@@ -113,6 +114,7 @@ export class AuthController {
 
   // --- resend-verification (Original logic) ---
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)
   async resendVerificationEmail(@Body() resendDto: ResendVerificationDto) {
@@ -123,6 +125,7 @@ export class AuthController {
 
   // --- forgot-password (Original logic) ---
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
@@ -133,6 +136,7 @@ export class AuthController {
 
   // --- validate-reset-token (Original logic) ---
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('validate-reset-token')
   @HttpCode(HttpStatus.OK)
   async validateResetToken(@Body() validateTokenDto: ValidateResetTokenDto) {
@@ -143,6 +147,7 @@ export class AuthController {
 
   // --- reset-password (Original logic) ---
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {

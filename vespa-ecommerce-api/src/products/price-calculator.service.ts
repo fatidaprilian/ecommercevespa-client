@@ -20,7 +20,7 @@ export class PriceCalculatorService {
       
       const applicableTiers = product.priceTiers
         .filter((tier) => tier.accuratePriceCategoryId === accuratePriceCategoryId)
-        .sort((a, b) => (b.name || '').localeCompare(a.name || '')); // Urutkan terbaru
+        .sort((a, b) => (b.name || '').localeCompare(a.name || '', undefined, { numeric: true })); // Urutkan terbaru dengan natural sort
 
       // Ambil tier terbaru (indeks 0)
       if (applicableTiers.length > 0) {
@@ -44,7 +44,7 @@ export class PriceCalculatorService {
             (!rule.startDate || new Date(rule.startDate) <= now)
         )
         // (Ini sudah benar dari fix kita sebelumnya)
-        .sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+        .sort((a, b) => (b.name || '').localeCompare(a.name || '', undefined, { numeric: true }));
 
 
       // Ambil SATU rule terbaru (indeks 0 setelah sorting)
@@ -55,6 +55,8 @@ export class PriceCalculatorService {
           finalPrice -= finalPrice * (Number(latestRule.discountValue) / 100);
         } else if (latestRule.discountType === 'FIXED_DISCOUNT') {
           finalPrice -= Number(latestRule.discountValue);
+        } else if (latestRule.discountType === 'FIXED_PRICE') {
+          finalPrice = Number(latestRule.discountValue);
         }
       }
     }
