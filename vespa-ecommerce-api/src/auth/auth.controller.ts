@@ -23,6 +23,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ValidateResetTokenDto } from './dto/validate-reset-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AdminLocalAuthGuard } from './guards/admin-local-auth.guard'; // <-- Import Guard Admin
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { AuthenticatedRequest } from './interfaces/authenticated-request.interface'; // Adjust path if needed
 // LoginDto might be needed if you create a separate AdminLoginDto
 // import { LoginDto } from './dto/login.dto';
 
@@ -156,6 +158,17 @@ export class AuthController {
   }
   // --- End reset-password ---
 
+  // --- change-password ---
+  @Post('change-password')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(req.user.id, changePasswordDto);
+  }
+  // --- End change-password ---
 
   // --- logout (Updated logic to support Admin and Web separation) ---
   @Post('logout')

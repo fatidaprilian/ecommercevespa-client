@@ -144,6 +144,33 @@ export class AuthService {
   }
   // --- Akhir Metode Baru ---
 
+  // --- Change Password ---
+  async changePassword(userId: string, changePasswordDto: any) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User tidak ditemukan.');
+    }
+
+    const isPasswordValid = await bcrypt.compare(changePasswordDto.oldPassword, user.password);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Password lama salah.');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, salt);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { message: 'Password berhasil diubah.' };
+  }
+  // --- End Change Password ---
+
   // --- login (Original logic) ---
   async login(user: User) {
     const payload = {
