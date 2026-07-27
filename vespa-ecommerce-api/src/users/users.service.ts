@@ -117,6 +117,12 @@ export class UsersService {
           const resellerCategoryId = this.configService.get('ACCURATE_RESELLER_CATEGORY_ID');
           if (resellerCategoryId) {
             categoryIdToSync = Number(resellerCategoryId);
+            
+            // FIX: Simpan juga ke database lokal!
+            await this.prisma.user.update({
+              where: { id },
+              data: { accuratePriceCategoryId: categoryIdToSync },
+            });
           }
         }
         // Prioritas 3: Pakai kategori existing di database (kalau ada)
@@ -259,5 +265,60 @@ export class UsersService {
       },
     });
     return updatedUser;
+  }
+
+  async syncAllResellerCategories() {
+    const users = await this.prisma.user.findMany({
+      where: {
+        role: Role.RESELLER,
+        accurateCustomerNo: { not: null },
+      },
+      select: {
+        id: true,
+        accurateCustomerNo: true,
+        accuratePriceCategoryId: true,
+      },
+    });
+
+    let successCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    for (const user of users) {
+      if (!user.accuratePriceCategoryId && user.accurateCustomerNo) {
+        try {
+          const result = await this.accuratePricingService.getCustomerCategoryFromAccurate(
+            user.accurateCustomerNo,
+          );
+
+          if (result.categoryId) {
+            await this.prisma.user.update({
+              where: { id: user.id },
+              data: { accuratePriceCategoryId: result.categoryId },
+            });
+            successCount++;
+            this.logger.log(`Synced category for user ${user.id} -> ${result.categoryName}`);
+          } else {
+            failedCount++;
+          }
+        } catch (error) {
+          failedCount++;
+          errors.push(`Gagal sync user ${user.id}: ${error.message}`);
+          this.logger.error(`Error syncing user ${user.id}: ${error.message}`);
+        }
+        // Jeda kecil agar tidak kena rate limit Accurate
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+
+    return {
+      success: true,
+      message: `Bulk sync selesai. Sukses diperbarui: ${successCount}, Gagal/Skip: ${failedCount}`,
+      details: {
+        successCount,
+        failedCount,
+        errors,
+      },
+    };
   }
 }

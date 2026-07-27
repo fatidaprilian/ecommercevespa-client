@@ -130,6 +130,17 @@ export class UsersController {
   }
 
   /**
+   * Sync kategori semua user reseller (Bulk Sync)
+   * Endpoint: PATCH /users/sync-all-categories
+   */
+  @Patch('sync-all-categories')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async syncAllResellerCategories() {
+    return this.usersService.syncAllResellerCategories();
+  }
+
+  /**
    * Force reset customer category ke default (emergency fix untuk kategori invalid)
    * Endpoint: PATCH /users/:id/force-reset-category
    */

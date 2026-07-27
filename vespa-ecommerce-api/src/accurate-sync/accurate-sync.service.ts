@@ -1256,10 +1256,13 @@ export class AccurateSyncService {
       this.logger.log(
         `Pelanggan ditemukan: ${foundCustomer.customerNo}. Memastikan data lokal sinkron.`,
       );
-      if (user.accurateCustomerNo !== foundCustomer.customerNo) {
+      if (user.accurateCustomerNo !== foundCustomer.customerNo || (foundCustomer.priceCategoryId && user.accuratePriceCategoryId !== foundCustomer.priceCategoryId)) {
         await this.prisma.user.update({
           where: { id: user.id },
-          data: { accurateCustomerNo: foundCustomer.customerNo },
+          data: { 
+            accurateCustomerNo: foundCustomer.customerNo,
+            ...(foundCustomer.priceCategoryId ? { accuratePriceCategoryId: foundCustomer.priceCategoryId } : {})
+          },
         });
       }
       return foundCustomer;

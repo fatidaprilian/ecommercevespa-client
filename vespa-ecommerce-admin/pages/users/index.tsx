@@ -181,6 +181,31 @@ export default function UsersPage() {
     },
   });
 
+  const syncAllCategoriesMutation = useMutation({
+    mutationFn: async () => {
+      const toastId = toast.loading('Memulai proses sinkronisasi massal...');
+      try {
+        const response = await api.patch('/users/sync-all-categories');
+        return { toastId, data: response.data };
+      } catch (e) {
+        toast.dismiss(toastId);
+        throw e;
+      }
+    },
+    onSuccess: ({ toastId, data }) => {
+      if (data.success) {
+        toast.success(data.message, { id: toastId });
+        queryClient.invalidateQueries({ queryKey: ['users', activeTab] });
+      } else {
+        toast.warning(data.message, { id: toastId });
+      }
+    },
+    onError: (err: any) => {
+      toast.dismiss();
+      toast.error(err.response?.data?.message || 'Gagal sinkronisasi massal dari Accurate');
+    },
+  });
+
   const handleSyncCategory = (userId: string) => {
     syncCategoryMutation.mutate(userId);
   };
@@ -195,16 +220,28 @@ export default function UsersPage() {
             <p className="text-muted-foreground">Kelola pengguna dan peran akses mereka.</p>
          </div>
          
-         <Button 
-            variant="outline" 
-            onClick={() => refreshCategoriesMutation.mutate()}
-            disabled={refreshCategoriesMutation.isPending}
-            title="Ambil ulang daftar Kategori Penjualan terbaru dari Accurate"
-            className={`w-full md:w-auto ${refreshCategoriesMutation.isPending ? "opacity-70 cursor-not-allowed" : ""}`}
-         >
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshCategoriesMutation.isPending ? 'animate-spin text-primary' : ''}`} />
-            {refreshCategoriesMutation.isPending ? 'Sedang Sinkron...' : 'Refresh Kategori'}
-         </Button>
+         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+           <Button 
+              variant="default" 
+              onClick={() => syncAllCategoriesMutation.mutate()}
+              disabled={syncAllCategoriesMutation.isPending}
+              title="Sinkronkan kategori otomatis untuk semua reseller yang belum punya kategori"
+              className={`w-full sm:w-auto ${syncAllCategoriesMutation.isPending ? "opacity-70 cursor-not-allowed" : ""}`}
+           >
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncAllCategoriesMutation.isPending ? 'animate-spin' : ''}`} />
+              {syncAllCategoriesMutation.isPending ? 'Sedang Sync...' : 'Sync Semua Kategori'}
+           </Button>
+           <Button 
+              variant="outline" 
+              onClick={() => refreshCategoriesMutation.mutate()}
+              disabled={refreshCategoriesMutation.isPending}
+              title="Ambil ulang daftar Kategori Penjualan terbaru dari Accurate"
+              className={`w-full sm:w-auto ${refreshCategoriesMutation.isPending ? "opacity-70 cursor-not-allowed" : ""}`}
+           >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshCategoriesMutation.isPending ? 'animate-spin text-primary' : ''}`} />
+              {refreshCategoriesMutation.isPending ? 'Sedang Sinkron...' : 'Refresh Kategori'}
+           </Button>
+         </div>
       </motion.div>
 
       <motion.div variants={itemVariants}>
