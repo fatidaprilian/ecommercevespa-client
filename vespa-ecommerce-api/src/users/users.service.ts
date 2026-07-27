@@ -270,8 +270,8 @@ export class UsersService {
   async syncAllResellerCategories() {
     const users = await this.prisma.user.findMany({
       where: {
-        role: Role.RESELLER,
         accurateCustomerNo: { not: null },
+        accuratePriceCategoryId: null,
       },
       select: {
         id: true,
