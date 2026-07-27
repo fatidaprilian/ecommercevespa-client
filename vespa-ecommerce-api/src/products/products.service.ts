@@ -37,6 +37,15 @@ export class ProductsService {
       });
       accuratePriceCategoryId = fullUser?.accuratePriceCategoryId || null;
 
+      // FALLBACK 1: Jika user login tapi belum punya kategori (misal: Admin), 
+      // tembak ke kategori Default (Umum) agar harga tidak 0
+      if (!accuratePriceCategoryId) {
+        const defaultCatId = this.configService.get<string>('ACCURATE_DEFAULT_PRICE_CATEGORY_ID');
+        if (defaultCatId) {
+          accuratePriceCategoryId = Number(defaultCatId);
+        }
+      }
+
       // LEGACY FALLBACK: If no Accurate category but is RESELLER
       if (!accuratePriceCategoryId && fullUser?.role === Role.RESELLER) {
         const priceInfo = await this.discountsCalcService.calculatePrice(

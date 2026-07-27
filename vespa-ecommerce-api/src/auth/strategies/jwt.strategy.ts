@@ -32,11 +32,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      // Extract from cookie 'auth_token', fallback to Authorization header
+      // Extract from cookie based on request origin, fallback to Authorization header
       jwtFromRequest: (req: Request) => {
         let token: string | null = null;
         if (req && req.cookies) {
-          token = req.cookies['auth_token'];
+          const origin = req.headers.origin || req.headers.referer || '';
+          const isAdminFrontend = origin.includes('admin') || origin.includes('3001');
+
+          if (isAdminFrontend) {
+            token = req.cookies['admin_auth_token'] || req.cookies['auth_token'];
+          } else {
+            token = req.cookies['auth_token'] || req.cookies['admin_auth_token'];
+          }
         }
         if (!token && req.headers.authorization) {
           token = req.headers.authorization.split(' ')[1];

@@ -63,7 +63,8 @@ export class AuthController {
   async adminLogin(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
     const { access_token } = await this.authService.login(req.user as any);
     
-    res.cookie('auth_token', access_token, {
+    // PERUBAHAN: Gunakan nama cookie yang berbeda untuk Admin agar tidak bertabrakan dengan Web
+    res.cookie('admin_auth_token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -156,20 +157,33 @@ export class AuthController {
   // --- End reset-password ---
 
 
-  // --- logout (Original logic) ---
+  // --- logout (Updated logic to support Admin and Web separation) ---
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
-    const token = req.cookies?.auth_token || req.headers.authorization?.split(' ')[1];
+    const origin = req.headers.origin || req.headers.referer || '';
+    const isAdminFrontend = origin.includes('admin') || origin.includes('3001');
+
+    // Baca token dari cookie (prioritaskan admin_auth_token jika dari admin web)
+    let token = isAdminFrontend ? req.cookies?.admin_auth_token : req.cookies?.auth_token;
+    
+    if (!token && req.headers.authorization) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
     if (token) {
       await this.authService.logout(token);
     }
-    res.clearCookie('auth_token', {
+
+    // Hapus cookie yang sesuai
+    const cookieName = isAdminFrontend ? 'admin_auth_token' : 'auth_token';
+    res.clearCookie(cookieName, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
     });
+
     return { message: 'Logout berhasil' };
   }
   // --- End logout ---
