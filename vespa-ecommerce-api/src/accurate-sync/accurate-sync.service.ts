@@ -5,6 +5,7 @@ import {
   Logger,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -94,6 +95,7 @@ export class AccurateSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly accurateService: AccurateService,
+    private readonly configService: ConfigService,
     @InjectQueue('accurate-sync-queue') private readonly syncQueue: Queue,
   ) { }
 
@@ -667,7 +669,7 @@ export class AccurateSyncService {
             }
 
             // Simpan ke Database Lokal
-            await this.prisma.product.upsert({
+            const upsertedProduct = await this.prisma.product.upsert({
               where: { sku: item.no },
               update: {
                 name: item.name, // Update nama juga siapa tau berubah
@@ -686,6 +688,32 @@ export class AccurateSyncService {
                 accurateItemId: accurateItemIdStr,
               },
             });
+
+            // FIX: Buat tier untuk kategori Umum (isDefault=true) menggunakan unitPrice.
+            // Ini memastikan guest selalu mendapat harga Umum yang benar,
+            // bukan fallback ke product.price yang bisa jadi harga Member-1.
+            const defaultCatId = this.configService.get<string>('ACCURATE_DEFAULT_PRICE_CATEGORY_ID');
+            if (defaultCatId) {
+              await this.prisma.productPriceTier.upsert({
+                where: {
+                  productId_accuratePriceCategoryId: {
+                    productId: upsertedProduct.id,
+                    accuratePriceCategoryId: Number(defaultCatId),
+                  },
+                },
+                update: {
+                  price: item.unitPrice || 0,
+                  lastSyncedAt: new Date(),
+                },
+                create: {
+                  productId: upsertedProduct.id,
+                  accuratePriceCategoryId: Number(defaultCatId),
+                  price: item.unitPrice || 0,
+                  name: 'Harga Umum (Default)',
+                  lastSyncedAt: new Date(),
+                },
+              });
+            }
 
             pageSyncedCount++;
           } catch (upsertError) {

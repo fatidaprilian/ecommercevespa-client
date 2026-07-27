@@ -71,8 +71,8 @@ export default function AuthNav() {
 
   const handleLogout = async () => {
     try {
-      // Opsional: Panggil endpoint logout di backend jika ada
-      // await api.post('/auth/logout');
+      // Panggil endpoint logout di backend untuk menghapus cookie
+      await api.post('/auth/logout');
       
       console.log("AuthNav: Melakukan logout...");
       
