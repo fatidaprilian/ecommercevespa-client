@@ -67,6 +67,17 @@ export class UsersController {
     return this.usersService.findAllInactive();
   }
 
+  /**
+   * Sync kategori semua user reseller (Bulk Sync)
+   * Endpoint: PATCH /users/sync-all-categories
+   */
+  @Patch('sync-all-categories')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async syncAllResellerCategories() {
+    return this.usersService.syncAllResellerCategories();
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN)
   findOne(@Param('id') id: string) {
@@ -129,16 +140,7 @@ export class UsersController {
     };
   }
 
-  /**
-   * Sync kategori semua user reseller (Bulk Sync)
-   * Endpoint: PATCH /users/sync-all-categories
-   */
-  @Patch('sync-all-categories')
-  @Roles(Role.ADMIN)
-  @HttpCode(HttpStatus.OK)
-  async syncAllResellerCategories() {
-    return this.usersService.syncAllResellerCategories();
-  }
+
 
   /**
    * Force reset customer category ke default (emergency fix untuk kategori invalid)
