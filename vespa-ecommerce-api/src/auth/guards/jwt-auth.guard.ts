@@ -16,19 +16,23 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   canActivate(context: ExecutionContext) {
+    // Selalu jalankan super.canActivate agar JwtStrategy dieksekusi 
+    // dan req.user terisi jika ada token yang valid.
+    return super.canActivate(context);
+  }
+
+  handleRequest(err, user, info, context: ExecutionContext) {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
+    // Jika route ini @Public(), izinkan masuk walaupun user tidak ada / token tidak valid
     if (isPublic) {
-      return true;
+      return user || null;
     }
 
-    return super.canActivate(context);
-  }
-
-  handleRequest(err, user, info, context: ExecutionContext) {
+    // Jika bukan @Public() dan user tidak ada, lemparkan error Unauthorized
     if (err || !user) {
       throw err || new UnauthorizedException();
     }

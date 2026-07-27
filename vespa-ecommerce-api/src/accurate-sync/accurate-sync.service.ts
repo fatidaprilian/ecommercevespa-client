@@ -1364,7 +1364,6 @@ export class AccurateSyncService {
     return this.findCustomerByNoWithCache(apiClient, customerNo);
   }
 
-  // 👇👇👇 TAMBAHAN METHOD BARU - syncPriceAdjustmentRules 👇👇👇
   @Cron(CronExpression.EVERY_HOUR)
   async syncPriceAdjustmentRules() {
     this.logger.log('WORKER: Memulai sinkronisasi Aturan Harga (Tiers & Rules)...');
