@@ -105,36 +105,14 @@ export class OrderExpirationService {
             data: { status: PaymentStatus.EXPIRED },
           });
 
-          this.logger.log(
-            `✅ LOKAL: Order #${order.orderNumber} diubah ke CANCELLED. Stok lokal dikembalikan.`,
-          );
+          this.logger.log(`Order #${order.orderNumber} cancelled locally. Local stock restored.`);
         }); // Akhir transaksi lokal
 
-        // --- BLOK REVISI ---
-        // 4. Trigger pengembalian stok ke Accurate DIHAPUS
-        // Karena order PENDING Member tidak pernah mengurangi stok Accurate,
-        // maka kita tidak boleh menambah stok Accurate saat order kedaluwarsa.
-        this.logger.log(
-          `Order #${order.orderNumber} (Member) expired. Stok Accurate tidak diubah.`,
-        );
-        /*
-        if (itemsToRestockAccurate.length > 0) {
-          this.logger.log(`🔄 Menjadwalkan pengembalian stok ke Accurate untuk Order #${order.orderNumber}...`);
-          // Gunakan queue untuk proses asinkron
-          await this.accurateSyncService.addStockAdjustmentJobToQueue(
-              itemsToRestockAccurate,
-              `Order #${order.orderNumber} expired & cancelled` // Berikan alasan
-          );
-        } else {
-             this.logger.warn(`⚠️ Tidak ada item dengan SKU valid untuk dikembalikan ke Accurate pada Order #${order.orderNumber}.`);
-        }
-        */
-        // --- AKHIR BLOK REVISI ---
+        // Member orders in PENDING state do not hold stock in Accurate.
+        // Therefore, we only restore local DB stock upon expiration.
+        this.logger.log(`Order #${order.orderNumber} (Member) expired. No Accurate restock required.`);
       } catch (error) {
-        this.logger.error(
-          `❌ Gagal memproses pembatalan Order #${order.orderNumber}. Error: ${error.message}`,
-          error.stack,
-        );
+        this.logger.error(`Failed to cancel Order #${order.orderNumber}. Error: ${error.message}`, error.stack);
         // Lanjutkan ke pesanan berikutnya jika ada error
       }
     } // Akhir loop

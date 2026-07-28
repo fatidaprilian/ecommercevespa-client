@@ -60,7 +60,7 @@ export class OrdersService {
       const totalDiscount = 0; // Selalu 0 agar ringkasan hanya menampilkan harga final
       const orderItemsData: Prisma.OrderItemCreateManyOrderInput[] = [];
 
-      // 👇 UBAH DI SINI: Jika klien minta 0% karena belum PKP, kita set 0 hardcode atau pastikan di settingsService nilainya 0.
+      // Note: Tax rate is explicitly set to 0 based on current PKP status.
       // Untuk amannya sesuai request Anda "udah saya disable kok dari accuratenya, jadi 0 persen", 
       // kita bisa ambil dari settings tapi pastikan nilainya memang 0 di DB, ATAU kita hardcode 0 sementara jika darurat.
       // Opsi terbaik: Tetap ambil dari settingsService, tapi Anda WAJIB ubah di Admin Panel jadi 0%.

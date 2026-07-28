@@ -14,7 +14,6 @@ import { AccurateService } from '../accurate/accurate.service';
 import { Order, User } from '@prisma/client';
 import { AxiosInstance } from 'axios';
 
-// 👇👇 UPDATE INTERFACE 👇👇
 interface AccurateCustomer {
   id: number;
   name: string;
@@ -26,14 +25,14 @@ interface AccurateCustomer {
     name: string;
     parent?: any;
   };
-  // Kategori Penjualan (Sales Price Category) - DITAMBAHKAN
+  // Kategori Penjualan (Sales Price Category)
   priceCategory?: {
     id: number;
     name: string;
   };
   priceCategoryId?: number;
 }
-// 👆👆 AKHIR UPDATE INTERFACE 👆👆
+
 
 interface StockAdjustmentItem {
   sku: string;
@@ -41,7 +40,7 @@ interface StockAdjustmentItem {
 }
 
 /**
- * 👇👇 HELPER FUNCTION UPDATE - Parse customer data dari Accurate API 👇👇
+ * Parse customer data from Accurate API
  */
 const parseAccurateCustomer = (rawCustomer: any): AccurateCustomer | null => {
   if (!rawCustomer) return null;
@@ -52,12 +51,11 @@ const parseAccurateCustomer = (rawCustomer: any): AccurateCustomer | null => {
     customerNo: rawCustomer.customerNo,
     email: rawCustomer.email,
     category: rawCustomer.category,
-    // 👇 Pastikan priceCategory juga diambil
     priceCategory: rawCustomer.priceCategory,
     priceCategoryId: rawCustomer.priceCategoryId || rawCustomer.priceCategory?.id,
   };
 };
-// 👆👆 AKHIR HELPER FUNCTION 👆👆
+
 
 const formatDateToAccurate = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
@@ -544,7 +542,7 @@ export class AccurateSyncService {
     }
   }
 
-  // 👇👇 GANTI METHOD INI SEPENUHNYA 👇👇
+
   async syncProductsFromAccurate() {
     this.logger.log('WORKER: Starting product synchronization from Accurate...');
     try {
@@ -590,7 +588,7 @@ export class AccurateSyncService {
 
             const accurateItemIdStr = item.id.toString();
 
-            // 2. CEK KONFLIK ID & UPDATE SKU (Logic Baru untuk Fix Error Unique Constraint)
+            // 2. Handle ID conflicts and update SKUs to prevent Unique Constraint violations
             // Cari apakah ada produk lokal yang punya accurateItemId ini tapi SKU-nya beda?
             const existingByAccurateId = await this.prisma.product.findUnique({
               where: { accurateItemId: accurateItemIdStr }
@@ -672,7 +670,7 @@ export class AccurateSyncService {
             const upsertedProduct = await this.prisma.product.upsert({
               where: { sku: item.no },
               update: {
-                name: item.name, // Update nama juga siapa tau berubah
+                name: item.name,
                 price: item.unitPrice || 0,
                 stock: finalStock,
                 cost: item.averageCost || 0,
@@ -689,9 +687,8 @@ export class AccurateSyncService {
               },
             });
 
-            // FIX: Buat tier untuk kategori Umum (isDefault=true) menggunakan unitPrice.
-            // Ini memastikan guest selalu mendapat harga Umum yang benar,
-            // bukan fallback ke product.price yang bisa jadi harga Member-1.
+            // Create/update tier for the default category (Umum) using unitPrice
+            // to ensure guests receive the accurate baseline price.
             const defaultCatId = this.configService.get<string>('ACCURATE_DEFAULT_PRICE_CATEGORY_ID');
             if (defaultCatId) {
               await this.prisma.productPriceTier.upsert({
@@ -924,7 +921,7 @@ export class AccurateSyncService {
         '/accurate/api/customer/list.do',
         {
           params: {
-            // 👇👇 UPDATE FIELDS 👇👇
+
             fields: this.CUSTOMER_FIELDS,
             'filter.customerNo.op': 'EQUAL',
             'filter.customerNo.val[0]': customerNo,
@@ -954,7 +951,7 @@ export class AccurateSyncService {
         '/accurate/api/customer/list.do',
         {
           params: {
-            // 👇👇 UPDATE FIELDS 👇👇
+
             fields: this.CUSTOMER_FIELDS,
             'filter.customerNo.op': 'CONTAINS',
             'filter.customerNo.val[0]': customerNo,
@@ -989,7 +986,7 @@ export class AccurateSyncService {
         '/accurate/api/customer/list.do',
         {
           params: {
-            // 👇👇 UPDATE FIELDS 👇👇
+
             fields: this.CUSTOMER_FIELDS,
             'filter.customerNo.op': 'LIKE',
             'filter.customerNo.val[0]': `%${customerNo}%`,
@@ -1035,7 +1032,7 @@ export class AccurateSyncService {
           '/accurate/api/customer/list.do',
           {
             params: {
-              // 👇👇 UPDATE FIELDS 👇👇
+  
               fields: this.CUSTOMER_FIELDS,
               [`filter.customerNo.op`]: operator,
               [`filter.customerNo.val[0]`]: filterValue,
@@ -1076,7 +1073,7 @@ export class AccurateSyncService {
         '/accurate/api/customer/list.do',
         {
           params: {
-            // 👇👇 UPDATE FIELDS 👇👇
+
             fields: this.CUSTOMER_FIELDS,
             'sp.page': 1,
             'sp.pageSize': 100,
@@ -1125,7 +1122,7 @@ export class AccurateSyncService {
             '/accurate/api/customer/list.do',
             {
               params: {
-                // 👇👇 UPDATE FIELDS 👇👇
+    
                 fields: this.CUSTOMER_FIELDS,
                 'sp.page': page,
                 'sp.pageSize': pageSize,
@@ -1466,7 +1463,7 @@ export class AccurateSyncService {
           });
           if (!localProduct) continue;
 
-          // === KASUS A: Harga Tetap (Tier) ===
+          // Case A: Fixed Price (Tier)
           // (Sudah pakai >= 0 dan simpan nama promo + lastSyncedAt)
           if (adj.salesAdjustmentType === 'ITEM_PRICE_TYPE' && detail.price >= 0) {
             await this.prisma.productPriceTier.upsert({
@@ -1492,7 +1489,7 @@ export class AccurateSyncService {
             tiersSynced++;
           }
 
-          // === KASUS B: Diskon Persen (Rule) ===
+          // Case B: Percentage Discount (Rule)
           else if (
             detail.itemDiscPercent !== null &&
             detail.itemDiscPercent !== undefined &&

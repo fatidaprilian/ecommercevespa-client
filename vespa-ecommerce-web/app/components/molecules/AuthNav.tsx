@@ -64,14 +64,11 @@ export default function AuthNav() {
          clearClientCart();
          clearWishlist();
          
-         // PATCH: Pembersih Otomatis (Auto-Cleaner) untuk bug cookie nyangkut.
-         // Jika frontend mengira user adalah guest, panggil backend logout SATU KALI
-         // untuk memastikan cookie lama yang tertinggal benar-benar mati.
+         // Clear lingering auth cookies for guest users to prevent phantom sessions (migration patch).
          if (typeof window !== 'undefined' && !localStorage.getItem('cookie_cleared_v1')) {
            api.post('/auth/logout').catch(() => {});
            localStorage.setItem('cookie_cleared_v1', 'true');
-           queryClient.clear(); // Bersihkan cache harga lama
-           console.log("Auto-cleaner: Sisa cookie lama telah dibersihkan.");
+           queryClient.clear();
          }
       }
     };
@@ -81,18 +78,11 @@ export default function AuthNav() {
 
   const handleLogout = async () => {
     try {
-      // Panggil endpoint logout di backend untuk menghapus cookie
       await api.post('/auth/logout');
       
-      console.log("AuthNav: Melakukan logout...");
-      
-      // Bersihkan state auth dan store lokal
       setAuth(null, null);
       clearClientCart();
       clearWishlist();
-
-      // <-- TAMBAHAN 3: Bersihkan semua cache React Query
-      // Ini akan memaksa semua komponen (termasuk produk) untuk fetch ulang data segar (harga publik)
       queryClient.clear();
 
     } catch (error) {

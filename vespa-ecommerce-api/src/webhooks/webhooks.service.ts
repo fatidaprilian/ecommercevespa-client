@@ -452,7 +452,7 @@ export class WebhooksService {
         salesInvoiceNo,
       );
 
-      // 👇 1. KUMPULKAN SEMUA NOMOR SO UNIK DARI SEMUA BARANG (REVISI UTAMA) 👇
+      // 1. Collect unique Sales Order numbers from all processing items
       // Menggunakan Set agar nomor SO yang sama tidak diproses berkali-kali
       const soNumbers = new Set<string>();
       
@@ -468,7 +468,7 @@ export class WebhooksService {
       const uniqueSoNumbers = Array.from(soNumbers); // Convert Set jadi Array
       this.logger.log(`Faktur ${salesInvoiceNo} mencakup SO: ${uniqueSoNumbers.join(', ') || 'Tidak ada SO (Mungkin Direct Invoice/Member)'}`);
 
-      // 👇 2. LOGIKA UTAMA: UPDATE ORDER 👇
+      // 2. Process order updates for each unique Sales Order number
       if (uniqueSoNumbers.length > 0) {
         // KASUS RESELLER (Grouping): 1 Faktur gabungan dari beberapa SO
         // Kita loop semua nomor SO yang ditemukan dan update satu per satu
@@ -494,7 +494,7 @@ export class WebhooksService {
     }
   }
 
-  // 👇 HELPER 1: Cari & Update berdasarkan Nomor SO Accurate (Untuk Reseller) 👇
+  // Helper: Find and update by Accurate Sales Order number (Reseller flow)
   private async updateOrderBySoNumber(soNumber: string, invoiceNo: string, invoiceId: number) {
       // Cari order di DB lokal yang punya nomor SO ini
       const order = await this.prisma.order.findFirst({
@@ -504,7 +504,7 @@ export class WebhooksService {
       await this.processOrderUpdate(order, invoiceNo, invoiceId, `SO ${soNumber}`);
   }
 
-  // 👇 HELPER 2: Cari & Update berdasarkan PO Number/ID Web (Untuk Member/Fallback) 👇
+  // Helper: Find and update by Web PO Number/ID (Member flow / Fallback)
   private async updateOrderByPoNumber(poNumber: string, invoiceNo: string, invoiceId: number) {
       // Cari order di DB lokal yang ID-nya sama dengan PO Number
       const order = await this.prisma.order.findUnique({
@@ -514,7 +514,7 @@ export class WebhooksService {
       await this.processOrderUpdate(order, invoiceNo, invoiceId, `PO ${poNumber}`);
   }
 
-  // 👇 HELPER 3: Eksekusi Update Status ke DB (Logic Inti) 👇
+  // Helper: Execute status update in database
   private async processOrderUpdate(order: any, invoiceNo: string, invoiceId: number, refSource: string) {
       if (!order) {
           this.logger.warn(`❌ Order tidak ditemukan untuk referensi: ${refSource} (Invoice: ${invoiceNo})`);

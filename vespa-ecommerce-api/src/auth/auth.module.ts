@@ -10,17 +10,16 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LocalStrategy } from './strategies/local.strategy';
 import { EmailModule } from 'src/email/email.module';
-import { AdminLocalStrategy } from './strategies/admin-local.strategy'; // <-- Import Strategy Admin
-// 👇👇 TAMBAHKAN IMPORT INI 👇👇
+import { AdminLocalStrategy } from './strategies/admin-local.strategy';
 import { AccuratePricingModule } from '../accurate-pricing/accurate-pricing.module';
-// 👆👆 --------------------- 👆👆
+
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     EmailModule,
-    ConfigModule, // Pastikan ConfigModule diimpor jika belum
+    ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -31,16 +30,14 @@ import { AccuratePricingModule } from '../accurate-pricing/accurate-pricing.modu
         },
       }),
     }),
-    // 👇👇 DAFTARKAN DI SINI 👇👇
     AccuratePricingModule,
-    // 👆👆 ------------------ 👆👆
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
     JwtStrategy,
-    LocalStrategy, // Strategy untuk user biasa
-    AdminLocalStrategy, // <-- Tambahkan Strategy Admin di sini
+    LocalStrategy,
+    AdminLocalStrategy,
   ],
 })
 export class AuthModule {}

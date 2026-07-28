@@ -65,7 +65,7 @@ export class AuthController {
   async adminLogin(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
     const { access_token } = await this.authService.login(req.user as any);
     
-    // PERUBAHAN: Gunakan nama cookie yang berbeda untuk Admin agar tidak bertabrakan dengan Web
+    // Use a distinct cookie name for admin sessions to prevent collisions with the public web store
     res.cookie('admin_auth_token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -170,7 +170,7 @@ export class AuthController {
   }
   // --- End change-password ---
 
-  // --- logout (Updated logic to support Admin and Web separation) ---
+
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
@@ -178,7 +178,7 @@ export class AuthController {
     const origin = req.headers.origin || req.headers.referer || '';
     const isAdminFrontend = origin.includes('admin') || origin.includes('3001');
 
-    // Baca token dari cookie (prioritaskan admin_auth_token jika dari admin web)
+    // Read token from the appropriate cookie based on the requesting frontend
     let token = isAdminFrontend ? req.cookies?.admin_auth_token : req.cookies?.auth_token;
     
     if (!token && req.headers.authorization) {

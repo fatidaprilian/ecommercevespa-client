@@ -14,23 +14,22 @@ export class PriceCalculatorService {
     let finalPrice = Number(product.price);
 
     // LAYER 1: Base Price Override (Tier)
-    // ======================= PERUBAHAN DI SINI =======================
-    // Diubah untuk sorting berdasarkan 'name' (SPA...) agar mengambil tier terbaru
+    // Use the most recent SPA tier (determined by natural sort on the tier name)
     if (accuratePriceCategoryId && product.priceTiers && product.priceTiers.length > 0) {
       
       const applicableTiers = product.priceTiers
         .filter((tier) => tier.accuratePriceCategoryId === accuratePriceCategoryId)
-        .sort((a, b) => (b.name || '').localeCompare(a.name || '', undefined, { numeric: true })); // Urutkan terbaru dengan natural sort
+        .sort((a, b) => (b.name || '').localeCompare(a.name || '', undefined, { numeric: true }));
 
-      // Ambil tier terbaru (indeks 0)
+      // Apply the most recent tier
       if (applicableTiers.length > 0) {
         finalPrice = Number(applicableTiers[0].price);
       }
     }
-    // ===================== AKHIR PERUBAHAN LAYER 1 =====================
 
 
-    // LAYER 2: Diskon Tambahan (Rules) - LOGIKA BARU: ATURAN TERBARU
+
+    // LAYER 2: Additional Discounts (Rules)
     if (product.priceAdjustmentRules && product.priceAdjustmentRules.length > 0) {
       const now = new Date();
 
@@ -38,18 +37,16 @@ export class PriceCalculatorService {
         .filter(
           (rule) =>
             rule.isActive &&
-            // FIX: Cocok dengan kategori user ATAU rule bersifat umum (null)
+            // Matches user's category or applies globally (null)
             (rule.accuratePriceCategoryId === accuratePriceCategoryId || rule.accuratePriceCategoryId === null) &&
-            // FIX: Pastikan tanggal mulai sudah lewat (jika diset)
+            // Check if start date is valid
             (!rule.startDate || new Date(rule.startDate) <= now)
         )
-        // (Ini sudah benar dari fix kita sebelumnya)
         .sort((a, b) => (b.name || '').localeCompare(a.name || '', undefined, { numeric: true }));
 
-
-      // Ambil SATU rule terbaru (indeks 0 setelah sorting)
+      // Apply the single most recent rule
       if (applicableRules.length > 0) {
-        const latestRule = applicableRules[0]; // Diganti nama dari bestRule -> latestRule
+        const latestRule = applicableRules[0];
 
         if (latestRule.discountType === 'PERCENTAGE') {
           finalPrice -= finalPrice * (Number(latestRule.discountValue) / 100);
