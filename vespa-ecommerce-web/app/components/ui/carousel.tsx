@@ -43,7 +43,7 @@ function useCarousel() {
 }
 
 function Carousel({
-  orientation,
+  orientation = "horizontal",
   opts,
   setApi,
   plugins,
