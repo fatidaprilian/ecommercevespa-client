@@ -204,7 +204,9 @@ export default function OrderDetailPage() {
             redirectUrl.startsWith('https://app.sandbox.midtrans.com')
         )) {
             if (redirectUrl && (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://'))) {
-              window.location.assign(new URL(redirectUrl).href);
+              const a = document.createElement('a');
+              a.href = redirectUrl;
+              a.click();
             }
         } else {
             toast.error('URL pembayaran tidak valid.');
