@@ -127,7 +127,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           const mergedItems = data.items.map((serverItem: CartItem) => {
             if (state.updatingItemIds.has(serverItem.id)) {
               // Find local version
-              const localItem = state.cart!.items.find(i => i.id === serverItem.id);
+              const localItem = state.cart?.items.find(i => i.id === serverItem.id);
               // Use local version (optimistic) if exists, ignore server temporarily
               return localItem ? { ...serverItem, quantity: localItem.quantity } : serverItem;
             }

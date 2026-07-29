@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import DOMPurify from 'isomorphic-dompurify';
+import parse from 'html-react-parser';
 import { motion, Variants } from 'framer-motion';
 import { ShoppingCart, Check, Minus, Plus, Package, Ruler, ArrowLeft, Heart, Search, X, ZoomIn, ZoomOut, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -375,7 +376,7 @@ export default function ProductDetailPage() {
                                 {product.images?.map((image) => (
                                     <button
                                         key={`mobile-${image.id}`}
-                                        onClick={() => setSelectedImage(image.url)}
+                                        onClick={() => { setSelectedImage(image.url); }}
                                         className={cn(
                                             'relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200',
                                             selectedImage === image.url ? 'ring-2 ring-orange-400 ring-offset-1' : 'ring-0'
@@ -542,7 +543,9 @@ export default function ProductDetailPage() {
                         <div className="prose prose-sm sm:prose-base lg:prose-lg text-gray-700 max-w-full break-words">
                             {product.description ? (
                                 <div className="w-full overflow-x-auto">
-                                    <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }} />
+                                    <div className="whitespace-pre-wrap">
+                                        {parse(DOMPurify.sanitize(product.description))}
+                                    </div>
                                 </div>
                             ) : (
                                 <p>Tidak ada deskripsi untuk produk ini.</p>

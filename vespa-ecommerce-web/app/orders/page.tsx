@@ -132,7 +132,7 @@ export default function OrdersPage() {
               variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
               className="space-y-6"
             >
-              {(isLoading ? (Array.from({ length: 5 }) as Order[]) : orders)?.map((order: Order, index: number) => {
+              {(isLoading ? (Array.from({ length: 5 }) as Order[]) : orders as Order[]).map((order: Order, index: number) => {
                 if (!order) { 
                     return <SkeletonCard key={index} />;
                 }

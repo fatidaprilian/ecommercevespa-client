@@ -71,7 +71,7 @@ export function AddressDialog({ initialData, onSave, onClose }: AddressDialogPro
   });
 
   useEffect(() => {
-    if (isEditing && initialData) {
+    if (initialData) {
       form.reset({
         street: initialData.street,
         postalCode: initialData.postalCode,
@@ -95,7 +95,7 @@ export function AddressDialog({ initialData, onSave, onClose }: AddressDialogPro
 
   const mutation = useMutation({
     mutationFn: (data: CreateAddressData) =>
-        isEditing && initialData ? updateAddress({ id: initialData.id, addressData: data }) : createAddress(data),
+        initialData ? updateAddress({ id: initialData.id, addressData: data }) : createAddress(data),
     onSuccess: (data) => {
         toast.success(`Alamat berhasil ${isEditing ? 'diperbarui' : 'disimpan'}!`);
         void queryClient.invalidateQueries({ queryKey: ['my-addresses'] });

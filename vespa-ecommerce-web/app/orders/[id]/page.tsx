@@ -314,7 +314,7 @@ export default function OrderDetailPage() {
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8"
         >
           <Button
-            onClick={() => { router.push('/orders'); }}
+            onClick={() => { void router.push('/orders'); }}
             variant="ghost"
             className="mb-4 sm:mb-0 -ml-4"
           >

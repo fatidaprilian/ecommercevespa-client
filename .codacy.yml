@@ -1,0 +1,3 @@
+---
+exclude_paths:
+  - 'vespa-ecommerce-api/prisma/migrations/**'

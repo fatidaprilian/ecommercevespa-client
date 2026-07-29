@@ -7,6 +7,7 @@ import { Loader2, ServerCrash } from 'lucide-react';
 import Image from 'next/image';
 import api from '@/lib/api';
 import DOMPurify from 'isomorphic-dompurify';
+import parse from 'html-react-parser';
 
 interface CmsPage {
   slug: string;
@@ -97,8 +98,9 @@ export default function CmsPageViewer({ slug }: { slug: string }) {
           <motion.div 
             variants={itemVariants}
             className="prose prose-lg max-w-none text-gray-700"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(page.content) }}
-          />
+          >
+            {parse(DOMPurify.sanitize(page.content))}
+          </motion.div>
         </motion.div>
       </div>
     </div>

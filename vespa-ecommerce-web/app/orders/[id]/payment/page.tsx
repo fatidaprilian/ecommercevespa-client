@@ -41,7 +41,7 @@ export default function PaymentInstructionPage() {
     if (order) {
       if (order.status !== 'PENDING') {
         toast.error("Pesanan ini sudah tidak menunggu pembayaran.");
-        router.replace(`/orders/${order.id}`);
+        void router.replace(`/orders/${order.id}`);
       } else {
         clearClientCart();
       }

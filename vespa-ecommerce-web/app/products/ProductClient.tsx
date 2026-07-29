@@ -301,8 +301,8 @@ export default function ProductClient() {
     return {
       page: Number(params.get('page')) || 1,
       limit: 12,
-      sortBy: (params.get('sortBy') as 'price' | 'createdAt') || 'createdAt',
-      sortOrder: (params.get('sortOrder') as 'asc' | 'desc') || 'desc',
+      sortBy: (params.get('sortBy') || 'createdAt') as 'price' | 'createdAt',
+      sortOrder: (params.get('sortOrder') || 'desc') as 'asc' | 'desc',
       search: params.get('search') || undefined,
       categoryId: params.getAll('categoryId'),
       brandId: params.getAll('brandId'),
@@ -345,7 +345,7 @@ export default function ProductClient() {
       currentParams.delete(key);
 
       if (Array.isArray(value)) {
-        value.forEach((v) => currentParams.append(key, v));
+        value.forEach((v) => { currentParams.append(key, v); });
       } else if (value !== undefined && value !== null && value !== '') {
         currentParams.set(key, String(value));
       }

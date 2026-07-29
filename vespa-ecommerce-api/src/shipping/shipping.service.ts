@@ -257,7 +257,7 @@ export class ShippingService {
   async getTrackingInfo(waybillId: string, courierCode: string) {
     try {
       const response = await axios.get(
-        `${this.biteshipApiUrl}/v1/trackings/${waybillId}/couriers/${courierCode}`,
+        `${this.biteshipApiUrl}/v1/trackings/${encodeURIComponent(waybillId)}/couriers/${encodeURIComponent(courierCode)}`,
         {
           headers: { Authorization: this.biteshipApiKey },
           timeout: 8000

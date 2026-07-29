@@ -30,6 +30,7 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.12",
+    "html-react-parser": "^6.1.5",
     "input-otp": "^1.4.2",
     "isomorphic-dompurify": "^3.19.0",
     "jwt-decode": "^4.0.0",
@@ -42,7 +43,7 @@
     "react-hot-toast": "^2.6.0",
     "react-medium-image-zoom": "^5.4.0",
     "react-turnstile": "^1.1.4",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "sonner": "^2.0.7",
     "swr": "^2.3.6",
     "tailwind-merge": "^3.3.1",
@@ -50,6 +51,11 @@
     "yet-another-react-lightbox": "^3.25.0",
     "zod": "^4.0.17",
     "zustand": "^5.0.7"
+  },
+  "overrides": {
+    "brace-expansion": "^2.0.1",
+    "postcss": "^8.5.2",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

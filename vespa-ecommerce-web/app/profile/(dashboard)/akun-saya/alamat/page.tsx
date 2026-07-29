@@ -51,7 +51,7 @@ export default function AlamatPage() {
 
   const handleSave = () => {
     setIsModalOpen(false);
-    queryClient.invalidateQueries({ queryKey: ['my-addresses'] });
+    void queryClient.invalidateQueries({ queryKey: ['my-addresses'] });
   };
 
   return (
