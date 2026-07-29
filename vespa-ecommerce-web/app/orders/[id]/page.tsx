@@ -50,7 +50,7 @@ const formatPrice = (price: number) => {
 };
 
 const copyToClipboard = (text: string, label: string) => {
-  navigator.clipboard.writeText(text);
+  void navigator.clipboard.writeText(text);
   toast.success(`${label} disalin!`);
 };
 
@@ -203,7 +203,9 @@ export default function OrderDetailPage() {
             redirectUrl.startsWith('https://app.midtrans.com') ||
             redirectUrl.startsWith('https://app.sandbox.midtrans.com')
         )) {
-            window.location.href = redirectUrl;
+            if (redirectUrl && (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://'))) {
+              window.location.href = redirectUrl;
+            }
         } else {
             toast.error('URL pembayaran tidak valid.');
             setLoadingMethod(null);

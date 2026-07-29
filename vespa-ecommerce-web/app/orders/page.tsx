@@ -136,7 +136,7 @@ export default function OrdersPage() {
                 if (!order) { 
                     return <SkeletonCard key={index} />;
                 }
-                const currentStatus = statusConfig[order.status] || statusConfig.PENDING;
+                const currentStatus = statusConfig[order.status] ?? statusConfig.PENDING;
                 const Icon = currentStatus.icon;
                 
                 return (

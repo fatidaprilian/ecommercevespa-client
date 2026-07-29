@@ -103,7 +103,9 @@ export function OrderSummary({
         toast.success("Pesanan berhasil dibuat dan dikirim ke admin!");
         router.push(`/orders/${newOrder.id}`);
       } else if (newOrder && newOrder.redirect_url) {
-        window.location.href = newOrder.redirect_url;
+        if (newOrder.redirect_url && (newOrder.redirect_url.startsWith('http://') || newOrder.redirect_url.startsWith('https://'))) {
+          window.location.href = newOrder.redirect_url;
+        }
       } else {
         throw new Error('Respons pesanan tidak valid.');
       }
