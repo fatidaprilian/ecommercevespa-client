@@ -19,6 +19,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { QueryCategoryDto } from './dto/query-category.dto';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @Controller('categories')
 export class CategoriesController {
@@ -31,11 +32,13 @@ export class CategoriesController {
     return this.categoriesService.create(createCategoryDto);
   }
 
+  @Public()
   @Get()
   findAll(@Query() queryDto: QueryCategoryDto) {
     return this.categoriesService.findAll(queryDto);
   }
 
+  @Public()
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.categoriesService.findOne(id);
