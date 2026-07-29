@@ -1,6 +1,4 @@
 import { NestFactory } from '@nestjs/core';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import express from 'express';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -13,8 +11,7 @@ import { v2 as cloudinary } from 'cloudinary';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
-  const server = express();
-  const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
+  const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
   cloudinary.config({
