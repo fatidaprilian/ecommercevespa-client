@@ -47,9 +47,10 @@ export function BrandShowcase() {
                     <Carousel
                         opts={{
                             align: "start",
-                            loop: true,
+                            loop: false,
+                            dragFree: true,
                         }}
-                        className="w-full"
+                        className="w-full relative px-10"
                     >
                         <CarouselContent className="-ml-8">
                             {brands?.map((brand: Brand) => (
@@ -57,7 +58,8 @@ export function BrandShowcase() {
                                     <Link
                                         href={`/products?brandId=${brand.id}`}
                                         title={`Lihat produk dari ${brand.name}`}
-                                        className="block grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300 transform hover:scale-110"
+                                        className="block grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300 transform hover:scale-110 select-none"
+                                        draggable={false}
                                     >
                                         {brand.logoUrl ? (
                                             <div className="relative h-10 md:h-12 w-full">
@@ -65,8 +67,9 @@ export function BrandShowcase() {
                                                 src={brand.logoUrl}
                                                 alt={`${brand.name} logo`}
                                                 fill
-                                                className="object-contain"
+                                                className="object-contain pointer-events-none"
                                                 sizes="(max-width: 768px) 100px, 150px"
+                                                draggable={false}
                                             />
                                         </div>
                                         ) : (
@@ -78,8 +81,8 @@ export function BrandShowcase() {
                                 </CarouselItem>
                             ))}
                         </CarouselContent>
-                        <CarouselPrevious className="ml-12 flex" />
-                        <CarouselNext className="mr-12 flex" />
+                        <CarouselPrevious className="hidden md:flex -left-4" />
+                        <CarouselNext className="hidden md:flex -right-4" />
                     </Carousel>
                 )}
             </div>
