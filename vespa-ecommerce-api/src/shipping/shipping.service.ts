@@ -256,8 +256,9 @@ export class ShippingService {
   // getTrackingInfo (tidak diubah)
   async getTrackingInfo(waybillId: string, courierCode: string) {
     try {
+      const trackingUrl = new URL(`/v1/trackings/${encodeURIComponent(waybillId)}/couriers/${encodeURIComponent(courierCode)}`, this.biteshipApiUrl);
       const response = await axios.get(
-        `${this.biteshipApiUrl}/v1/trackings/${encodeURIComponent(waybillId)}/couriers/${encodeURIComponent(courierCode)}`,
+        trackingUrl.toString(),
         {
           headers: { Authorization: this.biteshipApiKey },
           timeout: 8000

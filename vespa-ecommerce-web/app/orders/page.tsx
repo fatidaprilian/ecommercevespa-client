@@ -30,8 +30,10 @@ import Image from 'next/image';
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 
-const statusConfig: { [key: string]: { icon: React.ElementType; color: string; text: string } } = {
-  PENDING: { icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-300', text: 'Menunggu Pembayaran' },
+const PENDING_STATUS = { icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-300', text: 'Menunggu Pembayaran' };
+
+const statusConfig: { [key: string]: { icon: React.ElementType; color: string; text: string } | undefined } = {
+  PENDING: PENDING_STATUS,
   PAID: { icon: Package, color: 'bg-blue-100 text-blue-800 border-blue-300', text: 'Dibayar' },
   PROCESSING: { icon: Package, color: 'bg-orange-100 text-orange-800 border-orange-300', text: 'Sedang Diproses' },
   SHIPPED: { icon: Truck, color: 'bg-indigo-100 text-indigo-800 border-indigo-300', text: 'Dikirim' },
@@ -136,7 +138,7 @@ export default function OrdersPage() {
                 if (!order) { 
                     return <SkeletonCard key={index} />;
                 }
-                const currentStatus = statusConfig[order.status] ?? statusConfig.PENDING;
+                const currentStatus = statusConfig[order.status] ?? PENDING_STATUS;
                 const Icon = currentStatus.icon;
                 
                 return (

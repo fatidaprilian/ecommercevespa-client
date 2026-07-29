@@ -104,7 +104,7 @@ export function OrderSummary({
         router.push(`/orders/${newOrder.id}`);
       } else if (newOrder && newOrder.redirect_url) {
         if (newOrder.redirect_url && (newOrder.redirect_url.startsWith('http://') || newOrder.redirect_url.startsWith('https://'))) {
-          window.location.href = newOrder.redirect_url;
+          window.location.assign(new URL(newOrder.redirect_url).href);
         }
       } else {
         throw new Error('Respons pesanan tidak valid.');

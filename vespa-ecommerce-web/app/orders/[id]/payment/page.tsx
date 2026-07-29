@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 const copyToClipboard = (text: string, bankName: string) => {
-  void navigator.clipboard.writeText(text);
+  navigator.clipboard.writeText(text).catch(console.error);
   toast.success(`Nomor rekening ${bankName} disalin!`);
 };
 
@@ -41,7 +41,7 @@ export default function PaymentInstructionPage() {
     if (order) {
       if (order.status !== 'PENDING') {
         toast.error("Pesanan ini sudah tidak menunggu pembayaran.");
-        void router.replace(`/orders/${order.id}`);
+        router.replace(`/orders/${order.id}`);
       } else {
         clearClientCart();
       }
