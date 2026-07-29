@@ -1,5 +1,4 @@
 // File: app/orders/[id]/page.tsx
-// trigger codacy rescan
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Impor useQueryClient
@@ -50,13 +49,9 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
-const copyToClipboard = async (text: string, label: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(`${label} disalin!`);
-  } catch (err) {
-    console.error(err);
-  }
+const copyToClipboard = (text: string, label: string) => {
+  void navigator.clipboard.writeText(text);
+  toast.success(`${label} disalin!`);
 };
 
 function ShipmentTracking({ order }: { order: Order }) {

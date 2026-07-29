@@ -1,4 +1,3 @@
-// trigger codacy rescan
 'use client';
 
 import Link from 'next/link';
@@ -185,13 +184,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         </div>
                         
                         <button
-                            onClick={async (e) => {
-                                try {
-                                    await handleAddToCart(e);
-                                } catch (err) {
-                                    console.error(err);
-                                }
-                            }}
+                            onClick={(e) => { void handleAddToCart(e); }}
                             disabled={isOutOfStock} // Disable tombol
                             aria-label={isOutOfStock ? "Stok habis" : "Tambah ke keranjang"}
                             className={cn(
