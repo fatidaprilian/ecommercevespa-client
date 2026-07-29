@@ -105,7 +105,7 @@ export function OrderSummary({
       } else if (newOrder && newOrder.redirect_url) {
         if (newOrder.redirect_url && (newOrder.redirect_url.startsWith('http://') || newOrder.redirect_url.startsWith('https://'))) {
           const a = document.createElement('a');
-          a.href = newOrder.redirect_url;
+          a.setAttribute('href', newOrder.redirect_url);
           a.click();
         }
       } else {

@@ -49,9 +49,13 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
-const copyToClipboard = (text: string, label: string) => {
-  void navigator.clipboard.writeText(text);
-  toast.success(`${label} disalin!`);
+const copyToClipboard = async (text: string, label: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(`${label} disalin!`);
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 function ShipmentTracking({ order }: { order: Order }) {
@@ -205,7 +209,7 @@ export default function OrderDetailPage() {
         )) {
             if (redirectUrl && (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://'))) {
               const a = document.createElement('a');
-              a.href = redirectUrl;
+              a.setAttribute('href', redirectUrl);
               a.click();
             }
         } else {

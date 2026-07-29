@@ -15,9 +15,13 @@ import { getActivePaymentMethods, ManualPaymentMethod } from '@/services/payment
 import { Button } from '@/components/ui/button';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
-const copyToClipboard = (text: string, bankName: string) => {
-  void navigator.clipboard.writeText(text);
-  toast.success(`Nomor rekening ${bankName} disalin!`);
+const copyToClipboard = async (text: string, bankName: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(`Nomor rekening ${bankName} disalin!`);
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 export default function PaymentInstructionPage() {
