@@ -1,3 +1,4 @@
+// trigger codacy rescan
 'use client';
 
 import Link from 'next/link';

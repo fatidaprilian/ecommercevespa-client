@@ -1,4 +1,5 @@
 // app/components/organisms/CmsPageViewer.tsx
+// trigger codacy rescan
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
