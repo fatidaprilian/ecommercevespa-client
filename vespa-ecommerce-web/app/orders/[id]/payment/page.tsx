@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 const copyToClipboard = (text: string, bankName: string) => {
-  navigator.clipboard.writeText(text).catch(console.error);
+  void navigator.clipboard.writeText(text);
   toast.success(`Nomor rekening ${bankName} disalin!`);
 };
 
