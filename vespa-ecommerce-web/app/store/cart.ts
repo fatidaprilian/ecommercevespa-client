@@ -33,9 +33,10 @@ const getDebouncedUpdate = (cartItemId: string) => {
         try {
           await api.patch(`/cart/items/${cartItemId}`, { quantity });
           onSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Failed to sync quantity:", error);
-          const message = error.response?.data?.message || 'Gagal memperbarui kuantitas keranjang.';
+          const err = error as { response?: { data?: { message?: string } } };
+          const message = err.response?.data?.message || 'Gagal memperbarui kuantitas keranjang.';
           toast.error(message);
           onError();
         }
@@ -73,7 +74,7 @@ type CartState = {
     destinationPostalCode: string,
     destinationAreaId: string,
     paymentPreference?: PaymentPreference
-  ) => Promise<any>;
+  ) => Promise<{ id: string; redirect_url?: string; [key: string]: unknown }>;
 
   getTotalWeight: () => number;
   getSummary: () => {
@@ -172,8 +173,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         });
       }
       toast.success("Produk berhasil ditambahkan ke keranjang");
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Gagal menambah item ke keranjang.";
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err.response?.data?.message || "Gagal menambah item ke keranjang.";
       toast.error(message);
     }
   },
@@ -326,8 +328,9 @@ export const useCartStore = create<CartState>((set, get) => ({
 
       set({ isLoading: false });
       return newOrder;
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Gagal membuat pesanan.";
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err.response?.data?.message || "Gagal membuat pesanan.";
       toast.error(message);
       set({ isLoading: false });
       throw error;

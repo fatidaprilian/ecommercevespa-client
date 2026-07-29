@@ -48,8 +48,9 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
         await addToWishlist(productId);
         toast.success("Ditambahkan ke wishlist!");
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Gagal memperbarui wishlist.");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Gagal memperbarui wishlist.");
       // Rollback on error
       set({ productIds: originalState });
     }

@@ -68,16 +68,16 @@ export default function RegisterPage() {
       toast.success('Email verifikasi telah dikirim!');
       setIsVerificationOpen(true);
 
-    } catch (err: any) {
-
+    } catch (err: unknown) {
+      const error = err as { response?: { status?: number, data?: { message?: string[] | string } } };
       // --- TAMBAHAN: Cek error 429 (Rate Limit) ---
-      if (err.response?.status === 429) {
+      if (error.response?.status === 429) {
         setError('Terlalu banyak percobaan. Silakan coba lagi dalam satu menit.');
       } else {
         // --- Logika Error Asli Anda ---
-        const errorMessage = Array.isArray(err.response?.data?.message)
-          ? err.response.data.message.join(', ')
-          : err.response?.data?.message;
+        const errorMessage = Array.isArray(error.response?.data?.message)
+          ? error.response.data.message.join(', ')
+          : error.response?.data?.message;
         setError(errorMessage || 'Terjadi kesalahan saat mendaftar.');
         // --- Akhir Logika Error Asli ---
       }

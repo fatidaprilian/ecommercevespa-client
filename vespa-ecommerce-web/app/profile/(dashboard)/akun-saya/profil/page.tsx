@@ -56,8 +56,9 @@ export default function ProfilPage() {
       queryClient.setQueryData(['my-profile'], updatedUser);
       useAuthStore.getState().setAuth(updatedUser);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Gagal memperbarui profil.");
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Gagal memperbarui profil.");
     }
   });
 

@@ -190,12 +190,12 @@ export default function HomePage() {
     useEffect(() => {
         if (isAuthenticated) {
             // Prefetch featured products
-            queryClient.prefetchQuery({
+            void queryClient.prefetchQuery({
                 queryKey: ['featured-products'],
                 queryFn: () => api.get('/products/featured').then(res => res.data),
             });
             // Prefetch regular products
-            queryClient.prefetchQuery({
+            void queryClient.prefetchQuery({
                 queryKey: ['products', { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 }],
                 queryFn: () => getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 10 }),
             });

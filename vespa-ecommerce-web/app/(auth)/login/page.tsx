@@ -62,8 +62,8 @@ export default function LoginPage() {
         router.push('/');
       }, 1500);
 
-    } catch (err: any) {
-
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number, data?: { message?: string } } };
       if (err.response?.status === 429) {
         setError('Terlalu banyak percobaan. Silakan coba lagi dalam satu menit.');
       } else {

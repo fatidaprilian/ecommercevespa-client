@@ -89,7 +89,7 @@ function ShipmentTracking({ order }: { order: Order }) {
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => copyToClipboard(waybillId, 'Nomor resi')}
+            onClick={() => { copyToClipboard(waybillId, 'Nomor resi'); }}
           >
             <Copy className="h-4 w-4" />
           </Button>
@@ -176,7 +176,7 @@ export default function OrderDetailPage() {
     if (paramId !== orderId) {
       toast('Memperbarui status pesanan...', { icon: '🔄' });
       // Invalidate query untuk memaksa refetch data terbaru
-      queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+      void queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       
       // Ganti URL di browser agar bersih (menghapus timestamp)
       // tanpa me-reload halaman.
@@ -198,15 +198,25 @@ export default function OrderDetailPage() {
     onSuccess: (data) => {
       if (data.redirect_url) {
         toast.success('Mengarahkan ke halaman pembayaran...');
-        window.location.href = data.redirect_url;
+        const redirectUrl = data.redirect_url;
+        if (redirectUrl && (
+            redirectUrl.startsWith('https://app.midtrans.com') ||
+            redirectUrl.startsWith('https://app.sandbox.midtrans.com')
+        )) {
+            window.location.href = redirectUrl;
+        } else {
+            toast.error('URL pembayaran tidak valid.');
+            setLoadingMethod(null);
+        }
       } else {
         toast.error('Gagal mendapatkan link pembayaran.');
         setLoadingMethod(null);
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
       toast.error(
-        error.response?.data?.message || 'Gagal memulai ulang pembayaran.',
+        err.response?.data?.message || 'Gagal memulai ulang pembayaran.',
       );
       setLoadingMethod(null);
     },
@@ -304,7 +314,7 @@ export default function OrderDetailPage() {
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8"
         >
           <Button
-            onClick={() => router.push('/orders')}
+            onClick={() => { router.push('/orders'); }}
             variant="ghost"
             className="mb-4 sm:mb-0 -ml-4"
           >
@@ -502,7 +512,7 @@ export default function OrderDetailPage() {
                     </p>
 
                     <Button
-                      onClick={() => handleRetryPayment(PaymentPreference.OTHER)}
+                      onClick={() => { handleRetryPayment(PaymentPreference.OTHER); }}
                       variant="outline"
                       className="w-full justify-between"
                       disabled={!!loadingMethod}
@@ -519,9 +529,9 @@ export default function OrderDetailPage() {
                     </Button>
 
                     <Button
-                      onClick={() =>
-                        handleRetryPayment(PaymentPreference.CREDIT_CARD)
-                      }
+                      onClick={() => {
+                        handleRetryPayment(PaymentPreference.CREDIT_CARD);
+                      }}
                       className="w-full justify-between"
                       disabled={!!loadingMethod}
                     >

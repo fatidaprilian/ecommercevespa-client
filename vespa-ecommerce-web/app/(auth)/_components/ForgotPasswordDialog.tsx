@@ -66,7 +66,8 @@ export function ForgotPasswordDialog({ isOpen, onClose }: ForgotPasswordDialogPr
       await api.post('/auth/validate-reset-token', { token: data.token });
       setToken(data.token);
       setStep('password');
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Kode reset salah atau kedaluwarsa.');
     } finally {
       setIsLoading(false);
@@ -82,7 +83,8 @@ export function ForgotPasswordDialog({ isOpen, onClose }: ForgotPasswordDialogPr
     try {
       await api.post('/auth/reset-password', { token, password: data.password });
       setStep('success');
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Gagal mereset password.');
     } finally {
       setIsLoading(false);

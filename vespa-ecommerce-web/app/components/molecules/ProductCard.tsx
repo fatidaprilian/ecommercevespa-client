@@ -184,7 +184,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         </div>
                         
                         <button
-                            onClick={handleAddToCart}
+                            onClick={(e) => { handleAddToCart(e); }}
                             disabled={isOutOfStock} // Disable tombol
                             aria-label={isOutOfStock ? "Stok habis" : "Tambah ke keranjang"}
                             className={cn(

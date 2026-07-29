@@ -95,14 +95,16 @@ export function AddressDialog({ initialData, onSave, onClose }: AddressDialogPro
 
   const mutation = useMutation({
     mutationFn: (data: CreateAddressData) =>
-        isEditing ? updateAddress({ id: initialData!.id, addressData: data }) : createAddress(data),
+        isEditing && initialData ? updateAddress({ id: initialData.id, addressData: data }) : createAddress(data),
     onSuccess: (data) => {
         toast.success(`Alamat berhasil ${isEditing ? 'diperbarui' : 'disimpan'}!`);
-        queryClient.invalidateQueries({ queryKey: ['my-addresses'] });
+        void queryClient.invalidateQueries({ queryKey: ['my-addresses'] });
         onSave();
     },
-    onError: (err: any) => {
-        const errorMessage = err.response?.data?.message?.[0] || 'Gagal menyimpan alamat.';
+    onError: (error: unknown) => {
+        const err = error as { response?: { data?: { message?: string[] | string } } };
+        const msg = err.response?.data?.message;
+        const errorMessage = Array.isArray(msg) ? msg[0] : msg || 'Gagal menyimpan alamat.';
         toast.error(errorMessage);
     }
   });
@@ -198,7 +200,15 @@ export function AddressDialog({ initialData, onSave, onClose }: AddressDialogPro
   );
 }
 
-function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, isLoading }: any) {
+interface AreaComboboxProps {
+    query: string;
+    onQueryChange: (value: string) => void;
+    options: AreaData[] | undefined;
+    onSelect: (area: AreaData) => void;
+    selectedValue: { id: string; label: string } | undefined;
+    isLoading: boolean;
+}
+function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, isLoading }: AreaComboboxProps) {
     const [open, setOpen] = useState(false);
     return (
         <Popover open={open} onOpenChange={setOpen}>

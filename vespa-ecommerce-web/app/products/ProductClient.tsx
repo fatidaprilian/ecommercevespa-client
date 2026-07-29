@@ -61,14 +61,19 @@ const PaginationControls = ({
   totalPages,
   onPageChange,
   isPlaceholderData,
-}: any) => {
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  isPlaceholderData: boolean;
+}) => {
   if (totalPages <= 1) return null;
   return (
     <div className="flex items-center justify-center gap-4 mt-12">
       <Button
         variant="outline"
         size="icon"
-        onClick={() => onPageChange(currentPage - 1)}
+        onClick={() => { onPageChange(currentPage - 1); }}
         disabled={currentPage === 1 || isPlaceholderData}
       >
         <ChevronLeft className="h-4 w-4" />
@@ -79,7 +84,7 @@ const PaginationControls = ({
       <Button
         variant="outline"
         size="icon"
-        onClick={() => onPageChange(currentPage + 1)}
+        onClick={() => { onPageChange(currentPage + 1); }}
         disabled={currentPage === totalPages || isPlaceholderData}
       >
         <ChevronRight className="h-4 w-4" />
@@ -207,9 +212,9 @@ function FilterPopup({
                 placeholder="Cari kategori..."
                 className="pl-9"
                 value={searchTerm.category}
-                onChange={(e) =>
-                  setSearchTerm((p) => ({ ...p, category: e.target.value }))
-                }
+                onChange={(e) => {
+                  setSearchTerm((p) => ({ ...p, category: e.target.value }));
+                }}
               />
             </div>
             <div className="flex-1 space-y-1 pr-3 -mr-4 overflow-y-auto">
@@ -221,7 +226,7 @@ function FilterPopup({
                   <Checkbox
                     id={`cat-${cat.id}`}
                     checked={tempCategoryIds.has(cat.id)}
-                    onCheckedChange={() => handleCategorySelect(cat.id)}
+                    onCheckedChange={() => { handleCategorySelect(cat.id); }}
                   />
                   <Label
                     htmlFor={`cat-${cat.id}`}
@@ -241,9 +246,9 @@ function FilterPopup({
                 placeholder="Cari merek..."
                 className="pl-9"
                 value={searchTerm.brand}
-                onChange={(e) =>
-                  setSearchTerm((p) => ({ ...p, brand: e.target.value }))
-                }
+                onChange={(e) => {
+                  setSearchTerm((p) => ({ ...p, brand: e.target.value }));
+                }}
               />
             </div>
             <div className="flex-1 space-y-1 pr-3 -mr-4 overflow-y-auto">
@@ -255,7 +260,7 @@ function FilterPopup({
                   <Checkbox
                     id={`brand-${brand.id}`}
                     checked={tempBrandIds.has(brand.id)}
-                    onCheckedChange={() => handleBrandSelect(brand.id)}
+                    onCheckedChange={() => { handleBrandSelect(brand.id); }}
                   />
                   <Label
                     htmlFor={`brand-${brand.id}`}
@@ -299,8 +304,8 @@ export default function ProductClient() {
       sortBy: (params.get('sortBy') as 'price' | 'createdAt') || 'createdAt',
       sortOrder: (params.get('sortOrder') as 'asc' | 'desc') || 'desc',
       search: params.get('search') || undefined,
-      categoryId: params.getAll('categoryId') || [],
-      brandId: params.getAll('brandId') || [],
+      categoryId: params.getAll('categoryId'),
+      brandId: params.getAll('brandId'),
     };
   }, [searchParams]);
 
@@ -317,7 +322,7 @@ export default function ProductClient() {
   }, [queryParams]);
 
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['products'] });
+    void queryClient.invalidateQueries({ queryKey: ['products'] });
   }, [isAuthenticated, queryClient]);
 
   const {
@@ -478,7 +483,7 @@ export default function ProductClient() {
               }
               size="sm"
               className="rounded-full shrink-0"
-              onClick={() => handleCategoryClick(null)}
+              onClick={() => { handleCategoryClick(null); }}
             >
               Semua Kategori
             </Button>
@@ -490,7 +495,7 @@ export default function ProductClient() {
                 }
                 size="sm"
                 className="rounded-full shrink-0"
-                onClick={() => handleCategoryClick(category.id)}
+                onClick={() => { handleCategoryClick(category.id); }}
               >
                 {category.name}
               </Button>
@@ -540,7 +545,7 @@ export default function ProductClient() {
                   <p className="text-gray-500 mt-2">
                     Gagal memuat data produk. Silakan coba lagi nanti.
                   </p>
-                  <Button onClick={() => refetch()} className="mt-6 gap-2">
+                  <Button onClick={() => { refetch(); }} className="mt-6 gap-2">
                     <RefreshCw className="h-4 w-4" /> Coba Lagi
                   </Button>
                 </div>
@@ -571,7 +576,7 @@ export default function ProductClient() {
 
         {meta && meta.lastPage > 1 && (
           <PaginationControls
-            currentPage={queryParams.page}
+            currentPage={queryParams.page ?? 1}
             totalPages={meta.lastPage}
             onPageChange={handlePageChange}
             isPlaceholderData={isPlaceholderData}

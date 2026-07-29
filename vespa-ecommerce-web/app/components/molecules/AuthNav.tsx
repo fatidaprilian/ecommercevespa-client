@@ -52,8 +52,9 @@ export default function AuthNav() {
             fetchWishlistIds()
           ]);
 
-        } catch (error: any) {
-          console.error("AuthNav: Gagal sync/fetch profile:", error.message);
+        } catch (error: unknown) {
+          const err = error as Error;
+          console.error("AuthNav: Gagal sync/fetch profile:", err.message);
           // Jika gagal (misal token expired), bersihkan state
           setAuth(null);
           clearClientCart();
@@ -73,7 +74,7 @@ export default function AuthNav() {
       }
     };
 
-    syncUserAndData();
+    void syncUserAndData();
   }, [isAuthenticated, setAuth, fetchCart, fetchWishlistIds, clearClientCart, clearWishlist, _hasHydrated]);
 
   const handleLogout = async () => {

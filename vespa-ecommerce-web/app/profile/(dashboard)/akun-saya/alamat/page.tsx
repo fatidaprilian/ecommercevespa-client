@@ -25,9 +25,12 @@ export default function AlamatPage() {
     mutationFn: deleteAddress,
     onSuccess: () => {
         toast.success("Alamat berhasil dihapus.");
-        queryClient.invalidateQueries({ queryKey: ['my-addresses'] });
+        void queryClient.invalidateQueries({ queryKey: ['my-addresses'] });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menghapus.'),
+    onError: (error: unknown) => {
+        const err = error as { response?: { data?: { message?: string } } };
+        toast.error(err.response?.data?.message || 'Gagal menghapus.');
+    },
   });
 
   const handleDelete = (id: string) => {
@@ -100,8 +103,8 @@ export default function AlamatPage() {
                 <p className="text-gray-600">{address.province}, {address.postalCode}</p>
               </CardContent>
               <div className="absolute top-4 right-4 flex gap-2">
-                  <Button variant="outline" size="icon" onClick={() => handleEdit(address)}><Edit className="h-4 w-4"/></Button>
-                  <Button variant="destructive" size="icon" onClick={() => handleDelete(address.id)} disabled={deleteMutation.isPending && deleteMutation.variables === address.id}>
+                  <Button variant="outline" size="icon" onClick={() => { handleEdit(address); }}><Edit className="h-4 w-4"/></Button>
+                  <Button variant="destructive" size="icon" onClick={() => { handleDelete(address.id); }} disabled={deleteMutation.isPending && deleteMutation.variables === address.id}>
                       {(deleteMutation.isPending && deleteMutation.variables === address.id) ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
                   </Button>
               </div>
@@ -114,7 +117,7 @@ export default function AlamatPage() {
         <AddressDialog 
           initialData={selectedAddress}
           onSave={handleSave}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => { setIsModalOpen(false); }}
         />
       </Dialog>
     </>

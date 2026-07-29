@@ -101,7 +101,7 @@ export default function OrdersPage() {
                 placeholder="Cari No. Pesanan atau Nama Produk..."
                 className="pl-9 bg-white shadow-sm"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); }}
             />
         </div>
         
@@ -205,12 +205,12 @@ export default function OrdersPage() {
 
         {meta && meta.lastPage > 1 && (
             <div className="flex items-center justify-center space-x-2 pt-12">
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1 || isPlaceholderData}>
+                <Button variant="outline" size="sm" onClick={() => { setPage(p => Math.max(p - 1, 1)); }} disabled={page === 1 || isPlaceholderData}>
                     <ChevronLeft className="h-4 w-4" />
                     <span>Sebelumnya</span>
                 </Button>
                 <span className="text-sm text-muted-foreground">Halaman {meta.page} dari {meta.lastPage}</span>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page === meta.lastPage || isPlaceholderData}>
+                <Button variant="outline" size="sm" onClick={() => { setPage(p => p + 1); }} disabled={page === meta.lastPage || isPlaceholderData}>
                     <span>Berikutnya</span>
                     <ChevronRight className="h-4 w-4" />
                 </Button>

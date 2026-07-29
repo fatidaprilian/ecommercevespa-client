@@ -77,7 +77,8 @@ export function VerificationDialog({
       router.push('/');
       onClose();
 
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Kode verifikasi salah.');
     } finally {
       setIsLoading(false);

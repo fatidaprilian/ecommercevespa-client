@@ -49,14 +49,24 @@ export const searchAreas = async (query: string): Promise<AreaData[]> => {
     
     const uniqueAreas = new Map<string, AreaData>();
 
-    data.forEach((area: any) => {
-        const label = `${area.administrative_division_level_3_name}, ${area.administrative_division_level_2_name}, ${area.administrative_division_level_1_name}`;
+    interface RawArea {
+        id?: string;
+        name?: string;
+        administrative_division_level_1_name?: string;
+        administrative_division_level_2_name?: string;
+        administrative_division_level_3_name?: string;
+        postal_code?: string;
+    }
+
+    data.forEach((area: unknown) => {
+        const rawArea = area as RawArea;
+        const label = `${rawArea.administrative_division_level_3_name}, ${rawArea.administrative_division_level_2_name}, ${rawArea.administrative_division_level_1_name}`;
         
-        if (area.id && !uniqueAreas.has(label)) {
-            let postalCode = String(area.postal_code || '');
+        if (rawArea.id && !uniqueAreas.has(label)) {
+            let postalCode = String(rawArea.postal_code || '');
             
             if (!/^\d{5}$/.test(postalCode)) {
-                const match = area.name?.match(/\b\d{5}\b/);
+                const match = rawArea.name?.match(/\b\d{5}\b/);
                 if (match) {
                   postalCode = match[0];
                 }
@@ -64,7 +74,7 @@ export const searchAreas = async (query: string): Promise<AreaData[]> => {
 
             if (/^\d{5}$/.test(postalCode)) {
                 uniqueAreas.set(label, {
-                    id: area.id,
+                    id: rawArea.id,
                     label: label,
                     postalCode: postalCode
                 });
@@ -81,12 +91,21 @@ export const calculateCost = async (payload: {
   items: { name: string, value: number, quantity: number, weight: number }[]
 }): Promise<ShippingRate[]> => {
   const { data } = await api.post('/shipping/cost', payload); 
-  return data.map((rate: any) => ({
-      courier_name: rate.company,
-      courier_service_name: rate.type,
-      price: rate.price,
-      estimation: rate.duration || 'N/A'
-  }));
+  interface RawRate {
+      company: string;
+      type: string;
+      price: number;
+      duration?: string;
+  }
+  return data.map((rate: unknown) => {
+      const rawRate = rate as RawRate;
+      return {
+          courier_name: rawRate.company,
+          courier_service_name: rawRate.type,
+          price: rawRate.price,
+          estimation: rawRate.duration || 'N/A'
+      };
+  });
 };
 
 

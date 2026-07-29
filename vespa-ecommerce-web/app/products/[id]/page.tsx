@@ -193,7 +193,7 @@ export default function ProductDetailPage() {
             addItem(product.id, quantity);
             toast.success(`${product.name} ditambahkan ke keranjang!`);
             setIsAdded(true);
-            setTimeout(() => setIsAdded(false), 2000);
+            setTimeout(() => { setIsAdded(false); }, 2000);
         }
     };
 
@@ -240,7 +240,7 @@ export default function ProductDetailPage() {
 
             <div className="container mx-auto px-4 py-5">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4 lg:mb-6">
-                    <Button onClick={() => router.back()} variant="ghost" className="pl-0 text-gray-600 hover:text-gray-900">
+                    <Button onClick={() => { router.back(); }} variant="ghost" className="pl-0 text-gray-600 hover:text-gray-900">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Kembali
                     </Button>
@@ -285,10 +285,10 @@ export default function ProductDetailPage() {
                                     </DialogHeader>
 
                                     <div className="absolute bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 p-2 rounded-lg z-20">
-                                        <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.max(prev / 1.2, 1))}><ZoomOut /></Button>
+                                        <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => { setScale(prev => Math.max(prev / 1.2, 1)); }}><ZoomOut /></Button>
                                         <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={resetImageState}><RefreshCw size={18} /></Button>
-                                        <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => setScale(prev => Math.min(prev * 1.2, 5))}><ZoomIn /></Button>
-                                        <Button onClick={() => handleOpenChange(false)} variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20"><X className="h-5 w-5" /></Button>
+                                        <Button variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20" onClick={() => { setScale(prev => Math.min(prev * 1.2, 5)); }}><ZoomIn /></Button>
+                                        <Button onClick={() => { handleOpenChange(false); }} variant="ghost" size="icon" className="text-white hover:text-white hover:bg-white/20"><X className="h-5 w-5" /></Button>
                                     </div>
 
                                     <div
@@ -326,7 +326,7 @@ export default function ProductDetailPage() {
                             {/* 1. DESKTOP VERSION (Hidden on Mobile) */}
                             <div className="hidden lg:flex relative flex-col w-24 flex-shrink-0">
                                 {showScrollButtons && canScrollUp && (
-                                    <button onClick={() => scrollThumbnails('up')} className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm">
+                                    <button onClick={() => { scrollThumbnails('up'); }} className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm">
                                         <ChevronUp size={20} className="text-gray-800" strokeWidth={2.5} />
                                     </button>
                                 )}
@@ -343,7 +343,7 @@ export default function ProductDetailPage() {
                                         {product.images?.map((image) => (
                                             <button
                                                 key={`desktop-${image.id}`} // (Sesuaikan key untuk mobile: `mobile-${image.id}`)
-                                                onClick={() => setSelectedImage(image.url)}
+                                                onClick={() => { setSelectedImage(image.url); }}
                                                 className={cn(
                                                     'relative aspect-square rounded-xl bg-gray-100 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg',
                                                     selectedImage === image.url ? 'scale-105 shadow-lg ring-2 ring-orange-400 ring-offset-2' : 'ring-0'
@@ -364,7 +364,7 @@ export default function ProductDetailPage() {
                                 </div>
 
                                 {showScrollButtons && canScrollDown && (
-                                    <button onClick={() => scrollThumbnails('down')} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm">
+                                    <button onClick={() => { scrollThumbnails('down'); }} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 hover:bg-orange-50 rounded-full p-2 shadow-lg border-2 border-gray-300 transition-all backdrop-blur-sm">
                                         <ChevronDown size={20} className="text-gray-800" strokeWidth={2.5} />
                                     </button>
                                 )}
@@ -475,7 +475,7 @@ export default function ProductDetailPage() {
                         {/* Tombol Horizontal */}
                         <motion.div variants={itemVariants} className="flex flex-row items-center gap-3 lg:gap-4 mb-3 lg:mb-6">
                             <div className="flex items-center justify-center border rounded-lg h-12 w-32">
-                                <Button variant="ghost" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-3 h-full rounded-r-none border-r-0" disabled={quantity <= 1}><Minus size={16} /></Button>
+                                <Button variant="ghost" onClick={() => { setQuantity(q => Math.max(1, q - 1)); }} className="px-3 h-full rounded-r-none border-r-0" disabled={quantity <= 1}><Minus size={16} /></Button>
                                 <Input
                                     type="number"
                                     min={1}
@@ -495,7 +495,7 @@ export default function ProductDetailPage() {
                                     }}
                                     className="h-full w-full rounded-none text-center border-0 px-0 focus-visible:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-bold text-lg"
                                 />
-                                <Button variant="ghost" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} className="px-3 h-full rounded-l-none border-l-0" disabled={quantity >= product.stock}><Plus size={16} /></Button>
+                                <Button variant="ghost" onClick={() => { setQuantity(q => Math.min(product.stock, q + 1)); }} className="px-3 h-full rounded-l-none border-l-0" disabled={quantity >= product.stock}><Plus size={16} /></Button>
                             </div>
 
                             <AlertDialog>

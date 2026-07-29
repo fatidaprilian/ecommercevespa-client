@@ -25,17 +25,18 @@ api.interceptors.response.use(
   // 1. SUCCESS HANDLER: Menambah Timestamp (Cache Busting)
   (response) => {
     const imageKeys = ['imageUrl', 'url', 'logoUrl', 'proofOfPayment', 'bannerImageUrl', 'images'];
-    const addTimestampToUrls = (obj: any): any => {
+    const addTimestampToUrls = (obj: unknown): unknown => {
       if (!obj || typeof obj !== 'object') return obj;
 
       if (Array.isArray(obj)) {
         return obj.map(item => addTimestampToUrls(item));
       }
 
-      const newObj: any = {};
-      for (const key in obj) {
-        const val = obj[key];
-        if (val && typeof val === 'string' && imageKeys.includes(key) && val.includes('res.cloudinary.com')) {
+      const newObj: Record<string, unknown> = {};
+      const recordObj = obj as Record<string, unknown>;
+      for (const key in recordObj) {
+        const val = recordObj[key];
+        if (typeof val === 'string' && imageKeys.includes(key) && val.includes('res.cloudinary.com')) {
           const separator = val.includes('?') ? '&' : '?';
           newObj[key] = val.includes('?v=') ? val : `${val}${separator}v=${Date.now()}`;
         } else if (val && typeof val === 'object') {

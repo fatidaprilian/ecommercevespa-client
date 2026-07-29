@@ -107,8 +107,9 @@ export function OrderSummary({
       } else {
         throw new Error('Respons pesanan tidak valid.');
       }
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Gagal membuat pesanan.";
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err.response?.data?.message || "Gagal membuat pesanan.";
 
       // If the error is stock-related (thrown by backend), redirect user back to cart
       // so they can see the auto-adjusted quantities and re-confirm before retrying.

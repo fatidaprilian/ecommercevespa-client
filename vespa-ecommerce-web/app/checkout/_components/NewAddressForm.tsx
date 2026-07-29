@@ -93,12 +93,17 @@ export function NewAddressForm({ initialData, onSuccess, closeModal }: NewAddres
 
     const mutation = useMutation({
         mutationFn: (data: CreateAddressData) => 
-            isEditing ? updateAddress({ id: initialData!.id, addressData: data }) : createAddress(data),
+            isEditing && initialData ? updateAddress({ id: initialData.id, addressData: data }) : createAddress(data),
         onSuccess: (newAddress) => {
             toast.success(`Alamat berhasil ${isEditing ? 'diperbarui' : 'disimpan'}!`);
             onSuccess(newAddress);
         },
-        onError: (err: any) => toast.error(err.response?.data?.message[0] || `Gagal ${isEditing ? 'memperbarui' : 'menyimpan'} alamat.`)
+        onError: (error: unknown) => {
+            const err = error as { response?: { data?: { message?: string[] | string } } };
+            const msg = err.response?.data?.message;
+            const errorMessage = Array.isArray(msg) ? msg[0] : msg || `Gagal ${isEditing ? 'memperbarui' : 'menyimpan'} alamat.`;
+            toast.error(errorMessage);
+        }
     });
 
     const onSubmit = (data: AddressFormValues) => {
@@ -171,7 +176,15 @@ export function NewAddressForm({ initialData, onSuccess, closeModal }: NewAddres
     );
 }
 
-function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, isLoading }: any) {
+interface AreaComboboxProps {
+    query: string;
+    onQueryChange: (value: string) => void;
+    options: AreaData[] | undefined;
+    onSelect: (area: AreaData) => void;
+    selectedValue: { id: string; label: string } | undefined;
+    isLoading: boolean;
+}
+function AreaCombobox({ query, onQueryChange, options, onSelect, selectedValue, isLoading }: AreaComboboxProps) {
     const [open, setOpen] = useState(false);
     return (
         <Popover open={open} onOpenChange={setOpen}>

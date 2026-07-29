@@ -15,7 +15,7 @@ const fetchProductById = async (id: string): Promise<Product> => {
 
 export const useProductsByIds = (ids: string[]) => {
     // ✅ REVISI 1: Saring array untuk memastikan hanya ID yang valid yang diproses.
-    const validIds = ids ? ids.filter(id => typeof id === 'string' && id) : [];
+    const validIds = ids.filter(id => typeof id === 'string' && id);
 
     const results = useQueries({
         queries: validIds.map(id => ({
