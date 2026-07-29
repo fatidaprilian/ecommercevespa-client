@@ -93,7 +93,7 @@ function ShipmentTracking({ order }: { order: Order }) {
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => { copyToClipboard(waybillId, 'Nomor resi'); }}
+            onClick={() => { void copyToClipboard(waybillId, 'Nomor resi'); }}
           >
             <Copy className="h-4 w-4" />
           </Button>

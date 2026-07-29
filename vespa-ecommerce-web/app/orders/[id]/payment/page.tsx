@@ -99,7 +99,7 @@ export default function PaymentInstructionPage() {
                         </div>
                         <div className="text-right">
                             <p className="font-mono text-lg font-semibold">{method.accountNumber}</p>
-                            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => { copyToClipboard(method.accountNumber, method.bankName); }}>
+                            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => { void copyToClipboard(method.accountNumber, method.bankName); }}>
                                 Salin Nomor
                             </Button>
                         </div>
