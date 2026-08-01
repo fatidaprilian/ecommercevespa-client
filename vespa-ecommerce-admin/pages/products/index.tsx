@@ -168,6 +168,10 @@ export default function ProductsPage() {
     updateProductMutation.mutate({ id: product.id, data: { isFeatured: !product.isFeatured } });
   };
 
+  const handleSecondaryFeatureToggle = (product: Product) => {
+    updateProductMutation.mutate({ id: product.id, data: { isSecondaryFeatured: !product.isSecondaryFeatured } });
+  };
+
   const handleVisibilityToggle = (product: Product) => {
       const newVisibility = !product.isVisible;
       updateProductMutation.mutate({ id: product.id, data: { isVisible: newVisibility } });

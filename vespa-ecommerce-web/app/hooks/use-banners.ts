@@ -10,7 +10,7 @@ export interface Banner {
   subtitle?: string;
   imageUrl: string;
   linkUrl?: string;
-  type: 'HERO' | 'MIDDLE';
+  type: 'HERO' | 'MIDDLE' | 'TOP_LEFT' | 'TOP_RIGHT';
   isActive: boolean;
   brandId?: string;
 }

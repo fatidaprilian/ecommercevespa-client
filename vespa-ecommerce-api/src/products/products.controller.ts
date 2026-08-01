@@ -43,6 +43,12 @@ export class ProductsController {
   }
 
   @Public()
+  @Get('secondary-featured')
+  findSecondaryFeatured(@Req() req: AuthenticatedRequest) {
+    return this.productsService.findSecondaryFeatured(req.user);
+  }
+
+  @Public()
   @Get('search')
   searchProducts(@Query() query: SearchProductDto) {
     return this.productsService.search(query.term || '');

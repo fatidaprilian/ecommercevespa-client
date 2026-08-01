@@ -22,3 +22,16 @@ export const useFeaturedProducts = (enabled: boolean = true) => {
     enabled,
   });
 };
+
+const fetchSecondaryFeaturedProducts = async (): Promise<Product[]> => {
+  const { data } = await api.get('/products/secondary-featured');
+  return data;
+};
+
+export const useSecondaryFeaturedProducts = (enabled: boolean = true) => {
+  return useQuery<Product[], Error>({
+    queryKey: ['secondary-featured-products'],
+    queryFn: fetchSecondaryFeaturedProducts,
+    enabled,
+  });
+};

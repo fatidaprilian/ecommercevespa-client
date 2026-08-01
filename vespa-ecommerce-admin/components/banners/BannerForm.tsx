@@ -29,7 +29,7 @@ const bannerSchema = z.object({
   subtitle: z.string().nullable().transform(e => e === "" ? null : e),
   imageUrl: z.string().url('URL Gambar tidak valid.').min(1, 'Gambar wajib di-upload.'),
   linkUrl: z.string().nullable().transform(e => e === "" ? null : e),
-  type: z.enum(['HERO', 'MIDDLE']),
+  type: z.enum(['HERO', 'MIDDLE', 'TOP_LEFT', 'TOP_RIGHT']),
   isActive: z.boolean(),
   brandId: z.string().nullable().transform(e => e === "" ? null : e),
 });
@@ -183,6 +183,8 @@ export function BannerForm({ initialData }: BannerFormProps) {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="HERO">Hero Carousel</SelectItem>
+                      <SelectItem value="TOP_LEFT">2 Banner Atas (Kiri)</SelectItem>
+                      <SelectItem value="TOP_RIGHT">2 Banner Atas (Kanan)</SelectItem>
                       <SelectItem value="MIDDLE">Banner Tengah</SelectItem>
                     </SelectContent>
                   </Select>

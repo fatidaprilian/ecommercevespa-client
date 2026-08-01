@@ -6,7 +6,7 @@ export interface Banner {
   subtitle: string | null;
   imageUrl: string;
   linkUrl: string | null;
-  type: 'HERO' | 'MIDDLE';
+  type: 'HERO' | 'MIDDLE' | 'TOP_LEFT' | 'TOP_RIGHT';
   isActive: boolean;
   brandId: string | null;
   brand?: { id: string; name: string; logoUrl?: string } | null;

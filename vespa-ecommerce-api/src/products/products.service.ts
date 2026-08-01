@@ -244,7 +244,28 @@ export class ProductsService {
   async findFeatured(user?: UserPayload) {
     const featuredProducts = await this.prisma.product.findMany({
       where: { isFeatured: true, isVisible: true },
-      take: 5,
+      take: 10,
+      include: {
+        images: true,
+        category: true,
+        brand: true,
+        priceTiers: true,
+        priceAdjustmentRules: { where: { isActive: true } },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+
+    return Promise.all(
+      featuredProducts.map((p) => this.processProductWithPrice(p, user)),
+    );
+  }
+
+  async findSecondaryFeatured(user?: UserPayload) {
+    const featuredProducts = await this.prisma.product.findMany({
+      where: { isSecondaryFeatured: true, isVisible: true },
+      take: 10,
       include: {
         images: true,
         category: true,

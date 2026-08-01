@@ -40,6 +40,7 @@ export type Product = {
   models?: string | null;
   // -----------------------------
   isFeatured?: boolean;
+  isSecondaryFeatured?: boolean;
   isVisible?: boolean;
 };
 

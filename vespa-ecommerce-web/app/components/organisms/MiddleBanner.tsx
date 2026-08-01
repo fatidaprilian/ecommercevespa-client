@@ -15,7 +15,7 @@ export function MiddleBanner() {
     return (
       <section className="w-full py-8 md:py-12">
         {/* Perubahan di sini: Tambahkan padding dan max-width */}
-        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto px-4">
           <Skeleton className="w-full h-56 md:h-80 lg:h-96 rounded-lg" />
         </div>
       </section>
@@ -30,7 +30,7 @@ export function MiddleBanner() {
     <section className="w-full py-2 md:py-4">
       {/* --- PERUBAHAN UTAMA DI SINI --- */}
       {/* Hapus px-0, tambahkan padding standar dan max-width */}
-      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
