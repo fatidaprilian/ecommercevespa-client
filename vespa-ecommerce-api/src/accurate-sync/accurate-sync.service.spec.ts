@@ -1,5 +1,6 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { AccurateService } from '../accurate/accurate.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccurateSyncService } from './accurate-sync.service';
@@ -38,6 +39,10 @@ describe('AccurateSyncService', () => {
         {
           provide: AccurateService,
           useValue: {},
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn() },
         },
         {
           provide: getQueueToken('accurate-sync-queue'),
@@ -115,7 +120,7 @@ describe('AccurateSyncService', () => {
       'create-sales-order',
       { orderId: 'order-123' },
       {
-        jobId: 'create-sales-order:order-123',
+        jobId: 'create-sales-order-order-123',
         removeOnComplete: true,
         removeOnFail: 10,
         attempts: 3,
