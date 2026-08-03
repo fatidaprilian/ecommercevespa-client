@@ -105,7 +105,7 @@ export class AccurateSyncService {
       'create-sales-order',
       { orderId },
       {
-        jobId: `create-sales-order:${orderId}`,
+        jobId: `create-sales-order-${orderId}`,
         removeOnComplete: true,
         removeOnFail: 10,
         attempts: 3,
