@@ -35,9 +35,15 @@ export function ProductCard({ product }: ProductCardProps) {
         // 2. Cegah add to cart jika stok habis
         if (isOutOfStock) return;
 
+        // 3. Check authentication fallback
+        if (!isAuthenticated) {
+            toast.error("Silakan login untuk menambahkan ke keranjang.");
+            router.push('/login');
+            return;
+        }
+
         try {
-            addItem(product.id, 1);
-            toast.success(`${product.name} berhasil ditambahkan!`);
+            await addItem(product.id, 1);
         } catch (error) {
             console.error("Gagal dari ProductCard:", error);
         }
