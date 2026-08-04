@@ -54,12 +54,72 @@ export class DashboardService {
       },
     });
 
+    const recentUsers = await this.prisma.user.findMany({
+      take: 3,
+      where: {
+        role: {
+          in: [Role.MEMBER, Role.RESELLER],
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+      },
+    });
+
+    const recentSyncs = await this.prisma.erpSyncLog.findMany({
+      take: 3,
+      orderBy: {
+        runAt: 'desc',
+      },
+      select: {
+        id: true,
+        syncType: true,
+        status: true,
+        message: true,
+        runAt: true,
+      },
+    });
+
+    const orderActivities = recentOrders.map((o) => ({
+      id: `ord-${o.id}`,
+      type: 'ORDER',
+      title: `Pesanan #${o.id.slice(0, 6)} (${o.status})`,
+      subtitle: `Oleh ${o.user?.name || 'Pelanggan'}`,
+      timestamp: o.createdAt,
+    }));
+
+    const userActivities = recentUsers.map((u) => ({
+      id: `usr-${u.id}`,
+      type: 'USER',
+      title: `Pengguna baru mendaftar`,
+      subtitle: u.name,
+      timestamp: u.createdAt,
+    }));
+
+    const syncActivities = recentSyncs.map((s) => ({
+      id: `sync-${s.id}`,
+      type: 'SYNC',
+      title: `Sinkronisasi Accurate ERP`,
+      subtitle: s.message || `Tipe: ${s.syncType} (${s.status})`,
+      timestamp: s.runAt,
+    }));
+
+    const recentActivities = [...orderActivities, ...userActivities, ...syncActivities]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 6);
+
     return {
       totalProducts,
       totalOrdersCount,
       totalUsers,
       monthlyRevenue: monthlyRevenue._sum.totalAmount || 0,
       recentOrders,
+      recentActivities,
     };
   }
 }

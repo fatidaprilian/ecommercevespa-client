@@ -46,12 +46,14 @@ export function MiddleBanner() {
                 fill
                 className="object-cover w-full h-full transition-transform duration-500 ease-in-out group-hover:scale-105"
               />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/25"> {/* Tambah overlay gelap agar teks lebih terbaca */}
-                <div className="text-center text-white p-4">
-                  <h2 className="text-3xl md:text-5xl font-bold drop-shadow-md">{middleBanner.title}</h2>
-                  {middleBanner.subtitle && <p className="text-lg md:text-xl mt-2 drop-shadow-md">{middleBanner.subtitle}</p>}
+              {(middleBanner.title || middleBanner.subtitle) ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                  <div className="text-center text-white p-4">
+                    {middleBanner.title && <h2 className="text-3xl md:text-5xl font-bold drop-shadow-md">{middleBanner.title}</h2>}
+                    {middleBanner.subtitle && <p className="text-lg md:text-xl mt-2 drop-shadow-md">{middleBanner.subtitle}</p>}
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
           </Link>
         </motion.div>

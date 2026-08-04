@@ -33,15 +33,15 @@ const BANNER_TYPE_CONFIG: Record<string, { label: string; maxQuota: number; size
   BOTTOM: { label: 'Banner About Us (Bawah)', maxQuota: 1, sizeHint: '1200 × 800 px (rasio 3:2)' },
 };
 
-// Types that support text overlay & button customization
+// Types that support text overlay & button customization (strictly TOP_LEFT & TOP_RIGHT)
 const OVERLAY_TYPES = ['TOP_LEFT', 'TOP_RIGHT'];
 // Types that support color customization (text + button)
-const COLOR_TYPES = ['TOP_LEFT', 'TOP_RIGHT', 'BOTTOM'];
+const COLOR_TYPES = ['TOP_LEFT', 'TOP_RIGHT'];
 
 const bannerSchema = z.object({
   title: z.string().max(40, 'Maks. 40 karakter').nullable().transform(e => e === "" ? null : e),
   subtitle: z.string().max(80, 'Maks. 80 karakter').nullable().transform(e => e === "" ? null : e),
-  imageUrl: z.string().url('URL Gambar tidak valid.').min(1, 'Gambar wajib di-upload.'),
+  imageUrl: z.string().min(1, 'Gambar banner wajib diunggah.').url('URL Gambar tidak valid.'),
   linkUrl: z.string().nullable().transform(e => e === "" ? null : e),
   type: z.enum(['HERO', 'MIDDLE', 'TOP_LEFT', 'TOP_RIGHT', 'BOTTOM']),
   isActive: z.boolean(),
@@ -144,7 +144,17 @@ export function BannerForm({ initialData }: BannerFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((d) => { mutation.mutate(d as BannerData); })}>
+      <form onSubmit={form.handleSubmit((d) => {
+        const normalizedData: BannerData = {
+          ...d,
+          title: OVERLAY_TYPES.includes(d.type) ? d.title || null : null,
+          subtitle: OVERLAY_TYPES.includes(d.type) ? d.subtitle || null : null,
+          buttonText: OVERLAY_TYPES.includes(d.type) ? d.buttonText || null : null,
+          textColor: COLOR_TYPES.includes(d.type) ? d.textColor || null : null,
+          buttonColor: COLOR_TYPES.includes(d.type) ? d.buttonColor || null : null,
+        };
+        mutation.mutate(normalizedData);
+      })}>
         <Card>
           <CardHeader>
             <CardTitle>{initialData ? 'Edit Banner' : 'Tambah Banner Baru'}</CardTitle>
@@ -163,14 +173,6 @@ export function BannerForm({ initialData }: BannerFormProps) {
                     field.onChange(value);
                     if (value !== 'MIDDLE') {
                       form.setValue('brandId', null);
-                    }
-                    // Reset overlay fields when switching away
-                    if (!OVERLAY_TYPES.includes(value)) {
-                      form.setValue('buttonText', null);
-                    }
-                    if (!COLOR_TYPES.includes(value)) {
-                      form.setValue('textColor', '#FFFFFF');
-                      form.setValue('buttonColor', '#000000');
                     }
                   }} defaultValue={field.value}>
                     <FormControl>
@@ -213,7 +215,7 @@ export function BannerForm({ initialData }: BannerFormProps) {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Judul Overlay</FormLabel>
+                    <FormLabel>Judul Overlay (Opsional)</FormLabel>
                     <FormControl>
                       <Input placeholder="Contoh: Promo Akhir Tahun" maxLength={40} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -359,72 +361,7 @@ export function BannerForm({ initialData }: BannerFormProps) {
               />
             )}
 
-            {/* Brand selector - only for MIDDLE */}
-            {watchedType === 'MIDDLE' && (
-              <FormField
-                control={form.control}
-                name="brandId"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Merk Terkait (Opsional)</FormLabel>
-                    <Popover open={brandOpen} onOpenChange={setBrandOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={brandOpen}
-                            className={cn(
-                              "w-full max-w-sm justify-between",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {selectedBrandName ?? "Pilih merk..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full max-w-sm p-0">
-                        <Command shouldFilter={false}>
-                          <CommandInput
-                            placeholder="Cari merk..."
-                            value={brandSearch}
-                            onValueChange={setBrandSearch}
-                          />
-                          <CommandList>
-                            <CommandEmpty>Merk tidak ditemukan.</CommandEmpty>
-                            <CommandGroup>
-                              {brands.map((brand) => (
-                                <CommandItem
-                                  key={brand.id}
-                                  value={brand.id}
-                                  onSelect={() => {
-                                    form.setValue('brandId', brand.id === field.value ? null : brand.id);
-                                    setBrandOpen(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      field.value === brand.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  {brand.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FormDescription>
-                      Jika dipilih, produk dari merk ini akan ditampilkan di bawah banner di homepage.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+
             
             {/* Image Upload */}
             <FormField
@@ -437,13 +374,13 @@ export function BannerForm({ initialData }: BannerFormProps) {
                     {imageUrlValue ? (
                       <div className="relative w-full max-w-sm aspect-video group">
                         <img src={imageUrlValue} alt="Preview" className="w-full h-full object-cover rounded-md border" />
-                        <Button
-                          type="button" size="icon" variant="destructive"
+                        <button
+                          type="button"
                           onClick={() => { form.setValue('imageUrl', ''); }}
-                          className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100"
+                          className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md z-10 transition-transform hover:scale-105"
                         >
-                          <X size={16} />
-                        </Button>
+                          <X size={14} />
+                        </button>
                       </div>
                     ) : (
                       <label className="flex flex-col items-center justify-center w-full max-w-sm h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent">

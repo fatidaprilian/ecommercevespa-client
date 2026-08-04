@@ -309,7 +309,7 @@ function EditProductForm({ initialData, categories, brands }: { initialData: Pro
                 {form.watch('images')?.map((image, index) => (
                   <div key={index} className="relative w-20 h-20 group">
                     <img src={image.url} alt={`product-${index}`} className="object-cover w-full h-full rounded-lg border-2 border-gray-200"/>
-                    <button type="button" onClick={() => removeImage(index)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"><X size={14}/></button>
+                    <button type="button" onClick={() => removeImage(index)} className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md z-10 transition-transform hover:scale-105"><X size={14}/></button>
                   </div>
                 ))}
                 {isUploading && <div className="relative w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 bg-muted/50 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}

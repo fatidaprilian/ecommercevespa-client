@@ -191,17 +191,45 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
-        {/* BAGIAN AKTIVITAS */}
+        {/* BAGIAN AKTIVITAS TERKINI */}
         <motion.div variants={itemVariants} className="lg:col-span-2">
           <Card className="h-full shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle>Aktivitas</CardTitle>
+              <CardTitle>Aktivitas Terkini</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center h-32 text-center space-y-2 border-2 border-dashed rounded-lg bg-muted/20">
-                <Calendar className="h-6 w-6 text-muted-foreground/50" />
-                <p className="text-muted-foreground text-xs">Log aktivitas kosong.</p>
-              </div>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat aktivitas...
+                </div>
+              ) : stats?.recentActivities && stats.recentActivities.length > 0 ? (
+                <div className="space-y-3">
+                  {stats.recentActivities.map((act: any) => (
+                    <div key={act.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
+                      <div className={`p-2 rounded-full mt-0.5 ${
+                        act.type === 'ORDER' ? 'bg-green-100 text-green-600' :
+                        act.type === 'USER' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                      }`}>
+                        {act.type === 'ORDER' ? <ShoppingCart className="h-3.5 w-3.5" /> :
+                         act.type === 'USER' ? <User className="h-3.5 w-3.5" /> :
+                         <CreditCard className="h-3.5 w-3.5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{act.title}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{act.subtitle}</p>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        {new Date(act.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-32 text-center space-y-2 border-2 border-dashed rounded-lg bg-muted/20">
+                  <Calendar className="h-6 w-6 text-muted-foreground/50" />
+                  <p className="text-muted-foreground text-xs">Belum ada log aktivitas terkini.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

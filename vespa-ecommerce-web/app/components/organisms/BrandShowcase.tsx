@@ -76,13 +76,13 @@ export function BrandShowcase() {
                         {/* Faded edges to indicate scrollability */}
                         <div className="absolute right-0 top-0 bottom-0 w-12 md:w-24 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
                         
-                        {/* Desktop Arrows */}
+                        {/* Symmetrically Aligned Desktop Arrows */}
                         <Button
                             variant="outline"
                             size="icon"
                             className={cn(
-                                "hidden md:flex absolute top-1/2 left-0 md:left-2 -translate-y-1/2 z-20 rounded-full size-8 bg-white shadow-sm",
-                                !canScrollLeft && "opacity-50 pointer-events-none"
+                                "hidden md:flex absolute top-1/2 left-0 md:left-1 -translate-y-1/2 z-20 rounded-full size-9 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
+                                !canScrollLeft && "opacity-30 pointer-events-none"
                             )}
                             onClick={() => scroll('left')}
                             disabled={!canScrollLeft}
@@ -93,8 +93,8 @@ export function BrandShowcase() {
                             variant="outline"
                             size="icon"
                             className={cn(
-                                "hidden md:flex absolute top-1/2 right-0 md:right-2 -translate-y-1/2 z-20 rounded-full size-8 bg-white shadow-sm",
-                                !canScrollRight && "opacity-50 pointer-events-none"
+                                "hidden md:flex absolute top-1/2 right-0 md:right-1 -translate-y-1/2 z-20 rounded-full size-9 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
+                                !canScrollRight && "opacity-30 pointer-events-none"
                             )}
                             onClick={() => scroll('right')}
                             disabled={!canScrollRight}
@@ -105,7 +105,7 @@ export function BrandShowcase() {
                         <div 
                             ref={scrollContainerRef}
                             onScroll={checkScroll}
-                            className="flex overflow-x-auto gap-8 md:gap-12 snap-x snap-mandatory pb-4 hide-scrollbar w-full items-center px-4 md:px-16"
+                            className="flex overflow-x-auto gap-8 md:gap-12 snap-x snap-mandatory py-2 hide-scrollbar w-full items-center px-4 md:px-14"
                         >
                             {brands?.map((brand: Brand) => (
                                 <Link

@@ -83,14 +83,10 @@ const HeroCarousel = () => {
           ))}
         </CarouselContent>
 
-        {/* Navigation Arrows Balanced Symmetrically */}
-        <div className="absolute inset-0 pointer-events-none flex justify-center">
-          <div className="relative w-full max-w-[1206px] h-full pointer-events-none flex items-center justify-between px-6 md:px-8">
-            <CarouselPrevious className="pointer-events-auto relative left-0 top-0 translate-y-0 translate-x-0 hidden md:flex text-white border-white/30 bg-black/40 hover:bg-black/70 size-9 md:size-10 shadow-md" />
-            <CarouselNext className="pointer-events-auto relative right-0 top-0 translate-y-0 translate-x-0 hidden md:flex text-white border-white/30 bg-black/40 hover:bg-black/70 size-9 md:size-10 shadow-md" />
-            <CarouselDots className="pointer-events-auto absolute bottom-4 left-0 right-0 z-10 flex justify-center gap-1.5" />
-          </div>
-        </div>
+        {/* Navigation Arrows & Dots - Symmetrically Aligned (Best Practice) */}
+        <CarouselPrevious className="hidden md:flex absolute top-1/2 left-4 md:left-6 -translate-y-1/2 z-20 text-white border-white/30 bg-black/40 hover:bg-black/70 size-9 md:size-10 shadow-lg backdrop-blur-sm transition-all" />
+        <CarouselNext className="hidden md:flex absolute top-1/2 right-4 md:right-6 -translate-y-1/2 z-20 text-white border-white/30 bg-black/40 hover:bg-black/70 size-9 md:size-10 shadow-lg backdrop-blur-sm transition-all" />
+        <CarouselDots className="absolute bottom-4 left-0 right-0 z-10 flex justify-center gap-1.5" />
       </Carousel>
     </section>
   );

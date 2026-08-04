@@ -153,8 +153,8 @@ export default function OrderDetailPage() {
   // ========= REVISI DI SINI =========
   // Ambil ID database asli (bagian sebelum tanda hubung '-')
   // Ini akan mengatasi error 404 saat Midtrans redirect kembali
-  const paramId = params.id as string;
-  const orderId = paramId.split('-')[0];
+  const paramId = (params?.id as string) || '';
+  const orderId = paramId ? paramId.split('-')[0] : '';
   // ================================
 
   const { user } = useAuthStore();

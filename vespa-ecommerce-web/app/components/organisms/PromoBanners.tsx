@@ -17,8 +17,8 @@ export function PromoBanners() {
       <section className="w-full py-3 md:py-6 bg-white">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 gap-3 md:gap-6">
-            <Skeleton className="w-full aspect-[4/3] md:aspect-[16/9] rounded-lg md:rounded-xl" />
-            <Skeleton className="w-full aspect-[4/3] md:aspect-[16/9] rounded-lg md:rounded-xl" />
+            <Skeleton className="w-full aspect-[4/3] md:aspect-[16/9] rounded-md" />
+            <Skeleton className="w-full aspect-[4/3] md:aspect-[16/9] rounded-md" />
           </div>
         </div>
       </section>
@@ -39,7 +39,7 @@ export function PromoBanners() {
     const hasOverlay = !isTextTransparent && (banner.title || banner.subtitle || banner.buttonText);
 
     const content = (
-      <div className="relative w-full aspect-[4/3] md:aspect-[16/9] overflow-hidden rounded-lg md:rounded-xl shadow-sm bg-gray-100">
+      <div className="relative w-full aspect-[4/3] md:aspect-[16/9] overflow-hidden rounded-md shadow-sm bg-gray-100">
         <Image
           src={banner.imageUrl}
           alt={banner.title || 'Promo Banner'}
@@ -60,7 +60,7 @@ export function PromoBanners() {
             )}
             {banner.subtitle && (
               <p
-                className="hidden md:block text-xs md:text-sm mt-1"
+                className="text-[10px] sm:text-xs md:text-sm mt-0.5 md:mt-1 line-clamp-2"
                 style={{ color: textColor, opacity: 0.85 }}
               >
                 {banner.subtitle}
