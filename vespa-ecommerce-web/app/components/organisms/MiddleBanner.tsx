@@ -13,10 +13,9 @@ export function MiddleBanner() {
 
   if (isLoading) {
     return (
-      <section className="w-full py-8 md:py-12">
-        {/* Perubahan di sini: Tambahkan padding dan max-width */}
+      <section className="w-full py-4 md:py-6">
         <div className="container mx-auto px-4">
-          <Skeleton className="w-full h-56 md:h-80 lg:h-96 rounded-lg" />
+          <Skeleton className="w-full aspect-[16/9] sm:aspect-[2.5/1] md:aspect-[3/1] rounded-lg" />
         </div>
       </section>
     );
@@ -28,8 +27,6 @@ export function MiddleBanner() {
 
   return (
     <section className="w-full py-2 md:py-4">
-      {/* --- PERUBAHAN UTAMA DI SINI --- */}
-      {/* Hapus px-0, tambahkan padding standar dan max-width */}
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -38,8 +35,7 @@ export function MiddleBanner() {
           transition={{ duration: 0.6 }}
         >
           <Link href={middleBanner.linkUrl || '#'} className="block group">
-            {/* Tambahkan rounded-lg dan overflow-hidden di sini agar gambar memiliki sudut melengkung */}
-            <div className="relative w-full h-56 md:h-80 lg:h-96 overflow-hidden rounded-lg">
+            <div className="relative w-full aspect-[16/9] sm:aspect-[2.5/1] md:aspect-[3/1] overflow-hidden rounded-lg shadow-sm border border-gray-200/80 bg-gray-100">
               <Image
                 src={middleBanner.imageUrl}
                 alt={middleBanner.title}

@@ -81,7 +81,7 @@ export function BrandShowcase() {
                             variant="outline"
                             size="icon"
                             className={cn(
-                                "hidden md:flex absolute top-1/2 left-0 md:left-1 -translate-y-1/2 z-20 rounded-full size-9 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
+                                "hidden md:flex absolute top-1/2 left-1 md:left-2 -translate-y-1/2 z-20 rounded-full size-9 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
                                 !canScrollLeft && "opacity-30 pointer-events-none"
                             )}
                             onClick={() => scroll('left')}
@@ -93,7 +93,7 @@ export function BrandShowcase() {
                             variant="outline"
                             size="icon"
                             className={cn(
-                                "hidden md:flex absolute top-1/2 right-0 md:right-1 -translate-y-1/2 z-20 rounded-full size-9 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
+                                "hidden md:flex absolute top-1/2 right-1 md:right-2 -translate-y-1/2 z-20 rounded-full size-9 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
                                 !canScrollRight && "opacity-30 pointer-events-none"
                             )}
                             onClick={() => scroll('right')}
@@ -105,7 +105,7 @@ export function BrandShowcase() {
                         <div 
                             ref={scrollContainerRef}
                             onScroll={checkScroll}
-                            className="flex overflow-x-auto gap-8 md:gap-12 snap-x snap-mandatory py-2 hide-scrollbar w-full items-center px-4 md:px-14"
+                            className="flex overflow-x-auto gap-8 md:gap-12 snap-x snap-mandatory py-2 hide-scrollbar w-full items-center px-12 md:px-16"
                         >
                             {brands?.map((brand: Brand) => (
                                 <Link
