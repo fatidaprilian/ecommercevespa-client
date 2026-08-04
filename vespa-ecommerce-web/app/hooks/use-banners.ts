@@ -10,9 +10,12 @@ export interface Banner {
   subtitle?: string;
   imageUrl: string;
   linkUrl?: string;
-  type: 'HERO' | 'MIDDLE' | 'TOP_LEFT' | 'TOP_RIGHT';
+  type: 'HERO' | 'MIDDLE' | 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM';
   isActive: boolean;
   brandId?: string;
+  buttonText?: string;
+  textColor?: string;
+  buttonColor?: string;
 }
 
 const getActiveBanners = async (): Promise<Banner[]> => {

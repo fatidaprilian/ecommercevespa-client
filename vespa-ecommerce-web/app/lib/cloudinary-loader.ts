@@ -1,27 +1,35 @@
-// image-loader.ts
+// app/lib/cloudinary-loader.ts
 
-const CLOUDFLARE_WORKER_URL = 'https://cdn.jakartascootershop.com'; // <--- GANTI INI
-
-type LoaderProps = {
+interface CustomImageLoaderProps {
   src: string;
-  width: number;
+  width?: number;
   quality?: number;
-};
+}
 
-export default function imageLoader({ src }: LoaderProps): string {
+/**
+ * Custom Next.js Image loader.
+ * Optionally proxies Cloudinary assets through a Cloudflare Worker CDN when NEXT_PUBLIC_CLOUDFLARE_WORKER_URL is configured.
+ * Otherwise falls back directly to the original Cloudinary source URL.
+ */
+export default function imageLoader({ src, width, quality }: CustomImageLoaderProps): string {
+  if (!src) return '';
   if (src.startsWith('/')) return src;
   if (!src.includes('res.cloudinary.com')) return src;
 
+  const workerUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL;
+  if (!workerUrl) {
+    return src;
+  }
+
   try {
     const urlObj = new URL(src);
-    const pathName = urlObj.pathname; // /dm7jsgfc7/image/upload/v123...
-    
-    // Langsung tembak ke Worker!
-    // Browser -> Worker -> Cloudinary
-    // VPS tidak terlibat sama sekali.
-    return `${CLOUDFLARE_WORKER_URL}${pathName}`;
-    
-  } catch (error) {
+    const params = new URLSearchParams();
+    if (width) params.set('w', width.toString());
+    if (quality) params.set('q', quality.toString());
+
+    const queryString = params.toString();
+    return `${workerUrl}${urlObj.pathname}${queryString ? `?${queryString}` : ''}`;
+  } catch {
     return src;
   }
 }

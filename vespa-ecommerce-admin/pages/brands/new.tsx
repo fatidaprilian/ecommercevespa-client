@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, UploadCloud, X } from 'lucide-react';
+import { ArrowLeft, UploadCloud, X, Info } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -123,7 +124,7 @@ export default function NewBrandPage() {
                   <FormItem>
                     <FormLabel>Logo Merek</FormLabel>
                     <FormControl>
-                      <>
+                      <div>
                         {logoUrlValue ? (
                           <div className="relative w-40 h-40 group">
                             <img src={logoUrlValue} alt="Logo preview" className="w-full h-full object-contain rounded-md border p-2" />
@@ -149,8 +150,11 @@ export default function NewBrandPage() {
                             />
                           </label>
                         )}
-                      </>
+                      </div>
                     </FormControl>
+                    <FormDescription className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                      <Info className="h-3 w-3" /> Ukuran rekomendasi: 400 × 400 px (rasio 1:1, disarankan PNG / WebP transparan)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

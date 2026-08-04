@@ -23,15 +23,16 @@ export const useFeaturedProducts = (enabled: boolean = true) => {
   });
 };
 
-const fetchSecondaryFeaturedProducts = async (): Promise<Product[]> => {
-  const { data } = await api.get('/products/secondary-featured');
+const fetchSecondaryFeaturedProducts = async (excludeIds?: string[]): Promise<Product[]> => {
+  const params = excludeIds && excludeIds.length > 0 ? { excludeIds: excludeIds.join(',') } : {};
+  const { data } = await api.get('/products/secondary-featured', { params });
   return data;
 };
 
-export const useSecondaryFeaturedProducts = (enabled: boolean = true) => {
+export const useSecondaryFeaturedProducts = (excludeIds?: string[], enabled: boolean = true) => {
   return useQuery<Product[], Error>({
-    queryKey: ['secondary-featured-products'],
-    queryFn: fetchSecondaryFeaturedProducts,
+    queryKey: ['secondary-featured-products', excludeIds],
+    queryFn: () => fetchSecondaryFeaturedProducts(excludeIds),
     enabled,
   });
 };

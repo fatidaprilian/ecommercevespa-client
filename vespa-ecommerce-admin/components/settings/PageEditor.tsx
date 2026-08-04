@@ -5,8 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import toast from 'react-hot-toast';
-import { Loader2, Save, Upload, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { Loader2, Save, Upload, X, Info } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -16,7 +16,7 @@ import { getPageBySlug, updatePage, CmsPage } from '@/services/pageService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 
 const TiptapEditor = dynamic(() => import('@/components/ui/TiptapEditor').then(mod => mod.TiptapEditor), {
   ssr: false,
@@ -134,7 +134,7 @@ export default function PageEditor({ slug, pageTitle, pageDescription }: PageEdi
               )} />
               
               <FormItem>
-                  <FormLabel>Gambar Banner</FormLabel>
+                  <FormLabel>Gambar Banner (Opsional)</FormLabel>
                   {currentBannerUrl ? (
                       <div className="relative group w-full h-48 border rounded-md overflow-hidden">
                           <Image src={currentBannerUrl} alt="Banner preview" layout="fill" objectFit="cover" />
@@ -157,6 +157,9 @@ export default function PageEditor({ slug, pageTitle, pageDescription }: PageEdi
                       </FormControl>
                     </div>
                   )}
+                  <FormDescription className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <Info className="h-3 w-3" /> Ukuran rekomendasi: 1920 × 600 px (rasio 16:5 / 3:1)
+                  </FormDescription>
               </FormItem>
 
               <FormField name="content" control={form.control} render={({ field }) => (

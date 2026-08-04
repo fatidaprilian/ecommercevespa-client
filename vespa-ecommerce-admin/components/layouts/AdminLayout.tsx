@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Home, Package, ShoppingCart, Users, CircleUser, Settings, Landmark, Link2, Menu, X } from 'lucide-react';
+import { Home, Package, ShoppingCart, Users, CircleUser, Settings, Landmark, Link2, Menu, X, Palette, Image, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/button';
@@ -39,15 +39,37 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   };
 
-  const navItems = [
-    { href: '/', label: 'Dashboard', icon: Home },
-    { href: '/products', label: 'Produk', icon: Package },
-    { href: '/categories', label: 'Kategori', icon: Package },
-    { href: '/brands', label: 'Merek', icon: Package },
-    { href: '/orders', label: 'Pesanan', icon: ShoppingCart },
-    { href: '/users', label: 'Pengguna', icon: Users },
-    { href: '/payment-mappings', label: 'Pemetaan Pembayaran', icon: Link2 },
-    { href: '/settings', label: 'Pengaturan', icon: Settings },
+  const navGroups = [
+    {
+      label: null,
+      items: [
+        { href: '/', label: 'Dashboard', icon: Home },
+      ],
+    },
+    {
+      label: 'Toko',
+      items: [
+        { href: '/products', label: 'Produk', icon: Package },
+        { href: '/categories', label: 'Kategori', icon: Package },
+        { href: '/brands', label: 'Merek', icon: Package },
+        { href: '/orders', label: 'Pesanan', icon: ShoppingCart },
+        { href: '/users', label: 'Pengguna', icon: Users },
+        { href: '/payment-mappings', label: 'Pemetaan Pembayaran', icon: Link2 },
+      ],
+    },
+    {
+      label: 'Kustomisasi Tampilan',
+      items: [
+        { href: '/settings/banners', label: 'Banner Homepage', icon: Image },
+        { href: '/settings/pages', label: 'Halaman CMS', icon: FileText },
+      ],
+    },
+    {
+      label: 'Lainnya',
+      items: [
+        { href: '/settings', label: 'Pengaturan', icon: Settings },
+      ],
+    },
   ];
 
   // Komponen Navigasi (Dipakai ulang untuk Desktop & Mobile agar konsisten)
@@ -57,23 +79,38 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <h1 className="text-2xl font-bold text-foreground">Jakartascootershop</h1>
       </Link>
       <nav className="flex flex-col gap-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            onClick={() => setIsMobileMenuOpen(false)} // Tutup menu saat link diklik (mobile)
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground',
-              (pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))) ? 'bg-secondary text-secondary-foreground' : ''
+        {navGroups.map((group, gi) => (
+          <div key={gi} className={group.label ? 'mt-4' : ''}>
+            {group.label && (
+              <span className="px-3 mb-1 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {group.label}
+              </span>
             )}
-          >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-          </Link>
+            {group.items.map((item) => {
+              const isActive = (item.href === '/' || item.href === '/settings')
+                ? pathname === item.href
+                : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => { setIsMobileMenuOpen(false); }}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground',
+                    isActive ? 'bg-secondary text-secondary-foreground font-medium' : ''
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
         ))}
       </nav>
     </>
   );
+
 
   return (
     <div className="flex min-h-screen w-full bg-background">

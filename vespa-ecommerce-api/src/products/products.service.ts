@@ -219,6 +219,7 @@ export class ProductsService {
           priceAdjustmentRules: { where: { isActive: true } },
         },
         orderBy: [
+          { stock: 'desc' },
           { isFeatured: 'desc' },
           { [sortBy]: sortOrder },
         ],
@@ -242,41 +243,89 @@ export class ProductsService {
   }
 
   async findFeatured(user?: UserPayload) {
+    const include = {
+      images: true,
+      category: true,
+      brand: true,
+      priceTiers: true,
+      priceAdjustmentRules: { where: { isActive: true } },
+    };
+
     const featuredProducts = await this.prisma.product.findMany({
       where: { isFeatured: true, isVisible: true },
       take: 10,
-      include: {
-        images: true,
-        category: true,
-        brand: true,
-        priceTiers: true,
-        priceAdjustmentRules: { where: { isActive: true } },
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
+      include,
+      orderBy: [
+        { stock: 'desc' },
+        { updatedAt: 'desc' },
+      ],
     });
+
+    // Fallback: fill remaining slots with unflagged newest products
+    if (featuredProducts.length < 10) {
+      const existingIds = featuredProducts.map((p) => p.id);
+      const fillProducts = await this.prisma.product.findMany({
+        where: {
+          isVisible: true,
+          isFeatured: false,
+          isSecondaryFeatured: false,
+          id: { notIn: existingIds },
+        },
+        take: 10 - featuredProducts.length,
+        include,
+        orderBy: [
+          { stock: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      });
+      featuredProducts.push(...fillProducts);
+    }
 
     return Promise.all(
       featuredProducts.map((p) => this.processProductWithPrice(p, user)),
     );
   }
 
-  async findSecondaryFeatured(user?: UserPayload) {
+  async findSecondaryFeatured(excludeIds: string[] = [], user?: UserPayload) {
+    const include = {
+      images: true,
+      category: true,
+      brand: true,
+      priceTiers: true,
+      priceAdjustmentRules: { where: { isActive: true } },
+    };
+
     const featuredProducts = await this.prisma.product.findMany({
       where: { isSecondaryFeatured: true, isVisible: true },
       take: 10,
-      include: {
-        images: true,
-        category: true,
-        brand: true,
-        priceTiers: true,
-        priceAdjustmentRules: { where: { isActive: true } },
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
+      include,
+      orderBy: [
+        { stock: 'desc' },
+        { updatedAt: 'desc' },
+      ],
     });
+
+    // Fallback: fill remaining slots with unflagged products not in excludeIds or section 1
+    if (featuredProducts.length < 10) {
+      const allExcludedIds = Array.from(
+        new Set([...featuredProducts.map((p) => p.id), ...excludeIds]),
+      );
+      const fillProducts = await this.prisma.product.findMany({
+        where: {
+          isVisible: true,
+          isFeatured: false,
+          isSecondaryFeatured: false,
+          id: { notIn: allExcludedIds },
+        },
+        take: 10 - featuredProducts.length,
+        include,
+        orderBy: [
+          { stock: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      });
+      featuredProducts.push(...fillProducts);
+    }
 
     return Promise.all(
       featuredProducts.map((p) => this.processProductWithPrice(p, user)),
@@ -367,9 +416,20 @@ export class ProductsService {
       const featuredCount = await this.prisma.product.count({
         where: { isFeatured: true, NOT: { id } },
       });
-      if (featuredCount >= 5) {
+      if (featuredCount >= 10) {
         throw new BadRequestException(
-          'Maksimal 5 produk yang bisa diunggulkan.',
+          'Maksimal 10 produk yang bisa diunggulkan.',
+        );
+      }
+    }
+
+    if (updateProductDto.isSecondaryFeatured === true) {
+      const secondaryCount = await this.prisma.product.count({
+        where: { isSecondaryFeatured: true, NOT: { id } },
+      });
+      if (secondaryCount >= 10) {
+        throw new BadRequestException(
+          'Maksimal 10 produk yang bisa dijadikan Etalase 2.',
         );
       }
     }

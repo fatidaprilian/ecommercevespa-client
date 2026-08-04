@@ -4,26 +4,27 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
-  IsUrl, // Pastikan ini diimpor dengan benar
+  IsUrl,
   IsEnum,
   IsBoolean,
+  MaxLength,
 } from 'class-validator';
 import { BannerType } from '@prisma/client';
 
 export class CreateBannerDto {
   @IsString()
   @IsOptional()
+  @MaxLength(40)
   title?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(80)
   subtitle?: string;
 
-  // --- PERUBAHAN DI SINI ---
-  @IsUrl() // Mengganti @Url() menjadi @IsUrl()
+  @IsUrl()
   @IsNotEmpty()
   imageUrl: string;
-  // --- SELESAI ---
 
   @IsString()
   @IsOptional()
@@ -40,4 +41,17 @@ export class CreateBannerDto {
   @IsString()
   @IsOptional()
   brandId?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  buttonText?: string;
+
+  @IsString()
+  @IsOptional()
+  textColor?: string;
+
+  @IsString()
+  @IsOptional()
+  buttonColor?: string;
 }

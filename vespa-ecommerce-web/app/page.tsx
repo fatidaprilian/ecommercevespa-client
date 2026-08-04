@@ -101,38 +101,21 @@ const BestSellerProducts = ({
     );
 };
 
-const SecondaryProducts = ({ excludeIds, brandId }: { excludeIds: string[]; brandId?: string }) => {
+const SecondaryProducts = ({ excludeIds }: { excludeIds: string[]; brandId?: string }) => {
     const hasHydrated = useAuthStore((state) => state._hasHydrated);
     
-    const { data: secondaryFeatured, isLoading: isLoadingFeatured } = useSecondaryFeaturedProducts(hasHydrated);
-
-    const queryParams = brandId
-        ? { sortBy: 'createdAt' as const, sortOrder: 'desc' as const, limit: 10, excludeIds, brandId: [brandId] }
-        : { sortBy: 'createdAt' as const, sortOrder: 'desc' as const, limit: 10, excludeIds };
-
-    const { data: productsResponse, isLoading: isLoadingProducts, error } = useProducts(
-        queryParams,
-        hasHydrated
-    );
-
-    const combinedSecondaryProducts = useMemo(() => {
-        const featured = secondaryFeatured || [];
-        const regular = productsResponse?.data || [];
-        const featuredIds = new Set(featured.map(p => p.id));
-        const uniqueRegular = regular.filter(p => !featuredIds.has(p.id));
-        return [...featured, ...uniqueRegular].slice(0, 10);
-    }, [secondaryFeatured, productsResponse]);
+    const { data: secondaryProducts, isLoading, error } = useSecondaryFeaturedProducts(excludeIds, hasHydrated);
 
     if (error) return null;
 
     return (
         <Section className="bg-white py-4 md:py-6">
             <div className="container mx-auto px-4">
-                {isLoadingProducts || isLoadingFeatured || !hasHydrated ? (
+                {isLoading || !hasHydrated ? (
                     <ProductSkeleton />
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                        {combinedSecondaryProducts.map((product: Product, index: number) => (
+                        {(secondaryProducts || []).map((product: Product, index: number) => (
                             <motion.div
                                 key={product.id}
                                 initial={{ opacity: 0, y: 30 }}
@@ -156,31 +139,15 @@ export default function HomePage() {
     const queryClient = useQueryClient();
 
     const { data: featuredProducts, isLoading: isLoadingFeatured } = useFeaturedProducts(hasHydrated);
-    const { data: regularProductsResponse, isLoading: isLoadingRegular } = useProducts(
-        { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 },
-        hasHydrated
-    );
 
     const { data: banners } = useBanners();
     const middleBanner = banners?.find((b) => b.type === 'MIDDLE');
     const middleBrandId = middleBanner?.brandId;
 
-    const combinedBestSellers = useMemo(() => {
-        if (!featuredProducts && !regularProductsResponse?.data) return [];
-
-        const featured = featuredProducts || [];
-        const regular = regularProductsResponse?.data || [];
-        const featuredIds = new Set(featured.map(p => p.id));
-        const uniqueRegularProducts = regular.filter(p => !featuredIds.has(p.id));
-
-        return [...featured, ...uniqueRegularProducts].slice(0, 10);
-    }, [featuredProducts, regularProductsResponse]);
-
-    const isBestSellerLoading = (isLoadingFeatured || isLoadingRegular) && hasHydrated;
-
+    const bestSellerProducts = featuredProducts || [];
     const bestSellerIds = useMemo(() => {
-        return combinedBestSellers.map(p => p.id);
-    }, [combinedBestSellers]);
+        return bestSellerProducts.map(p => p.id);
+    }, [bestSellerProducts]);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -205,8 +172,8 @@ export default function HomePage() {
             <PromoBanners />
             <BrandShowcase />
             <BestSellerProducts
-                products={combinedBestSellers}
-                isLoading={isBestSellerLoading}
+                products={bestSellerProducts}
+                isLoading={isLoadingFeatured}
             />
             <MiddleBanner />
             <SecondaryProducts excludeIds={bestSellerIds} brandId={middleBrandId} />
