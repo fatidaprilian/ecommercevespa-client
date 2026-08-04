@@ -5,10 +5,10 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Start seeding ...');
+  console.log('Start seeding (Admin account only)...');
 
   // ============================================
-  // === SEED ADMIN USER (KODE ANDA YANG SUDAH ADA) ===
+  // === SEED ADMIN USER ===
   // ============================================
   const saltRounds = 10;
   const password = process.env.ADMIN_SEED_PASSWORD; 
@@ -29,49 +29,8 @@ async function main() {
     },
   });
 
-  console.log(`Created admin user: ${adminUser.email}`);
-  console.log(`Admin user created/updated successfully.`);
-
-  // ============================================
-  // === SEED CMS PAGES (KODE BARU) ===
-  // ============================================
-  console.log('Seeding CMS pages...');
-  
-  // Buat halaman About Us
-  await prisma.cmsPage.upsert({
-    where: { slug: 'about-us' },
-    update: {},
-    create: {
-      slug: 'about-us',
-      title: 'Tentang Kami',
-      content: '<p>Tulis konten tentang perusahaan Anda di sini. Jelaskan sejarah, visi, dan misi Anda.</p>',
-    },
-  });
-
-  // Buat halaman FAQ
-  await prisma.cmsPage.upsert({
-    where: { slug: 'faq' },
-    update: {},
-    create: {
-      slug: 'faq',
-      title: 'Frequently Asked Questions (FAQ)',
-      content: '<h2>Pertanyaan Umum</h2><p>Tulis daftar pertanyaan dan jawaban yang sering ditanyakan pelanggan di sini.</p>',
-    },
-  });
-
-  // Buat halaman Terms & Conditions
-  await prisma.cmsPage.upsert({
-    where: { slug: 'terms-and-conditions' },
-    update: {},
-    create: {
-      slug: 'terms-and-conditions',
-      title: 'Syarat & Ketentuan',
-      content: '<p>Jelaskan syarat dan ketentuan penggunaan layanan dan pembelian produk di website Anda.</p>',
-    },
-  });
-  
-  console.log('CMS pages seeded successfully.');
-  console.log('Seeding finished.');
+  console.log(`Created/verified admin user: ${adminUser.email}`);
+  console.log('Seeding finished successfully.');
 }
 
 main()

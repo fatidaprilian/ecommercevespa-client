@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, Trash2, UploadCloud, X } from 'lucide-react';
+import { ArrowLeft, Trash2, UploadCloud, X, Info } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +18,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -158,21 +159,21 @@ export default function EditBrandPage() {
                    <FormItem>
                     <FormLabel>Logo Merek</FormLabel>
                     <FormControl>
-                      <>
+                      <div>
                         {logoUrlValue ? (
                           <div className="relative w-40 h-40 group">
                             <img src={logoUrlValue} alt="Logo preview" className="w-full h-full object-contain rounded-md border p-2" />
                             <button
                               type="button"
                               onClick={removeImage}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md z-10 transition-transform hover:scale-105"
                               disabled={isUploading || updateMutation.isPending}
                             >
                               <X size={16} />
                             </button>
                           </div>
                         ) : (
-                          <label className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg ${isUploading || updateMutation.isPending ? 'cursor-not-allowed bg-muted/50' : 'cursor-pointer hover:bg-accent'}`}> {/* Style disable */}
+                          <label className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg ${isUploading || updateMutation.isPending ? 'cursor-not-allowed bg-muted/50' : 'cursor-pointer hover:bg-accent'}`}>
                             <UploadCloud className="w-10 h-10 text-muted-foreground mb-2" />
                             <span className="text-sm text-muted-foreground">Klik untuk mengunggah</span>
                             <Input
@@ -184,8 +185,11 @@ export default function EditBrandPage() {
                             />
                           </label>
                         )}
-                      </>
+                      </div>
                     </FormControl>
+                    <FormDescription className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                      <Info className="h-3 w-3" /> Ukuran rekomendasi: 400 × 400 px (rasio 1:1, disarankan PNG / WebP transparan)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

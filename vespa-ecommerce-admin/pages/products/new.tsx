@@ -128,7 +128,7 @@ export default function NewProductPage() {
                 {form.watch('images')?.map((image, index) => (
                   <div key={index} className="relative w-20 h-20 group">
                     <img src={image.url} alt={`product-image-${index}`} className="object-cover w-full h-full rounded-lg border-2 border-gray-200"/>
-                    <button type="button" onClick={() => removeImage(index)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                    <button type="button" onClick={() => removeImage(index)} className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md z-10 transition-transform hover:scale-105">
                       <X size={14}/>
                     </button>
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-0.5 text-center rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">

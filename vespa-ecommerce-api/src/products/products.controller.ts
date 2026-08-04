@@ -43,6 +43,16 @@ export class ProductsController {
   }
 
   @Public()
+  @Get('secondary-featured')
+  findSecondaryFeatured(
+    @Query('excludeIds') excludeIds?: string,
+    @Req() req?: AuthenticatedRequest,
+  ) {
+    const excludeArray = excludeIds ? excludeIds.split(',').filter(Boolean) : [];
+    return this.productsService.findSecondaryFeatured(excludeArray, req?.user);
+  }
+
+  @Public()
   @Get('search')
   searchProducts(@Query() query: SearchProductDto) {
     return this.productsService.search(query.term || '');

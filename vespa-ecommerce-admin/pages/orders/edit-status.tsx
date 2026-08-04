@@ -42,7 +42,7 @@ export default function EditOrderStatusPage() {
   const { data: order, isLoading, isError } = useQuery<Order, Error>({
     queryKey: ['order', id],
     queryFn: () => getOrderById(id as string),
-    enabled: !!id, // Hanya jalankan query jika ID ada
+    enabled: router.isReady && typeof id === 'string' && id.length > 0,
   });
 
   useEffect(() => {
@@ -73,9 +73,9 @@ export default function EditOrderStatusPage() {
     mutation.mutate(selectedStatus);
   };
 
-  if (isLoading) {
+  if (!router.isReady || isLoading) {
     return (
-      <div className="flex justify-center items-center h-full">
+      <div className="flex justify-center items-center h-full p-8">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );

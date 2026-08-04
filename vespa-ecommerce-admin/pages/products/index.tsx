@@ -168,6 +168,10 @@ export default function ProductsPage() {
     updateProductMutation.mutate({ id: product.id, data: { isFeatured: !product.isFeatured } });
   };
 
+  const handleSecondaryFeatureToggle = (product: Product) => {
+    updateProductMutation.mutate({ id: product.id, data: { isSecondaryFeatured: !product.isSecondaryFeatured } });
+  };
+
   const handleVisibilityToggle = (product: Product) => {
       const newVisibility = !product.isVisible;
       updateProductMutation.mutate({ id: product.id, data: { isVisible: newVisibility } });
@@ -317,6 +321,7 @@ export default function ProductsPage() {
                             page={page}
                             setPage={setPage}
                             onFeatureToggle={handleFeatureToggle}
+                            onSecondaryFeatureToggle={handleSecondaryFeatureToggle}
                             onVisibilityToggle={handleVisibilityToggle}
                             onDelete={handleDelete}
                             isMutationPending={updateProductMutation.isPending || deleteMutation.isPending || bulkUpdateVisibilityMutation.isPending}
@@ -348,6 +353,7 @@ export default function ProductsPage() {
                             page={page}
                             setPage={setPage}
                             onFeatureToggle={handleFeatureToggle}
+                            onSecondaryFeatureToggle={handleSecondaryFeatureToggle}
                             onVisibilityToggle={handleVisibilityToggle}
                             onDelete={handleDelete}
                             isMutationPending={updateProductMutation.isPending || deleteMutation.isPending || bulkUpdateVisibilityMutation.isPending}
@@ -377,6 +383,7 @@ interface ProductTableProps {
     page: number;
     setPage: (page: number) => void;
     onFeatureToggle: (product: Product) => void;
+    onSecondaryFeatureToggle: (product: Product) => void;
     onVisibilityToggle: (product: Product) => void;
     onDelete: (id: string) => void;
     isMutationPending: boolean;
@@ -388,7 +395,7 @@ interface ProductTableProps {
 
 function ProductTable({
     products, isLoading, isError, error, activeTab, meta, page, setPage,
-    onFeatureToggle, onVisibilityToggle, onDelete, isMutationPending,
+    onFeatureToggle, onSecondaryFeatureToggle, onVisibilityToggle, onDelete, isMutationPending,
     selectedProductIds, onSelectAll, onSelectRow, isAllSelected
 }: ProductTableProps) {
     const isInactiveView = activeTab === 'inactive';
@@ -436,6 +443,7 @@ function ProductTable({
                                 />
                               </TableHead>
                               <TableHead className="w-[80px] text-center">Unggulan</TableHead>
+                              <TableHead className="w-[80px] text-center hidden lg:table-cell">Etalase 2</TableHead>
                               <TableHead>Info Produk</TableHead>
                               <TableHead className="hidden md:table-cell">Kategori</TableHead>
                               <TableHead>Harga</TableHead>
@@ -488,10 +496,19 @@ function ProductTable({
                                           <TableCell className="text-center">
                                               <Switch
                                                   checked={product.isFeatured}
-                                                  onCheckedChange={() => onFeatureToggle(product)}
+                                                  onCheckedChange={() => { onFeatureToggle(product); }}
                                                   disabled={isMutationPending || isInactiveView}
                                                   aria-label="Toggle unggulan"
                                                   className="data-[state=checked]:bg-yellow-500"
+                                              />
+                                          </TableCell>
+                                          <TableCell className="text-center hidden lg:table-cell">
+                                              <Switch
+                                                  checked={product.isSecondaryFeatured}
+                                                  onCheckedChange={() => { onSecondaryFeatureToggle(product); }}
+                                                  disabled={isMutationPending || isInactiveView}
+                                                  aria-label="Toggle sekunder"
+                                                  className="data-[state=checked]:bg-blue-500"
                                               />
                                           </TableCell>
                                           <TableCell>

@@ -17,6 +17,7 @@ export interface Product {
   updatedAt: string;
   isVisible: boolean;
   isFeatured?: boolean;
+  isSecondaryFeatured?: boolean;
   category?: any;
   piaggioCode?: string;
   models?: string;

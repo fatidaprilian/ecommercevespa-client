@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useProducts, getProducts } from "@/hooks/use-products";
-import { useFeaturedProducts } from "@/hooks/use-featured-products"; // <--- IMPORT HOOK BARU
+import { useFeaturedProducts, useSecondaryFeaturedProducts } from "@/hooks/use-featured-products";
 import { useBanners } from "@/hooks/use-banners";
 import { Product } from "@/types";
 import { useAuthStore } from "@/store/auth";
@@ -16,7 +16,9 @@ import { ProductCard } from "@/components/molecules/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HeroSection } from "@/components/organisms/HeroSection";
+import { PromoBanners } from "@/components/organisms/PromoBanners";
 import { MiddleBanner } from "@/components/organisms/MiddleBanner";
+import { AboutJssBanner } from "@/components/organisms/AboutJssBanner";
 import { BrandShowcase } from "@/components/organisms/BrandShowcase";
 import { Star } from "lucide-react";
 
@@ -37,9 +39,9 @@ const Section = ({ children, className = "" }: { children: React.ReactNode; clas
     );
 };
 
-const BestSellerSkeleton = () => (
+const ProductSkeleton = () => (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="space-y-3">
                 <Skeleton className="h-48 w-full" />
                 <Skeleton className="h-4 w-2/3" />
@@ -49,7 +51,6 @@ const BestSellerSkeleton = () => (
     </div>
 );
 
-
 const BestSellerProducts = ({
     products,
     isLoading
@@ -57,7 +58,6 @@ const BestSellerProducts = ({
     products: Product[],
     isLoading: boolean
 }) => {
-    // Component is now presentational
     return (
         <Section className="bg-white py-4 md:py-6">
             <div className="container mx-auto px-4">
@@ -75,7 +75,7 @@ const BestSellerProducts = ({
                     </Button>
                 </div>
 
-                {isLoading ? <BestSellerSkeleton /> : (
+                {isLoading ? <ProductSkeleton /> : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
                         {products.map((product: Product, index: number) => (
                             <motion.div
@@ -83,7 +83,7 @@ const BestSellerProducts = ({
                                 initial={{ opacity: 1, y: 0 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, amount: 0.3 }}
-                                transition={{ duration: 0.6, delay: index * 0.1 }}
+                                transition={{ duration: 0.6, delay: index * 0.05 }}
                                 className="relative group"
                             >
                                 {product.isFeatured && (
@@ -101,18 +101,10 @@ const BestSellerProducts = ({
     );
 };
 
-const SecondaryProducts = ({ excludeIds, brandId }: { excludeIds: string[]; brandId?: string }) => {
+const SecondaryProducts = ({ excludeIds }: { excludeIds: string[]; brandId?: string }) => {
     const hasHydrated = useAuthStore((state) => state._hasHydrated);
-    // If brandId is set, filter by brand; otherwise show latest products
-    const queryParams = brandId
-        ? { sortBy: 'createdAt' as const, sortOrder: 'desc' as const, limit: 5, excludeIds, brandId: [brandId] }
-        : { sortBy: 'createdAt' as const, sortOrder: 'desc' as const, limit: 5, excludeIds };
-    const { data: productsResponse, isLoading, error } = useProducts(
-        queryParams,
-        hasHydrated
-    );
-
-    const secondaryProducts = productsResponse?.data;
+    
+    const { data: secondaryProducts, isLoading, error } = useSecondaryFeaturedProducts(excludeIds, hasHydrated);
 
     if (error) return null;
 
@@ -120,24 +112,16 @@ const SecondaryProducts = ({ excludeIds, brandId }: { excludeIds: string[]; bran
         <Section className="bg-white py-4 md:py-6">
             <div className="container mx-auto px-4">
                 {isLoading || !hasHydrated ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="space-y-3">
-                                <Skeleton className="h-48 w-full" />
-                                <Skeleton className="h-4 w-2/3" />
-                                <Skeleton className="h-6 w-1/2" />
-                            </div>
-                        ))}
-                    </div>
+                    <ProductSkeleton />
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                        {secondaryProducts?.slice(0, 5).map((product: Product, index: number) => (
+                        {(secondaryProducts || []).map((product: Product, index: number) => (
                             <motion.div
                                 key={product.id}
                                 initial={{ opacity: 0, y: 30 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, amount: 0.3 }}
-                                transition={{ duration: 0.6, delay: index * 0.1 }}
+                                transition={{ duration: 0.6, delay: index * 0.05 }}
                                 className="relative group"
                             >
                                 <ProductCard product={product} />
@@ -154,67 +138,46 @@ export default function HomePage() {
     const { isAuthenticated, _hasHydrated: hasHydrated } = useAuthStore();
     const queryClient = useQueryClient();
 
-    // 1. Fetch Best Seller Data here
     const { data: featuredProducts, isLoading: isLoadingFeatured } = useFeaturedProducts(hasHydrated);
-    const { data: regularProductsResponse, isLoading: isLoadingRegular } = useProducts(
-        { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 },
-        hasHydrated
-    );
 
-    // Fetch banners to get middle banner's brandId
     const { data: banners } = useBanners();
     const middleBanner = banners?.find((b) => b.type === 'MIDDLE');
     const middleBrandId = middleBanner?.brandId;
 
-    // 2. Compute Combined Products (Logic lifted from BestSellerProducts)
-    const combinedBestSellers = useMemo(() => {
-        if (!featuredProducts && !regularProductsResponse?.data) return [];
-
-        const featured = featuredProducts || [];
-        const regular = regularProductsResponse?.data || [];
-
-        const featuredIds = new Set(featured.map(p => p.id));
-
-        const uniqueRegularProducts = regular.filter(p => !featuredIds.has(p.id));
-
-        return [...featured, ...uniqueRegularProducts].slice(0, 5); // Slice here to get exact 5
-    }, [featuredProducts, regularProductsResponse]);
-
-    const isBestSellerLoading = (isLoadingFeatured || isLoadingRegular) && hasHydrated;
-
-    // 3. Compute IDs to exclude
+    const bestSellerProducts = featuredProducts || [];
     const bestSellerIds = useMemo(() => {
-        return combinedBestSellers.map(p => p.id);
-    }, [combinedBestSellers]);
+        return bestSellerProducts.map(p => p.id);
+    }, [bestSellerProducts]);
 
     useEffect(() => {
         if (isAuthenticated) {
-            // Prefetch featured products
             void queryClient.prefetchQuery({
                 queryKey: ['featured-products'],
                 queryFn: () => api.get('/products/featured').then(res => res.data),
             });
-            // Prefetch regular products
+            void queryClient.prefetchQuery({
+                queryKey: ['secondary-featured-products'],
+                queryFn: () => api.get('/products/secondary-featured').then(res => res.data),
+            });
             void queryClient.prefetchQuery({
                 queryKey: ['products', { sortBy: 'createdAt', sortOrder: 'desc', limit: 10 }],
                 queryFn: () => getProducts({ sortBy: 'createdAt', sortOrder: 'desc', limit: 10 }),
             });
-            // Note: Prefetch for secondary products might need adjustment if logic changes, 
-            // but since excludeIds is dynamic, prefetching strict key might be tricky. 
-            // We can leave basic prefetch or update it if needed.
         }
     }, [isAuthenticated, queryClient]);
 
     return (
         <div className="min-h-screen bg-white">
             <HeroSection />
+            <PromoBanners />
             <BrandShowcase />
             <BestSellerProducts
-                products={combinedBestSellers}
-                isLoading={isBestSellerLoading}
+                products={bestSellerProducts}
+                isLoading={isLoadingFeatured}
             />
             <MiddleBanner />
             <SecondaryProducts excludeIds={bestSellerIds} brandId={middleBrandId} />
+            <AboutJssBanner />
         </div>
     );
 }

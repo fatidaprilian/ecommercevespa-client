@@ -55,7 +55,7 @@ export default function CategoriesClient() {
       >
         {categories?.map((cat: Category & { imageUrl?: string }) => {
           const Icon = categoryIcons[cat.name] || categoryIcons.default;
-          const imageSrc = cat.imageUrl || `https://source.unsplash.com/400x500/?${cat.name.split(' ')[0].toLowerCase()}`;
+          const imageSrc = cat.imageUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500' viewBox='0 0 400 500'%3E%3Crect width='400' height='500' fill='%231E2022'/%3E%3C/svg%3E";
 
           return (
             <motion.div key={cat.id} variants={itemVariants}>

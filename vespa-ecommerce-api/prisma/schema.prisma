@@ -126,6 +126,7 @@ model Product {
   piaggioCode          String?
   models               String?
   isFeatured           Boolean                 @default(false)
+  isSecondaryFeatured  Boolean                 @default(false)
   images               ProductImage[]
   accurateItemId       String?                 @unique
   category             Category?               @relation(fields: [categoryId], references: [id])
@@ -385,20 +386,26 @@ model AccurateOAuth {
 enum BannerType {
   HERO
   MIDDLE
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM
 }
 
 model HomePageBanner {
-  id        String     @id @default(cuid())
-  title     String?    
-  subtitle  String?
-  imageUrl  String
-  linkUrl   String?
-  type      BannerType
-  isActive  Boolean    @default(true)
-  brandId   String?
-  brand     Brand?     @relation(fields: [brandId], references: [id])
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id          String     @id @default(cuid())
+  title       String?    
+  subtitle    String?
+  imageUrl    String
+  linkUrl     String?
+  type        BannerType
+  isActive    Boolean    @default(true)
+  brandId     String?
+  brand       Brand?     @relation(fields: [brandId], references: [id])
+  buttonText  String?
+  textColor   String?    @default("#FFFFFF")
+  buttonColor String?    @default("#000000")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model CmsPage {

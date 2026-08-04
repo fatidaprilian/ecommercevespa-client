@@ -81,15 +81,15 @@ export default function CmsPageViewer({ slug }: { slug: string }) {
           <div className="absolute inset-0 bg-black/40" />
         </motion.div>
       )}
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 py-8 md:py-14">
         <motion.div
-          className="max-w-4xl mx-auto"
+          className="max-w-3xl mx-auto bg-white rounded-2xl border border-gray-100 p-6 sm:p-10 md:p-14 shadow-sm"
           initial="hidden"
           animate="show"
           variants={containerVariants}
         >
           <motion.h1 
-            className="text-4xl md:text-5xl font-extrabold text-center text-gray-800 mb-12"
+            className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-8 pb-4 border-b border-gray-100"
             variants={itemVariants}
           >
             {page.title}
@@ -97,7 +97,7 @@ export default function CmsPageViewer({ slug }: { slug: string }) {
 
           <motion.div 
             variants={itemVariants}
-            className="prose prose-lg max-w-none text-gray-700"
+            className="text-gray-700 text-sm sm:text-base leading-relaxed space-y-4 [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:text-gray-900 [&>h1]:mt-6 [&>h1]:mb-3 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:text-gray-900 [&>h2]:mt-6 [&>h2]:mb-3 [&>h3]:text-lg [&>h3]:font-semibold [&>h3]:text-gray-900 [&>h3]:mt-4 [&>h3]:mb-2 [&>p]:mb-4 [&>p]:leading-relaxed [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-4 [&>ul]:space-y-1 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-4 [&>ol]:space-y-1 [&>blockquote]:border-l-4 [&>blockquote]:border-gray-300 [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4"
           >
             {parse(DOMPurify.sanitize(page.content))}
           </motion.div>

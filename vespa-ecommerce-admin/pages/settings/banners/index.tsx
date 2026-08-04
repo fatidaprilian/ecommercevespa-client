@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -69,7 +69,11 @@ export default function BannersPage() {
                     </TableCell>
                     <TableCell className="font-medium">{banner.title || '-'}</TableCell>
                     <TableCell>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${banner.type === 'HERO' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                        banner.type === 'HERO' ? 'bg-blue-100 text-blue-800' :
+                        banner.type === 'TOP_LEFT' || banner.type === 'TOP_RIGHT' ? 'bg-orange-100 text-orange-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
                         {banner.type}
                       </span>
                     </TableCell>
