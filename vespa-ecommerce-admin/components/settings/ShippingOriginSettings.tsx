@@ -105,11 +105,12 @@ export const ShippingOriginSettings = ({ allSettings, isLoadingSettings }: Shipp
         ]),
         onSuccess: () => {
             toast.success('Lokasi asal pengiriman berhasil diperbarui!');
-            queryClient.invalidateQueries({ queryKey: ['settings'] });
+            void queryClient.invalidateQueries({ queryKey: ['settings'] });
             setSelectedOrigin(null);
         },
-        onError: (err: any) => {
-            toast.error(err.response?.data?.message || 'Gagal menyimpan pengaturan.');
+        onError: (err: unknown) => {
+            const errObj = err as { response?: { data?: { message?: string } } };
+            toast.error(errObj.response?.data?.message || 'Gagal menyimpan pengaturan.');
         },
     });
 
@@ -166,7 +167,7 @@ export const ShippingOriginSettings = ({ allSettings, isLoadingSettings }: Shipp
                             <Input
                                 placeholder="Pilih area dahulu"
                                 value={originPostalCode}
-                                onChange={(e) => setOriginPostalCode(e.target.value)}
+                                onChange={(e) => { setOriginPostalCode(e.target.value); }}
                                 readOnly
                                 className="bg-gray-100 cursor-not-allowed"
                             />

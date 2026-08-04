@@ -89,7 +89,7 @@ const itemVariants: Variants = {
 export default function ProductDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const productId = (params?.id as string) || '';
+    const productId = (params.id as string) || '';
 
     const { addItem, isLoading: isCartLoading } = useCartStore();
     const { isAuthenticated } = useAuthStore();

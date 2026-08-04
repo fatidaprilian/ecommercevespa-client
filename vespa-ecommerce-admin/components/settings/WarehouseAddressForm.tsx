@@ -50,10 +50,11 @@ export const WarehouseAddressForm = ({ allSettings, isLoading }: WarehouseAddres
         onSuccess: () => {
             toast.success('Alamat gudang berhasil diperbarui!');
             setIsEditing(false);
-            queryClient.invalidateQueries({ queryKey: ['settings'] });
+            void queryClient.invalidateQueries({ queryKey: ['settings'] });
         },
-        onError: (err: any) => {
-            toast.error(err.response?.data?.message || 'Gagal menyimpan alamat gudang.');
+        onError: (err: unknown) => {
+            const errObj = err as { response?: { data?: { message?: string } } };
+            toast.error(errObj.response?.data?.message || 'Gagal menyimpan alamat gudang.');
         }
     });
 
@@ -75,7 +76,7 @@ export const WarehouseAddressForm = ({ allSettings, isLoading }: WarehouseAddres
                     <CardDescription>Informasi ini akan digunakan saat melakukan permintaan pickup kurir.</CardDescription>
                 </div>
                 {!isEditing && hasExistingAddress && (
-                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                    <Button variant="outline" size="sm" onClick={() => { setIsEditing(true); }}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Alamat
                     </Button>
                 )}

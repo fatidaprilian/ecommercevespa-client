@@ -27,7 +27,7 @@ const copyToClipboard = async (text: string, bankName: string) => {
 export default function PaymentInstructionPage() {
   const params = useParams();
   const router = useRouter();
-  const orderId = (params?.id as string) || '';
+  const orderId = (params.id as string) || '';
   const { clearClientCart } = useCartStore();
 
   const { data: order, isLoading: isLoadingOrder, isError: isOrderError } = useQuery({

@@ -27,8 +27,9 @@ export const ChangePasswordForm = () => {
       setOldPassword('');
       setNewPassword('');
     },
-    onError: (error: any) => {
-      const msg = error.response?.data?.message;
+    onError: (error: unknown) => {
+      const errObj = error as { response?: { data?: { message?: string | string[] } } };
+      const msg = errObj.response?.data?.message;
       if (Array.isArray(msg)) {
         toast.error(msg[0]);
       } else {
@@ -65,7 +66,7 @@ export const ChangePasswordForm = () => {
               id="oldPassword"
               type="password"
               value={oldPassword}
-              onChange={(e) => setOldPassword(e.target.value)}
+              onChange={(e) => { setOldPassword(e.target.value); }}
               placeholder="Masukkan password lama"
             />
           </div>
@@ -75,7 +76,7 @@ export const ChangePasswordForm = () => {
               id="newPassword"
               type="password"
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(e) => { setNewPassword(e.target.value); }}
               placeholder="Minimal 8 karakter"
             />
           </div>
