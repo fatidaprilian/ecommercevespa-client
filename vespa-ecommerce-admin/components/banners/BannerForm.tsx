@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -33,10 +33,12 @@ const BANNER_TYPE_CONFIG: Record<string, { label: string; maxQuota: number; size
   BOTTOM: { label: 'Banner About Us (Bawah)', maxQuota: 1, sizeHint: '1200 × 800 px (rasio 3:2)' },
 };
 
-// Types that support text overlay & button customization (strictly TOP_LEFT & TOP_RIGHT)
-const OVERLAY_TYPES = ['TOP_LEFT', 'TOP_RIGHT'];
-// Types that support color customization (text + button)
-const COLOR_TYPES = ['TOP_LEFT', 'TOP_RIGHT'];
+// Types that support title & subtitle overlay
+const OVERLAY_TITLE_TYPES = ['TOP_LEFT', 'TOP_RIGHT'];
+// Types that support button customization
+const BUTTON_TYPES = ['TOP_LEFT', 'TOP_RIGHT', 'BOTTOM'];
+// Types that support color customization (button color, text color)
+const COLOR_TYPES = ['TOP_LEFT', 'TOP_RIGHT', 'BOTTOM'];
 
 const bannerSchema = z.object({
   title: z.string().max(40, 'Maks. 40 karakter').nullable().transform(e => e === "" ? null : e),
@@ -86,8 +88,26 @@ export function BannerForm({ initialData }: BannerFormProps) {
     },
   });
 
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        title: initialData.title || '',
+        subtitle: initialData.subtitle || '',
+        imageUrl: initialData.imageUrl || '',
+        linkUrl: initialData.linkUrl || '',
+        type: initialData.type || 'HERO',
+        isActive: initialData.isActive ?? true,
+        brandId: initialData.brandId || '',
+        buttonText: initialData.buttonText || '',
+        textColor: initialData.textColor || '#FFFFFF',
+        buttonColor: initialData.buttonColor || '#000000',
+      });
+    }
+  }, [initialData, form]);
+
   const watchedType = form.watch('type');
-  const showOverlayFields = OVERLAY_TYPES.includes(watchedType);
+  const showTitleFields = OVERLAY_TITLE_TYPES.includes(watchedType);
+  const showButtonFields = BUTTON_TYPES.includes(watchedType);
   const showColorFields = COLOR_TYPES.includes(watchedType);
 
   // Quota counts per type (exclude current banner if editing)
@@ -113,20 +133,21 @@ export function BannerForm({ initialData }: BannerFormProps) {
     return null;
   })();
 
-  const mutation = useMutation({
-    mutationFn: (data: BannerData) => 
-      initialData ? updateBanner(initialData.id, data) : createBanner(data),
-    onSuccess: () => {
-      toast.success(`Banner berhasil ${initialData ? 'diperbarui' : 'dibuat'}!`);
-      queryClient.invalidateQueries({ queryKey: ['banners'] });
-      router.push('/settings/banners');
-    },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menyimpan.'),
-  });
+  const imageUrlValue = form.watch('imageUrl');
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const removeImage = () => {
+    form.setValue('imageUrl', '', { shouldValidate: true });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('File harus berupa gambar.');
+      return;
+    }
+
     setIsUploading(true);
     const toastId = toast.loading('Mengunggah gambar...');
     try {
@@ -140,16 +161,25 @@ export function BannerForm({ initialData }: BannerFormProps) {
     }
   };
 
-  const imageUrlValue = form.watch('imageUrl');
+  const mutation = useMutation({
+    mutationFn: (data: BannerData) => 
+      initialData ? updateBanner(initialData.id, data) : createBanner(data),
+    onSuccess: () => {
+      toast.success(`Banner berhasil ${initialData ? 'diperbarui' : 'dibuat'}!`);
+      queryClient.invalidateQueries({ queryKey: ['banners'] });
+      router.push('/settings/banners');
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menyimpan.'),
+  });
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((d) => {
         const normalizedData: BannerData = {
           ...d,
-          title: OVERLAY_TYPES.includes(d.type) ? d.title || null : null,
-          subtitle: OVERLAY_TYPES.includes(d.type) ? d.subtitle || null : null,
-          buttonText: OVERLAY_TYPES.includes(d.type) ? d.buttonText || null : null,
+          title: OVERLAY_TITLE_TYPES.includes(d.type) ? d.title || null : null,
+          subtitle: OVERLAY_TITLE_TYPES.includes(d.type) ? d.subtitle || null : null,
+          buttonText: BUTTON_TYPES.includes(d.type) ? d.buttonText || null : null,
           textColor: COLOR_TYPES.includes(d.type) ? d.textColor || null : null,
           buttonColor: COLOR_TYPES.includes(d.type) ? d.buttonColor || null : null,
         };
@@ -208,8 +238,8 @@ export function BannerForm({ initialData }: BannerFormProps) {
               )}
             />
 
-            {/* Title - only for overlay types */}
-            {showOverlayFields && (
+            {/* Title - only for overlay title types */}
+            {showTitleFields && (
               <FormField
                 control={form.control}
                 name="title"
@@ -226,8 +256,8 @@ export function BannerForm({ initialData }: BannerFormProps) {
               />
             )}
             
-            {/* Subtitle - only for overlay types */}
-            {showOverlayFields && (
+            {/* Subtitle - only for overlay title types */}
+            {showTitleFields && (
               <FormField
                 control={form.control}
                 name="subtitle"
@@ -244,8 +274,8 @@ export function BannerForm({ initialData }: BannerFormProps) {
               />
             )}
 
-            {/* Button Text - only for overlay types */}
-            {showOverlayFields && (
+            {/* Button Text - for button types */}
+            {showButtonFields && (
               <FormField
                 control={form.control}
                 name="buttonText"
