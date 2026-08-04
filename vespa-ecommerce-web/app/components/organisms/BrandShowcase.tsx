@@ -71,17 +71,13 @@ export function BrandShowcase() {
         <section className="bg-white py-2 md:py-4 border-b border-gray-200">
             <div className="container mx-auto px-4">
                 {isLoading ? <BrandsSkeleton /> : (
-                    // Gunakan native CSS scroll untuk performa dan UX mobile yang jauh lebih baik (anti freeze)
-                    <div className="relative">
-                        {/* Faded edges to indicate scrollability */}
-                        <div className="absolute right-0 top-0 bottom-0 w-12 md:w-24 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-                        
-                        {/* Symmetrically Aligned Desktop Arrows */}
+                    <div className="flex items-center gap-2">
+                        {/* Left Arrow — outside scroll container */}
                         <Button
                             variant="outline"
                             size="icon"
                             className={cn(
-                                "hidden md:flex absolute top-1/2 left-1 md:left-2 -translate-y-1/2 z-20 rounded-full size-9 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
+                                "hidden md:flex shrink-0 rounded-full size-9 bg-white border border-gray-200 shadow-sm text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
                                 !canScrollLeft && "opacity-30 pointer-events-none"
                             )}
                             onClick={() => scroll('left')}
@@ -89,11 +85,49 @@ export function BrandShowcase() {
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
+
+                        {/* Scrollable brand logos */}
+                        <div className="relative flex-1 min-w-0">
+                            {/* Fade edge to hint scrollability */}
+                            <div className="absolute right-0 top-0 bottom-0 w-12 md:w-16 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+                            <div 
+                                ref={scrollContainerRef}
+                                onScroll={checkScroll}
+                                className="flex overflow-x-auto gap-8 md:gap-12 snap-x snap-mandatory py-2 hide-scrollbar w-full items-center"
+                            >
+                                {brands?.map((brand: Brand) => (
+                                    <Link
+                                        key={brand.id}
+                                        href={`/products?brandId=${brand.id}`}
+                                        title={`Lihat produk dari ${brand.name}`}
+                                        className="snap-start shrink-0 basis-[30%] sm:basis-[22%] md:basis-[15%] lg:basis-[10%] block grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300 transform hover:scale-110"
+                                    >
+                                        {brand.logoUrl ? (
+                                            <div className="relative h-10 md:h-12 w-full">
+                                                <Image
+                                                    src={brand.logoUrl}
+                                                    alt={`${brand.name} logo`}
+                                                    fill
+                                                    className="object-contain pointer-events-none"
+                                                    sizes="(max-width: 768px) 100px, 150px"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="h-10 md:h-12 flex items-center justify-center px-2">
+                                                <span className="text-sm font-semibold text-gray-500 text-center">{brand.name}</span>
+                                            </div>
+                                        )}
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Right Arrow — outside scroll container */}
                         <Button
                             variant="outline"
                             size="icon"
                             className={cn(
-                                "hidden md:flex absolute top-1/2 right-1 md:right-2 -translate-y-1/2 z-20 rounded-full size-9 bg-white border border-gray-200 shadow-md text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
+                                "hidden md:flex shrink-0 rounded-full size-9 bg-white border border-gray-200 shadow-sm text-gray-700 hover:bg-gray-100 hover:text-black transition-all",
                                 !canScrollRight && "opacity-30 pointer-events-none"
                             )}
                             onClick={() => scroll('right')}
@@ -101,37 +135,6 @@ export function BrandShowcase() {
                         >
                             <ArrowRight className="size-4" />
                         </Button>
-
-                        <div 
-                            ref={scrollContainerRef}
-                            onScroll={checkScroll}
-                            className="flex overflow-x-auto gap-8 md:gap-12 snap-x snap-mandatory py-2 hide-scrollbar w-full items-center px-12 md:px-16"
-                        >
-                            {brands?.map((brand: Brand) => (
-                                <Link
-                                    key={brand.id}
-                                    href={`/products?brandId=${brand.id}`}
-                                    title={`Lihat produk dari ${brand.name}`}
-                                    className="snap-start shrink-0 basis-[30%] sm:basis-[22%] md:basis-[15%] lg:basis-[10%] block grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300 transform hover:scale-110"
-                                >
-                                    {brand.logoUrl ? (
-                                        <div className="relative h-10 md:h-12 w-full">
-                                            <Image
-                                                src={brand.logoUrl}
-                                                alt={`${brand.name} logo`}
-                                                fill
-                                                className="object-contain pointer-events-none"
-                                                sizes="(max-width: 768px) 100px, 150px"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="h-10 md:h-12 flex items-center justify-center px-2">
-                                            <span className="text-sm font-semibold text-gray-500 text-center">{brand.name}</span>
-                                        </div>
-                                    )}
-                                </Link>
-                            ))}
-                        </div>
                     </div>
                 )}
             </div>

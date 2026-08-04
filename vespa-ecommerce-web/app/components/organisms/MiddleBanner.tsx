@@ -40,7 +40,7 @@ export function MiddleBanner() {
                 src={middleBanner.imageUrl}
                 alt={middleBanner.title}
                 fill
-                className="object-cover w-full h-full transition-transform duration-500 ease-in-out group-hover:scale-105"
+                className="object-contain w-full h-full transition-transform duration-500 ease-in-out group-hover:scale-105"
               />
               {(middleBanner.title || middleBanner.subtitle) ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/25">
