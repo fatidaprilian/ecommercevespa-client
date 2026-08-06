@@ -35,7 +35,7 @@ export function MiddleBanner() {
           transition={{ duration: 0.6 }}
         >
           <Link href={middleBanner.linkUrl || '#'} className="block group">
-            <div className="relative w-full aspect-[3/1] overflow-hidden rounded-lg shadow-sm border border-gray-200/80 bg-gray-100">
+            <div className="relative w-full aspect-[3/1] overflow-hidden rounded-none shadow-sm border border-gray-200/80 bg-gray-100">
               <Image
                 src={middleBanner.imageUrl}
                 alt={middleBanner.title}

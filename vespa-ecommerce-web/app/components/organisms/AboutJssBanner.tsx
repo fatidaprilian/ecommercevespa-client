@@ -48,7 +48,7 @@ export function AboutJssBanner() {
   };
 
   const bannerContent = (
-    <div className="relative w-full aspect-[3/2] sm:aspect-[2.5/1] md:aspect-[3/2] overflow-hidden rounded-xl shadow-sm border border-gray-200/80 bg-gray-100 group">
+    <div className="relative w-full aspect-[3/2] sm:aspect-[2.5/1] md:aspect-[3/2] overflow-hidden rounded-none shadow-sm border border-gray-200/80 bg-gray-100 group">
       <Image
         src={bgImage}
         alt={bottomBanner?.title || 'About JSS Banner'}

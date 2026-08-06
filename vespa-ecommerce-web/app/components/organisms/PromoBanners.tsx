@@ -39,7 +39,7 @@ export function PromoBanners() {
     const hasOverlay = !isTextTransparent && (banner.title || banner.subtitle || banner.buttonText);
 
     const content = (
-      <div className="relative w-full aspect-[4/3] md:aspect-[16/9] overflow-hidden rounded-md shadow-sm bg-gray-100">
+      <div className="relative w-full aspect-[4/3] md:aspect-[16/9] overflow-hidden rounded-none shadow-sm bg-gray-100">
         <Image
           src={banner.imageUrl}
           alt={banner.title || 'Promo Banner'}
