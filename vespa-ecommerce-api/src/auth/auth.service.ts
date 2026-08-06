@@ -182,22 +182,8 @@ export class AuthService {
   }
   // --- End login ---
 
-  // --- register (Original logic, keep Turnstile check if needed for regular users) ---
   async register(registerDto: RegisterDto) {
-    // --- Add Turnstile Validation (Only if this method is for regular users) ---
-     if (!registerDto.turnstileToken){
-        this.logger.error(`Registration attempt missing CAPTCHA token for email: ${registerDto.email}`);
-        throw new BadRequestException('Verifikasi CAPTCHA gagal (token hilang).');
-     }
-     const isHuman = await this.verifyTurnstileToken(registerDto.turnstileToken);
-     if (!isHuman) {
-       this.logger.warn(
-         `Registration attempt failed CAPTCHA for email: ${registerDto.email}`,
-       );
-       throw new BadRequestException('Verifikasi CAPTCHA gagal.');
-     }
-     this.logger.log(`CAPTCHA verified successfully for registration: ${registerDto.email}`);
-    // --- End Turnstile Validation ---
+    this.logger.log(`Processing user registration for email: ${registerDto.email}`);
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: registerDto.email },
@@ -214,12 +200,10 @@ export class AuthService {
     const verificationToken = crypto.randomBytes(3).toString('hex').toUpperCase();
     const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Destructure to avoid passing turnstileToken to prisma create
-    const { turnstileToken, ...userData } = registerDto;
-
     const newUser = await this.prisma.user.create({
       data: {
-        ...userData, // Use data without token
+        name: registerDto.name,
+        email: registerDto.email,
         password: hashedPassword,
         verificationToken,
         verificationTokenExpires,

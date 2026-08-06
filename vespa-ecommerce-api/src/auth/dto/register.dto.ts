@@ -18,8 +18,4 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Nama tidak boleh kosong' })
   @IsString()
   name: string;
-
-  @IsString()
-  @IsNotEmpty({ message: 'CAPTCHA token tidak boleh kosong.' }) // Validasi ditambahkan
-  turnstileToken: string; // Properti baru ditambahkan
 }
