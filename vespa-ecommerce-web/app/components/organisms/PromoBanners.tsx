@@ -49,7 +49,7 @@ export function PromoBanners() {
         />
         {/* Overlay with custom text + button */}
         {hasOverlay && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-3 md:p-6">
+          <div className="absolute inset-0 flex flex-col justify-end p-3 md:p-6">
             {banner.title && (
               <h3
                 className="text-xs sm:text-sm md:text-xl font-bold leading-snug"
