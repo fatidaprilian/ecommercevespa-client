@@ -20,10 +20,16 @@ export class EmailService {
     this.senderName = this.configService.getOrThrow<string>('EMAIL_SENDER_NAME');
     this.senderEmail = this.configService.getOrThrow<string>('EMAIL_SENDER_ADDRESS');
 
+    const port = Number(this.configService.getOrThrow<number>('SMTP_PORT'));
+    const secureEnv = this.configService.get<string | boolean>('SMTP_SECURE');
+    const isSecure = typeof secureEnv === 'string' 
+      ? secureEnv === 'true' 
+      : (secureEnv !== undefined ? Boolean(secureEnv) : port === 465);
+
     this.transporter = nodemailer.createTransport({
       host: this.configService.getOrThrow<string>('SMTP_HOST'),
-      port: this.configService.getOrThrow<number>('SMTP_PORT'),
-      secure: this.configService.get<boolean>('SMTP_SECURE', true),
+      port: port,
+      secure: isSecure,
       auth: {
         user: this.configService.getOrThrow<string>('SMTP_USER'),
         pass: this.configService.getOrThrow<string>('SMTP_PASSWORD'),
