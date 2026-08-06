@@ -93,14 +93,19 @@ export class EmailService {
     const subject = 'Verifikasi Akun Jakarta Scooter Shop';
     
     const content = `
-      <h2 style="margin-top: 0;">Halo, ${name}! 👋</h2>
+      <h2 style="margin-top: 0;">Halo, ${name}!</h2>
       <p>Terima kasih telah mendaftar di <strong>Jakarta Scooter Shop</strong>. Untuk mengamankan akun Anda dan mulai berbelanja sparepart Vespa terbaik, silakan verifikasi email Anda.</p>
       
       <p>Gunakan kode OTP berikut untuk menyelesaikan pendaftaran:</p>
       
-      <div class="otp-box">${token}</div>
+      <div class="otp-box">
+        <div>${token}</div>
+        <div style="font-size: 13px; font-weight: normal; color: #f04e23; margin-top: 8px; letter-spacing: normal;">
+          Kode ini berlaku selama <strong>10 menit</strong>
+        </div>
+      </div>
       
-      <p style="font-size: 14px; color: #666;">⚠️ Kode ini hanya berlaku selama <strong>10 menit</strong>. Jangan berikan kode ini kepada siapa pun.</p>
+      <p style="font-size: 14px; color: #666;">Jangan berikan kode ini kepada siapa pun demi keamanan akun Anda.</p>
       
       <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
       
@@ -115,16 +120,19 @@ export class EmailService {
     const subject = 'Permintaan Reset Password';
     
     const content = `
-      <h2 style="margin-top: 0;">Permintaan Reset Password 🔒</h2>
+      <h2 style="margin-top: 0;">Permintaan Reset Password</h2>
       <p>Halo ${name}, kami menerima permintaan untuk mereset kata sandi akun Jakarta Scooter Shop Anda.</p>
       
       <p>Gunakan kode di bawah ini untuk membuat kata sandi baru:</p>
       
-      <div class="otp-box">${token}</div>
+      <div class="otp-box">
+        <div>${token}</div>
+        <div style="font-size: 13px; font-weight: normal; color: #f04e23; margin-top: 8px; letter-spacing: normal;">
+          Kode ini berlaku selama <strong>10 menit</strong>
+        </div>
+      </div>
       
-      <p style="font-size: 14px; color: #666;">⚠️ Kode ini berlaku selama <strong>10 menit</strong>.</p>
-      
-      <p>Jika Anda tidak meminta reset password, keamanan akun Anda mungkin terancam. Segera hubungi kami atau abaikan email ini.</p>
+      <p style="font-size: 14px; color: #666;">Jika Anda tidak meminta reset password, keamanan akun Anda mungkin terancam. Segera hubungi kami atau abaikan email ini.</p>
     `;
 
     const html = this.getEmailTemplate(subject, content);
