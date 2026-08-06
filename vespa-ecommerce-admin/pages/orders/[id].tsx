@@ -318,7 +318,9 @@ function StatusAndActions({
               <img
                 src={order.payment.proofOfPayment}
                 alt="Bukti Pembayaran"
-                className="rounded-lg border hover:opacity-80 transition-opacity"
+                width={400}
+                height={300}
+                className="rounded-lg border hover:opacity-80 transition-opacity max-h-64 object-contain"
               />
             </a>
             {order.payment.manualPaymentMethod ? (
@@ -412,8 +414,8 @@ function CustomerDetails({ user, address }: { user: Order['user']; address: stri
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm space-y-1">
-          <p className="font-semibold">{user.name}</p>
-          <p className="text-muted-foreground">{user.email}</p>
+          <p className="font-semibold">{user?.name || 'Pelanggan'}</p>
+          <p className="text-muted-foreground">{user?.email || '-'}</p>
         </CardContent>
       </Card>
       <Card>

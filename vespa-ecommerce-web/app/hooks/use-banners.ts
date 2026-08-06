@@ -27,6 +27,6 @@ export const useBanners = () => {
   return useQuery<Banner[], Error>({
     queryKey: ['activeBanners'],
     queryFn: getActiveBanners,
-    staleTime: 1000 * 60 * 5, // Cache selama 5 menit
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 };

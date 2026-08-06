@@ -110,9 +110,9 @@ export const calculateCost = async (payload: {
 
 
 /**
- * Mengambil detail pelacakan pengiriman dari API backend kita.
- * @param waybillId - Nomor resi (AWB).
- * @param courierCode - Kode kurir.
+ * Fetches shipment tracking details from backend API.
+ * @param waybillId - Waybill tracking number (AWB).
+ * @param courierCode - Courier code.
  */
 export const getTrackingDetails = async (waybillId: string, courierCode: string): Promise<TrackingDetails> => {
   if (!waybillId || !courierCode) {

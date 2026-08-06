@@ -47,7 +47,7 @@ export interface ProductData {
 }
 
 /**
- * Mengirim data produk baru ke API backend.
+ * Creates a new product record in the backend API.
  */
 export const createProduct = async (productData: ProductData) => {
   const { data } = await api.post<Product>('/products', productData);
@@ -55,7 +55,7 @@ export const createProduct = async (productData: ProductData) => {
 };
 
 /**
- * Mengupload satu file gambar ke endpoint upload di backend.
+ * Uploads an image file to the backend upload endpoint.
  */
 export const uploadImage = async (file: File) => {
   const formData = new FormData();
@@ -63,24 +63,24 @@ export const uploadImage = async (file: File) => {
 
   const { data } = await api.post<{ url: string; public_id: string }>('/upload/image', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data', // <-- TYPO FIXED
+      'Content-Type': 'multipart/form-data',
     },
   });
   return data;
 };
 
 /**
- * Mengambil produk dari API dengan paginasi dan pencarian.
- * @param page - Nomor halaman yang ingin diambil.
- * @param search - Kata kunci pencarian (opsional).
- * @param includeHidden - Menyertakan produk yang disembunyikan (hanya untuk Admin).
- * @param isVisible - Filter spesifik untuk produk aktif/non-aktif.
+ * Fetches products from the API with pagination and optional search filter.
+ * @param page - Page number to retrieve.
+ * @param search - Search keyword (optional).
+ * @param includeHidden - Whether to include hidden products (Admin only).
+ * @param isVisible - Specific filter for active/inactive products.
  */
 interface GetProductsParams {
     page: number;
     search?: string;
     includeHidden?: boolean;
-    isVisible?: boolean; // 👈 DITAMBAHKAN
+    isVisible?: boolean;
 }
 
 export const getProducts = async ({ page, search, includeHidden, isVisible }: GetProductsParams): Promise<PaginatedProducts> => {
@@ -90,16 +90,15 @@ export const getProducts = async ({ page, search, includeHidden, isVisible }: Ge
       limit: 10, 
       search: search || undefined, 
       includeHidden: includeHidden || undefined,
-      // 💡 FIX: Konversi isVisible ke string secara eksplisit.
-      isVisible: isVisible !== undefined ? String(isVisible) : undefined, // 👈 DIUBAH
+      isVisible: isVisible !== undefined ? String(isVisible) : undefined,
     },
   });
   return data;
 };
 
 /**
- * Mencari produk berdasarkan kata kunci (untuk picker).
- * @param term - Kata kunci pencarian
+ * Searches products by keyword (for product picker components).
+ * @param term - Search keyword
  */
 export const searchProducts = async (term: string): Promise<Product[]> => {
   if (term.length < 2) {
@@ -112,7 +111,7 @@ export const searchProducts = async (term: string): Promise<Product[]> => {
 };
 
 /**
- * Mengambil satu produk berdasarkan ID.
+ * Fetches a single product by its unique ID.
  */
 export const getProductById = async (id: string): Promise<Product> => {
   const { data } = await api.get<Product>(`/products/${id}`);
@@ -120,7 +119,7 @@ export const getProductById = async (id: string): Promise<Product> => {
 };
 
 /**
- * Memperbarui data produk berdasarkan ID.
+ * Updates an existing product by its unique ID.
  */
 export const updateProduct = async (id: string, productData: Partial<ProductData>) => {
   const { data } = await api.patch<Product>(`/products/${id}`, productData);
@@ -128,15 +127,14 @@ export const updateProduct = async (id: string, productData: Partial<ProductData
 };
 
 /**
- * Menghapus produk berdasarkan ID.
+ * Deletes a product by its unique ID.
  */
 export const deleteProduct = async (id: string) => {
   await api.delete(`/products/${id}`);
 };
 
-// +++ FUNGSI BARU UNTUK BULK UPDATE +++
 /**
- * Memperbarui visibilitas beberapa produk sekaligus.
+ * Bulk updates the visibility status for multiple products simultaneously.
  */
 export const bulkUpdateProductVisibility = async (data: {
   productIds: string[];
@@ -145,4 +143,3 @@ export const bulkUpdateProductVisibility = async (data: {
   const response = await api.patch('/products/bulk-visible', data);
   return response.data;
 };
-// +++ AKHIR FUNGSI BARU +++

@@ -40,15 +40,12 @@ export class MidtransService {
   async createSnapTransaction(
     order: OrderWithItems,
     user: User,
-    shippingCost: number, // Diteruskan dari orders.service
-    taxAmount: number, // Diteruskan dari orders.service
+    shippingCost: number, // Shipping cost passed from orders.service
+    taxAmount: number, // Tax amount passed from orders.service
     paymentPreference: PaymentPreference,
   ) {
 
-    // --- PERBAIKAN LOGIKA KALKULASI ---
-
-    // 1. Siapkan item_details dasar (SEMUA HARUS INTEGER/ROUNDED)
-    // Gunakan nilai dari object order atau parameter yang sudah dihitung di orders.service
+    // Prepare base item_details array (all amounts rounded to integer)
     const itemDetails = [
       {
         id: 'SUBTOTAL',
@@ -58,13 +55,13 @@ export class MidtransService {
       },
       {
         id: 'TAX',
-        price: Math.round(taxAmount), // Gunakan taxAmount dari parameter/order
+        price: Math.round(taxAmount),
         quantity: 1,
         name: 'Pajak',
       },
       {
         id: 'SHIPPING',
-        price: Math.round(shippingCost), // Gunakan shippingCost dari parameter
+        price: Math.round(shippingCost),
         quantity: 1,
         name: 'Biaya Pengiriman',
       },
@@ -73,25 +70,23 @@ export class MidtransService {
     if (order.discountAmount > 0) {
       itemDetails.push({
         id: 'DISCOUNT',
-        price: -Math.round(order.discountAmount), // Harga negatif untuk diskon
+        price: -Math.round(order.discountAmount),
         quantity: 1,
         name: 'Diskon',
       });
     }
 
-    // 2. Hitung total dasar (float) SEBELUM fee
-    // Ini diperlukan untuk menghitung admin fee 3% secara akurat
+    // Calculate base total before admin fees
     const floatBaseTotal = order.subtotal + taxAmount + shippingCost - order.discountAmount;
 
     let enabledPayments: string[] | undefined = undefined;
 
     if (paymentPreference === PaymentPreference.CREDIT_CARD) {
-      // 3. Hitung admin fee dari total dasar (float)
-      const adminFee = Math.round(floatBaseTotal * 0.03); // Bulatkan HANYA hasil feenya
+      const adminFee = Math.round(floatBaseTotal * 0.03);
       
       itemDetails.push({
         id: 'ADMIN_FEE_CC',
-        price: adminFee, // Masukkan fee yang sudah dibulatkan
+        price: adminFee,
         quantity: 1,
         name: 'Biaya Admin Kartu Kredit (3%)',
       });
@@ -103,21 +98,19 @@ export class MidtransService {
       this.logger.log(`Order ${order.id}: Other methods selected.`);
     }
 
-    // 4. Hitung finalGrossAmount HANYA DARI PENJUMLAHAN item_details
-    // Ini adalah jaminan bahwa totalnya akan selalu sama.
+    // Calculate gross amount from sum of itemDetails
     const finalGrossAmount = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    // ------------------------------------
 
     const parameter: midtransClient.SnapTransaction = {
       transaction_details: {
         order_id: order.id,
-        gross_amount: finalGrossAmount, // <-- Sekarang pasti sama
+        gross_amount: finalGrossAmount,
       },
       customer_details: {
         first_name: user.name || 'Pelanggan',
         email: user.email,
       },
-      item_details: itemDetails, // <-- Array yang sudah final
+      item_details: itemDetails,
       callbacks: {
         finish: `${this.configService.get('FRONTEND_URL')}/orders/${order.id}`,
       },
@@ -130,10 +123,7 @@ export class MidtransService {
       this.logger.log(`Midtrans transaction created successfully for Order ID: ${order.id}. Token: ${transaction.token}`);
       return transaction;
     } catch (error) {
-      // Log error yang lebih detail
       this.logger.error(`Midtrans Snap Creation Error for Order ID: ${order.id}:`, error.ApiResponse || error.message, error.stack);
-      
-      // Lemparkan error yang akan ditangkap oleh orders.service (untuk rollback)
       throw new InternalServerErrorException('Gagal membuat transaksi pembayaran Midtrans.');
     }
   }

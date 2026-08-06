@@ -171,47 +171,47 @@ export class AccurateService {
         return { message: 'Database berhasil dipilih dan cabang default berhasil disimpan.' };
     }
 
-    // [BARU] Cron Job berjalan setiap hari jam 04:00 pagi
+    // Cron Job runs daily at 04:00 AM
     @Cron(CronExpression.EVERY_DAY_AT_4AM)
     async maintainAccurateConnection() {
-        this.logger.log('🔄 [CRON] Menjalankan pemeliharaan koneksi Accurate...');
+        this.logger.log('🔄 [CRON] Running Accurate connection maintenance...');
 
         const token = await this.prisma.accurateOAuth.findFirst();
         if (!token) {
-            this.logger.warn('⚠️ [CRON] Tidak ada token Accurate yang ditemukan. Skip maintenance.');
+            this.logger.warn('⚠️ [CRON] No Accurate OAuth token found. Skipping maintenance.');
             return;
         }
 
         try {
-            // 1. Cek & Refresh Token jika perlu
+            // 1. Check & Refresh Token if necessary
             await this.getValidToken();
 
-            // 2. Ping API untuk memicu update Host otomatis (jika ada perpindahan server 308)
+            // 2. Ping API to trigger host auto-update (in case of 308 server migration)
             const apiClient = await this.getAccurateApiClient();
 
-            // Request ringan ke endpoint list database/cabang hanya untuk cek koneksi
+            // Lightweight request to branch list endpoint to verify connection health
             await apiClient.get('/accurate/api/branch/list.do', {
                 params: { fields: 'id', limit: 1 }
             });
 
-            this.logger.log('✅ [CRON] Pemeliharaan koneksi Accurate berhasil. Token & Host valid.');
+            this.logger.log('✅ [CRON] Accurate connection maintenance succeeded. Token & Host valid.');
         } catch (error) {
-            this.logger.error('🔴 [CRON] Gagal melakukan pemeliharaan koneksi:', error.message);
+            this.logger.error('🔴 [CRON] Connection maintenance failed:', error.message);
         }
     }
 
     public async getAccurateApiClient(): Promise<AxiosInstance> {
         const token = await this.getValidToken();
         if (!token) {
-            throw new InternalServerErrorException('Integrasi Accurate tidak dikonfigurasi.');
+            throw new InternalServerErrorException('Accurate integration is not configured.');
         }
 
         const dbInfo = await this.prisma.accurateOAuth.findFirst();
         if (!dbInfo || !dbInfo.dbSession) {
-            throw new InternalServerErrorException('Database Accurate belum dipilih atau dibuka.');
+            throw new InternalServerErrorException('Accurate database has not been selected or opened.');
         }
 
-        // Gunakan host dari database, atau default jika kosong
+        // Use host from database or default fallback
         const baseURL = dbInfo.dbHost || 'https://zeus.accurate.id';
 
         const instance = axios.create({
@@ -227,10 +227,10 @@ export class AccurateService {
             validateStatus: (status) => status >= 200 && status < 300,
         });
 
-        // Interceptor Pintar: Auto-fix Host & Retry Token
+        // Smart Interceptor: Auto-fix Host & Retry Token
         instance.interceptors.response.use(
             (response) => {
-                // Kadang Accurate melempar 200 OK tapi isinya error JSON
+                // Accurate sometimes returns 200 OK with error payload
                 if (response.data && response.data.error && response.data.error === 'error.invalid_token') {
                     return Promise.reject({ response: { status: 401, config: response.config } });
                 }
@@ -239,35 +239,35 @@ export class AccurateService {
             async (error) => {
                 const originalRequest = error.config;
 
-                // 1. HANDLER PERPINDAHAN HOST (308 Permanent Redirect)
+                // 1. HOST MIGRATION HANDLER (308 Permanent Redirect)
                 if (error.response && (error.response.status === 308 || error.response.data?.endpoint)) {
                     const newEndpoint = error.response.data?.endpoint || error.response.headers['location'];
 
                     if (newEndpoint && newEndpoint !== dbInfo.dbHost) {
-                        this.logger.warn(`[AUTO-FIX] Host Accurate berubah: ${dbInfo.dbHost} -> ${newEndpoint}`);
+                        this.logger.warn(`[AUTO-FIX] Accurate host migrated: ${dbInfo.dbHost} -> ${newEndpoint}`);
 
-                        // A. Update Database Lokal
+                        // A. Update Local Database Host
                         await this.prisma.accurateOAuth.updateMany({
                             data: { dbHost: newEndpoint }
                         });
 
-                        // B. Ulangi Request ke Host Baru
+                        // B. Retry Request to New Host
                         originalRequest.baseURL = newEndpoint;
                         return axios.request(originalRequest);
                     }
                 }
 
-                // 2. HANDLER TOKEN EXPIRED (401 Unauthorized)
+                // 2. TOKEN EXPIRED HANDLER (401 Unauthorized)
                 if (error.response && error.response.status === 401 && !originalRequest._retry) {
                     originalRequest._retry = true;
-                    this.logger.warn('Token expired saat request (401), mencoba refresh...');
+                    this.logger.warn('Token expired during request (401), attempting token refresh...');
                     try {
                         const newToken = await this.refreshAccessToken(token);
 
-                        // Update header dengan token baru
+                        // Update Authorization header with new token
                         originalRequest.headers['Authorization'] = `Bearer ${newToken.accessToken}`;
 
-                        // Ulangi Request
+                        // Retry Request
                         return axios.request(originalRequest);
                     } catch (refreshError) {
                         return Promise.reject(refreshError);

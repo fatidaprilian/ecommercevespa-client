@@ -371,7 +371,7 @@ export default function ProductsPage() {
   );
 }
 
-// --- Komponen Tabel Terpisah ---
+// Separate Product Table Component
 
 interface ProductTableProps {
     products: Product[];
@@ -400,7 +400,7 @@ function ProductTable({
 }: ProductTableProps) {
     const isInactiveView = activeTab === 'inactive';
 
-    // --- STATE VIEW SHARED (loading/error/empty) ---
+    // Shared State Views (loading / error / empty)
     const renderStatusEmpty = (
       <div className="flex flex-col items-center justify-center gap-2 py-10">
         <Package className="h-8 w-8 opacity-50" />
@@ -428,7 +428,7 @@ function ProductTable({
 
     return (
         <>
-            {/* DESKTOP / TABLET ≥ md: Tabel klasik (tidak diubah) */}
+            {/* Desktop / Tablet View */}
             <div className="hidden md:block">
               <div className="rounded-md border overflow-hidden">
                   <Table>

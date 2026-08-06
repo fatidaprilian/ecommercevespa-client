@@ -19,7 +19,7 @@ import { SettingsService } from 'src/settings/settings.service';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { EmailService } from 'src/email/email.service';
-// Import ProductsService untuk kalkulasi harga yang konsisten
+// Import ProductsService for consistent price calculations
 import { ProductsService } from 'src/products/products.service';
 
 @Injectable()
@@ -57,16 +57,12 @@ export class OrdersService {
 
     const createdOrder = await this.prisma.$transaction(async (tx) => {
       let subtotal = 0;
-      const totalDiscount = 0; // Selalu 0 agar ringkasan hanya menampilkan harga final
+      const totalDiscount = 0; // Set to 0 so summary displays final price
       const orderItemsData: Prisma.OrderItemCreateManyOrderInput[] = [];
 
       // Note: Tax rate is explicitly set to 0 based on current PKP status.
-      // Untuk amannya sesuai request Anda "udah saya disable kok dari accuratenya, jadi 0 persen", 
-      // kita bisa ambil dari settings tapi pastikan nilainya memang 0 di DB, ATAU kita hardcode 0 sementara jika darurat.
-      // Opsi terbaik: Tetap ambil dari settingsService, tapi Anda WAJIB ubah di Admin Panel jadi 0%.
+      // Fetched dynamically from settingsService (configured in Admin Panel).
       const vatPercentage = await this.settingsService.getVatPercentage(); 
-      // Jika ingin memaksa 0% lewat kode (uncomment baris bawah):
-      // const vatPercentage = 0; 
 
       for (const item of items) {
         const product = await tx.product.findUnique({
@@ -87,7 +83,7 @@ export class OrdersService {
           data: { stock: { decrement: item.quantity } },
         });
 
-        // Gunakan kalkulator harga sentral agar sama dengan Cart
+        // Use central price calculator for consistency with Cart
         const processedProduct = await this.productsService.processProductWithPrice(
             product,
             { id: user.id, email: user.email, role: user.role, name: user.name || '' }
@@ -103,7 +99,7 @@ export class OrdersService {
         });
       }
 
-      // Hitung Pajak (Akan jadi 0 jika vatPercentage 0)
+      // Calculate Tax (Evaluates to 0 if vatPercentage is 0)
       const taxableAmount = subtotal;
       const taxAmount = (taxableAmount * vatPercentage) / 100;
       const baseTotalAmount = taxableAmount + taxAmount + shippingCost;

@@ -61,12 +61,16 @@ const Footer = () => {
                 {/* Atur tinggi yang sama untuk semua logo, lebar akan menyesuaikan */}
                 <img 
                     src="/jne.svg" 
-                    alt="Logo JNE" 
+                    alt="Logo JNE"
+                    width={100}
+                    height={40}
                     className="h-10 w-auto" // Tinggi 32px, lebar otomatis
                 />
                 <img 
                     src="/jnt.png" 
-                    alt="Logo J&T" 
+                    alt="Logo J&T"
+                    width={100}
+                    height={40}
                     className="h-10 w-auto" // Beri tinggi sedikit lebih besar jika perlu
                 />
             </div>
@@ -76,9 +80,9 @@ const Footer = () => {
           <div>
             <h3 className="font-bold text-lg mb-4 tracking-wider">PEMBAYARAN</h3>
             <div className="grid grid-cols-2 gap-3 max-w-[350px]">
-                <img src="/bca.svg" alt="Logo BCA" />
-                <img src="/mandiri.svg" alt="Logo MANDIRI" />
-                <img src="/mid.svg" alt="Logo MIDTRANS" />
+                <img src="/bca.svg" alt="Logo BCA" width={120} height={40} className="w-auto h-auto" />
+                <img src="/mandiri.svg" alt="Logo MANDIRI" width={120} height={40} className="w-auto h-auto" />
+                <img src="/mid.svg" alt="Logo MIDTRANS" width={120} height={40} className="w-auto h-auto" />
             </div>
           </div>
 
@@ -87,9 +91,9 @@ const Footer = () => {
             <h3 className="font-bold text-lg mb-4 tracking-wider">INFORMASI</h3>
             {/* --- PENAMBAHAN LINK DI SINI --- */}
             <ul className="space-y-3">
-              <li><Link href="/about" className="text-gray-400 hover:text-white transition-colors text-sm">Tentang Kami</Link></li>
-              <li><Link href="/faq" className="text-gray-400 hover:text-white transition-colors text-sm">FAQ</Link></li>
-              <li><Link href="/terms-and-conditions" className="text-gray-400 hover:text-white transition-colors text-sm">Syarat & Ketentuan</Link></li>
+              <li><Link href="/about" className="text-gray-300 hover:text-white transition-colors text-sm">Tentang Kami</Link></li>
+              <li><Link href="/faq" className="text-gray-300 hover:text-white transition-colors text-sm">FAQ</Link></li>
+              <li><Link href="/terms-and-conditions" className="text-gray-300 hover:text-white transition-colors text-sm">Syarat & Ketentuan</Link></li>
             </ul>
           </div>
 
@@ -99,7 +103,7 @@ const Footer = () => {
       {/* Bagian Bawah Footer (Copyright) */}
       <div className="bg-black py-4 mt-8">
         <div className="container mx-auto px-6 lg:px-8">
-            <p className="text-center text-gray-500 text-sm">
+            <p className="text-center text-gray-300 text-sm">
               Copyright © {new Date().getFullYear()} Created by KodeKiri
             </p>
         </div>

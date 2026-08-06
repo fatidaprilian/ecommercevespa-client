@@ -5,7 +5,7 @@ const api = axios.create({
   withCredentials: true, 
 });
 
-// Interceptor Request: Token dikirim otomatis via HttpOnly Cookie
+// Request Interceptor: Token is automatically sent via HttpOnly Cookie
 api.interceptors.request.use(
   (config) => {
     return config;
@@ -16,9 +16,11 @@ api.interceptors.request.use(
 );
 
 
-// 🔥 INTEGRASI INTERCEPTOR RESPONSE: Cache Busting dan Error Handling 🔥
+/**
+ * Response Interceptor: Handles cache busting for Cloudinary image URLs
+ * and centralized 401 unauthenticated session expiry handling.
+ */
 api.interceptors.response.use(
-  // ✅ 1. SUCCESS HANDLER: Menambah Timestamp (Cache Busting)
   (response) => {
     const imageKeys = ['imageUrl', 'url', 'logoUrl', 'proofOfPayment', 'bannerImageUrl', 'images'];
     const addTimestampToUrls = (obj: any): any => {
@@ -43,18 +45,14 @@ api.interceptors.response.use(
       return newObj;
     };
 
-    // Terapkan logic cache busting ke data
     if (response.data) {
       response.data = addTimestampToUrls(response.data);
     }
     
-    return response; // Lanjutkan respons yang sudah dimodifikasi
+    return response;
   },
-  // ✅ 2. ERROR HANDLER: Menangani error 401
   (error) => {
     if (error.response?.status === 401) {
-      
-      // Redirect ke login jika tidak di halaman login
       if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
         window.location.href = '/auth/login?session_expired=true';
       }

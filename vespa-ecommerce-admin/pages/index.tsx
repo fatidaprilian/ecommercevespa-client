@@ -10,7 +10,7 @@ import {
   Calendar,
   User,
   CreditCard,
-  ArrowUpRight // Saya tambah icon ini untuk mempercantik card kecil
+  ArrowUpRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
@@ -27,7 +27,7 @@ const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(price);
 };
 
-// Helper warna status
+// Helper for status badge colors
 const getStatusColor = (status: string) => {
     const s = status?.toLowerCase() || '';
     if (s === 'paid' || s === 'completed' || s === 'success') return 'bg-green-100 text-green-700 border-green-200';
@@ -66,19 +66,16 @@ export default function DashboardPage() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="space-y-6 pb-20" // Padding bottom ekstra biar ga mentok bawah banget di HP
+      className="space-y-6 pb-20"
     >
-      {/* BAGIAN STATS CARDS 
-         Revisi: Mobile langsung grid-cols-2 (2 kotak per baris)
-      */}
+      {/* Stats Cards Grid */}
       <motion.div
         variants={containerVariants}
-        // 👇 PERUBAHAN DISINI: grid-cols-2 (mobile) -> lg:grid-cols-4 (desktop)
         className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
       >
         {statsData.map((stat) => (
           <motion.div key={stat.title} variants={itemVariants}>
-            <Card className="shadow-sm h-full"> {/* h-full biar tinggi kotak sama rata */}
+            <Card className="shadow-sm h-full">
               <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
                   {stat.title}
@@ -91,9 +88,7 @@ export default function DashboardPage() {
                 {isLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : (
-                    // Font size disesuaikan biar muat di kotak kecil
                     <div className="text-lg sm:text-3xl font-bold truncate">
-                        {/* Jika pendapatan, kita potong "Rp" nya di mobile biar ga sempit jika perlu, atau biarkan truncate handle */}
                         <span className="break-all">{stat.value}</span>
                     </div>
                 )}
@@ -107,10 +102,10 @@ export default function DashboardPage() {
         variants={containerVariants}
         className="grid grid-cols-1 lg:grid-cols-5 gap-6"
       >
-        {/* BAGIAN PESANAN TERBARU */}
+        {/* Recent Orders Section */}
         <motion.div variants={itemVariants} className="lg:col-span-3">
           <Card className="h-full shadow-sm border-none sm:border bg-transparent sm:bg-card">
-            <CardHeader className="px-0 sm:px-6 pt-0 sm:pt-6"> {/* Hapus padding header di mobile */}
+            <CardHeader className="px-0 sm:px-6 pt-0 sm:pt-6">
               <CardTitle>Pesanan Terbaru</CardTitle>
             </CardHeader>
             <CardContent className="p-0 sm:p-6"> 
@@ -150,8 +145,7 @@ export default function DashboardPage() {
                         </Table>
                     </div>
 
-                    {/* --- TAMPILAN MOBILE (GRID KOTAK-KOTAK) --- */}
-                    {/* 👇 PERUBAHAN DISINI: Pakai Grid Cols 2 biar hemat tempat ke bawah */}
+                    {/* Mobile View Grid */}
                     <div className="sm:hidden grid grid-cols-2 gap-3">
                          {stats?.recentOrders.length === 0 && (
                             <div className="col-span-2 text-center text-sm text-muted-foreground py-4 border rounded-lg bg-card">Belum ada pesanan.</div>
@@ -159,7 +153,7 @@ export default function DashboardPage() {
                          
                          {stats?.recentOrders.map((order: any) => (
                              <div key={order.id} className="bg-card border rounded-lg p-3 shadow-sm flex flex-col justify-between h-full relative overflow-hidden group">
-                                {/* Hiasan background kecil */}
+                                {/* Decorative background accent */}
                                 <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full -mr-8 -mt-8 ${getStatusColor(order.status).split(' ')[0]}`}></div>
                                 
                                 <div className="space-y-2 mb-2">
@@ -170,7 +164,7 @@ export default function DashboardPage() {
                                     </div>
                                     
                                     <div>
-                                        <p className="font-semibold text-sm truncate" title={order.user.name}>{order.user.name}</p>
+                                        <p className="font-semibold text-sm truncate" title={order.user?.name || 'Pelanggan'}>{order.user?.name || 'Pelanggan'}</p>
                                         <p className="text-[10px] text-muted-foreground">#{order.id.slice(0,6)}</p>
                                     </div>
                                 </div>
@@ -179,7 +173,7 @@ export default function DashboardPage() {
                                     <span className="text-xs font-bold text-primary truncate">
                                         {formatPrice(order.totalAmount)}
                                     </span>
-                                    {/* Icon panah kecil penanda aksi/detail */}
+                                    {/* Action arrow indicator icon */}
                                     <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
                                 </div>
                              </div>
@@ -191,7 +185,7 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
-        {/* BAGIAN AKTIVITAS TERKINI */}
+        {/* Recent Activity Section */}
         <motion.div variants={itemVariants} className="lg:col-span-2">
           <Card className="h-full shadow-sm">
             <CardHeader className="pb-2">

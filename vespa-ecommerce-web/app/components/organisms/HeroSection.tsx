@@ -55,6 +55,7 @@ const HeroCarousel = () => {
                     src={item.imageUrl}
                     alt={item.title || 'Promotional Banner'}
                     fill
+                    sizes="(max-width: 768px) 100vw, 1206px"
                     className="object-cover"
                     priority={index === 0}
                   />

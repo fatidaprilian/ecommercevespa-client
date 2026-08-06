@@ -71,9 +71,9 @@ export interface PaginatedOrders {
 }
 
 /**
- * Mengambil pesanan dari API dengan paginasi dan pencarian.
- * @param page - Nomor halaman yang ingin diambil.
- * @param search - Kata kunci pencarian (opsional).
+ * Fetches orders from the API with pagination and optional search filter.
+ * @param page - Page number to retrieve.
+ * @param search - Search keyword (optional).
  */
 export const getOrders = async ({
   page,
@@ -92,16 +92,19 @@ export const getOrders = async ({
   return data;
 };
 
+/**
+ * Fetches a single order record by its unique ID.
+ */
 export const getOrderById = async (orderId: string): Promise<Order> => {
   const { data } = await api.get(`/orders/${orderId}`);
   return data;
 };
 
 /**
- * Mengupdate status sebuah pesanan.
- * @param orderId ID dari pesanan yang akan diupdate.
- * @param status Status baru untuk pesanan (e.g., 'CANCELLED', 'REFUNDED').
- * @returns Order yang telah diupdate.
+ * Updates the status of an existing order.
+ * @param orderId ID of the target order.
+ * @param status New status value (e.g. 'CANCELLED', 'REFUNDED').
+ * @returns The updated order instance.
  */
 export const updateOrderStatus = async (
   orderId: string,

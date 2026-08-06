@@ -10,25 +10,40 @@ export const useRecentlyViewed = () => {
     const addProduct = useCallback((product: Product) => {
         if (!product || typeof window === 'undefined') return;
 
-        const storedItems = localStorage.getItem(RECENTLY_VIEWED_KEY);
-        let productIds: string[] = storedItems ? JSON.parse(storedItems) : [];
+        let productIds: string[] = [];
+        try {
+            const storedItems = localStorage.getItem(RECENTLY_VIEWED_KEY);
+            productIds = storedItems ? JSON.parse(storedItems) : [];
+            if (!Array.isArray(productIds)) productIds = [];
+        } catch {
+            productIds = [];
+        }
 
-        // Hapus ID jika sudah ada untuk dipindahkan ke depan
+        // Remove existing ID to move it to the front
         productIds = productIds.filter(id => id !== product.id);
 
-        // Tambahkan ID produk baru di awal
+        // Prepend new product ID
         productIds.unshift(product.id);
 
-        // Batasi jumlah produk yang disimpan
+        // Limit maximum items stored
         const sliced = productIds.slice(0, MAX_RECENT_PRODUCTS);
 
-        localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(sliced));
+        try {
+            localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(sliced));
+        } catch {
+            // Ignore storage write errors (e.g. private browsing quota)
+        }
     }, []);
 
     const getProductIds = useCallback((): string[] => {
         if (typeof window === 'undefined') return [];
-        const storedItems = localStorage.getItem(RECENTLY_VIEWED_KEY);
-        return storedItems ? JSON.parse(storedItems) : [];
+        try {
+            const storedItems = localStorage.getItem(RECENTLY_VIEWED_KEY);
+            const parsed = storedItems ? JSON.parse(storedItems) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
     }, []);
 
     return { addProduct, getProductIds };

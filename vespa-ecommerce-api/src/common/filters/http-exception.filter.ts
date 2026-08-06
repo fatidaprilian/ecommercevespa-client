@@ -12,25 +12,24 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
     const status = exception.getStatus();
-    // Dapatkan respons asli dari exception
+    // Extract original response payload from exception
     const errorResponse = exception.getResponse();
 
     let message: string | string[];
 
-    // Logika untuk mengekstrak pesan:
+    // Extract human-readable error message:
     if (typeof errorResponse === 'string') {
-      // Jika responsnya hanya string (jarang terjadi untuk exception bawaan)
+      // String error response
       message = errorResponse;
     } else if (
       typeof errorResponse === 'object' &&
       errorResponse !== null &&
-      'message' in errorResponse // Cek apakah ada properti 'message'
+      'message' in errorResponse
     ) {
-      // Jika responsnya objek (umumnya dari ValidationPipe atau exception bawaan seperti ConflictException)
-      // Ambil 'message'. Ini bisa berupa string atau array string (dari ValidationPipe)
+      // Object response from ValidationPipe or built-in NestJS HttpExceptions
       message = (errorResponse as any).message;
     } else {
-      // Fallback jika format tidak dikenali, gunakan pesan default berdasarkan status
+      // Fallback message if format is unrecognized
       message = exception.message || HttpStatus[status] || 'Internal server error';
     }
 
@@ -43,7 +42,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message: message, // Kirim message yang sudah diekstrak
+      message: message, // Return extracted message payload
     });
   }
 }

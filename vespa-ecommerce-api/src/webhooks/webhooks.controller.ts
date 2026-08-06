@@ -22,7 +22,7 @@ export class WebhooksController {
     );
     this.logger.log(JSON.stringify(payload, null, 2));
 
-    // 🔑 Normalisasi: selalu jadikan array agar bisa loop semua event
+    // Normalize payload to array for event processing loop
     const events = Array.isArray(payload) ? payload : [payload];
 
     for (const event of events) {

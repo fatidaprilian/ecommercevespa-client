@@ -107,7 +107,7 @@ export default function OrdersPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* DESKTOP / TABLET (≥ md): tabel asli, tidak diubah */}
+            {/* Desktop / Tablet View */}
             <div className="hidden md:block">
               <Table>
                 <TableHeader>
@@ -152,7 +152,7 @@ export default function OrdersPage() {
                             </Link>
                           </TableCell>
                           <TableCell>{formatDate(order.createdAt)}</TableCell>
-                          <TableCell className="font-medium">{order.user.name}</TableCell>
+                          <TableCell className="font-medium">{order.user?.name || 'Pelanggan'}</TableCell>
                           <TableCell>{formatPrice(order.totalAmount)}</TableCell>
                           <TableCell>
                             <span
@@ -250,7 +250,7 @@ export default function OrdersPage() {
                             <span className="text-[11px] text-muted-foreground">
                               {formatDate(order.createdAt)}
                             </span>
-                            <span className="mt-1 text-xs font-medium">{order.user.name}</span>
+                            <span className="mt-1 text-xs font-medium">{order.user?.name || 'Pelanggan'}</span>
                           </div>
                           <span
                             className={`rounded-full px-2 py-1 text-[11px] font-semibold ${

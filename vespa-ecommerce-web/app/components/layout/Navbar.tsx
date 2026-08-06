@@ -22,7 +22,7 @@ import {
     ArrowRight,
     Heart,
     Phone,
-    User, // ✅ DITAMBAHKAN
+    User,
 } from 'lucide-react';
 
 import api from '@/lib/api';
@@ -164,6 +164,7 @@ export default function Navbar() {
                         <div className="flex items-center gap-1">
                             <Link
                                 href="/profile/akun-saya/wishlist"
+                                aria-label="Wishlist"
                                 className="relative p-2 rounded-full transition-colors duration-300 hover:bg-black/10"
                             >
                                 <Heart className="w-6 h-6" />
@@ -175,6 +176,7 @@ export default function Navbar() {
                             </div>
                             <Link
                                 href="/cart"
+                                aria-label="Keranjang Belanja"
                                 className="relative p-2 rounded-full transition-colors duration-300 hover:bg-black/10"
                             >
                                 <ShoppingCart className="w-6 h-6" />
@@ -390,6 +392,7 @@ export default function Navbar() {
                                         >
                                             <Link
                                                 href="/profile/akun-saya/wishlist"
+                                                aria-label="Wishlist"
                                                 className="relative p-2 rounded-full transition-colors duration-300 hover:bg-gray-100"
                                             >
                                                 <Heart className="w-6 h-6" />
@@ -401,6 +404,7 @@ export default function Navbar() {
                                             </div>
                                             <Link
                                                 href="/cart"
+                                                aria-label="Keranjang Belanja"
                                                 className="relative p-2 rounded-full transition-colors duration-300 hover:bg-gray-100"
                                             >
                                                 <ShoppingCart className="w-6 h-6" />
@@ -419,6 +423,7 @@ export default function Navbar() {
                                 {/* Tombol Menu Mobile */}
                                 <button
                                     onClick={() => setIsOpen(!isOpen)}
+                                    aria-label={isOpen ? "Tutup menu" : "Buka menu"}
                                     className="md:hidden p-2 rounded-full transition-all duration-300 hover:bg-gray-100"
                                 >
                                     {isOpen ? (

@@ -11,7 +11,12 @@ const nextConfig: NextConfig = {
       'lucide-react',
       '@radix-ui/react-checkbox',
       '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-accordion',
       'framer-motion',
+      'date-fns',
+      'lodash',
+      '@tanstack/react-query',
     ],
   },
   

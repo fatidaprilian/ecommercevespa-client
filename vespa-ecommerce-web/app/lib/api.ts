@@ -9,8 +9,7 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Interceptor Request: Tidak perlu lagi menambah Authorization header secara manual, 
-// karena token sudah otomatis dikirim lewat cookie berkat withCredentials: true
+// Request Interceptor: Credentials/Cookies are automatically attached via withCredentials: true
 api.interceptors.request.use(
   (config) => {
     return config;
@@ -20,9 +19,9 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor Response: Menambah Timestamp (Cache Busting) & Menangani error 401
+// Response Interceptor: Cache busting for Cloudinary images & centralized 401 unauthenticated handling
 api.interceptors.response.use(
-  // 1. SUCCESS HANDLER: Menambah Timestamp (Cache Busting)
+  // 1. SUCCESS HANDLER: Cache busting for Cloudinary URLs
   (response) => {
     const imageKeys = ['imageUrl', 'url', 'logoUrl', 'proofOfPayment', 'bannerImageUrl', 'images'];
     const addTimestampToUrls = (obj: unknown): unknown => {
@@ -54,15 +53,15 @@ api.interceptors.response.use(
     
     return response;
   },
-  // 2. ERROR HANDLER: Menangani error 401
+  // 2. ERROR HANDLER: Centralized 401 Unauthorized handling
   (error) => {
     if (error.response && error.response.status === 401) {
       const { isAuthenticated, setAuth } = useAuthStore.getState();
       const { clearClientCart } = useCartStore.getState();
       const { clearWishlist } = useWishlistStore.getState();
 
-      // Hanya redirect ke login jika user SEBELUMNYA sudah login (session expired).
-      // Jangan redirect jika user memang belum login (guest browsing).
+      // Only redirect to login if user was PREVIOUSLY authenticated (session expired).
+      // Do not redirect guest users browsing public routes.
       if (isAuthenticated && typeof window !== 'undefined' && window.location.pathname !== '/login') {
         setAuth(null); 
         clearClientCart();   

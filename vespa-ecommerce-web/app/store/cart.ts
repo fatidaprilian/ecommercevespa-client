@@ -110,7 +110,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         // IMPORTANT LOGIC FOR SILENT REFRESH:
         // Sync selectedItems. If an item is removed from backend (e.g. out of stock),
         // we must also remove it from selectedItems to avoid error during checkout.
-        const newCartItemIds = new Set(data.items.map((item: CartItem) => item.id));
+        const cartItems = Array.isArray(data?.items) ? data.items : [];
+        const newCartItemIds = new Set(cartItems.map((item: CartItem) => item.id));
         const newSelectedItems = new Set(state.selectedItems);
 
         // Check each selected item, does it still exist in new cart data?
@@ -124,7 +125,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         // Do not overwrite items being updated by user
         let finalCart = data;
         if (state.cart && state.updatingItemIds.size > 0) {
-          const mergedItems = data.items.map((serverItem: CartItem) => {
+          const mergedItems = cartItems.map((serverItem: CartItem) => {
             if (state.updatingItemIds.has(serverItem.id)) {
               // Find local version
               const localItem = state.cart?.items.find(i => i.id === serverItem.id);
@@ -266,24 +267,25 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   getTotalWeight: () => {
     const { cart, selectedItems } = get();
-    if (!cart) return 0;
+    if (!cart || !Array.isArray(cart.items)) return 0;
 
     return cart.items
       .filter(item => selectedItems.has(item.id))
       .reduce((totalWeight, item) => {
-        const itemWeight = item.product.weight || 1000;
+        const itemWeight = item.product?.weight || 1000;
         return totalWeight + (itemWeight * item.quantity);
       }, 0);
   },
 
   getSummary: () => {
     const { cart, selectedItems } = get();
-    if (!cart) return { subtotal: 0, taxAmount: 0, totalItems: 0 };
+    if (!cart || !Array.isArray(cart.items)) return { subtotal: 0, taxAmount: 0, totalItems: 0 };
 
     const selectedCartItems = cart.items.filter(item => selectedItems.has(item.id));
 
     const subtotal = selectedCartItems.reduce((acc, item) => {
-      return acc + (item.product.price * item.quantity);
+      const price = item.product?.price || 0;
+      return acc + (price * item.quantity);
     }, 0);
 
     const taxAmount = subtotal * 0.11;

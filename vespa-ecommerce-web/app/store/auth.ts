@@ -19,7 +19,7 @@ export const useAuthStore = create<AuthState>()(
       _hasHydrated: false, 
       setAuth: (user) => set({
         user,
-        isAuthenticated: !!user, // Autentikasi ditentukan dari ada/tidaknya data user
+        isAuthenticated: !!user, // Authentication state determined by user payload presence
       }),
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }), 
     }),

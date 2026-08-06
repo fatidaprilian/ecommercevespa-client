@@ -21,8 +21,8 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
       const ids = await getWishlistIds();
       set({ productIds: new Set(ids), isHydrated: true });
     } catch (error) {
-      console.error("Gagal mengambil data wishlist:", error);
-      set({ isHydrated: true }); // Tetap set hydrated meskipun gagal
+      console.error("Failed to fetch wishlist IDs:", error);
+      set({ isHydrated: true }); // Mark as hydrated even on failure to avoid UI block
     }
   },
 

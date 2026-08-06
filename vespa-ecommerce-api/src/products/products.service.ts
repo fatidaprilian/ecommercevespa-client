@@ -37,8 +37,8 @@ export class ProductsService {
       });
       accuratePriceCategoryId = fullUser?.accuratePriceCategoryId || null;
 
-      // FALLBACK 1: Jika user login tapi belum punya kategori (misal: Admin), 
-      // tembak ke kategori Default (Umum) agar harga tidak 0
+      // FALLBACK 1: If logged-in user does not have a price category assigned (e.g. Admin),
+      // fallback to Default (General) category so price is non-zero
       if (!accuratePriceCategoryId) {
         const defaultCatId = this.configService.get<string>('ACCURATE_DEFAULT_PRICE_CATEGORY_ID');
         if (defaultCatId) {

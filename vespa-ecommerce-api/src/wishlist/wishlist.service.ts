@@ -28,10 +28,10 @@ export class WishlistService {
       },
     });
 
-    // Proses setiap produk untuk menyertakan priceInfo
+    // Process each product to include priceInfo
     const processedItems = await Promise.all(
       wishlistItems.map(async (item) => {
-        // Pastikan produk tidak null sebelum diproses
+        // Ensure product object is non-null before processing price
         if (!item.product) {
             return item;
         }
