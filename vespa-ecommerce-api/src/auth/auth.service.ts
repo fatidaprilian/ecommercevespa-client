@@ -210,25 +210,6 @@ export class AuthService {
       },
     });
 
-    // Integrated Accurate logic
-    try {
-        // 1. Buat customer di Accurate
-        const customerNo = await this.accuratePricingService.createCustomer({
-            name: newUser.name || newUser.email,
-            email: newUser.email
-        });
-        
-        // 2. Simpan nomor pelanggan Accurate ke user kita
-        await this.prisma.user.update({
-            where: { id: newUser.id },
-            data: { accurateCustomerNo: customerNo }
-        });
-    } catch (error) {
-        // PENTING: Kita wrap dengan try-catch agar jika Accurate error (misal down),
-        // user TETAP BISA register di web kita. Errornya cukup di-log saja.
-        this.logger.error(`Gagal membuat customer di Accurate untuk user ${newUser.email}:`, error);
-    }
-
     try {
       await this.emailService.sendVerificationEmail(
         newUser.email,
@@ -312,6 +293,21 @@ export class AuthService {
         throw new UnauthorizedException('Kode verifikasi tidak valid.');
     }
 
+    // Integrated Accurate logic (Executed ONLY after email verification)
+    let customerNo = user.accurateCustomerNo;
+    if (!customerNo) {
+      try {
+        customerNo = await this.accuratePricingService.createCustomer({
+          name: user.name || user.email,
+          email: user.email,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Gagal membuat customer di Accurate untuk user ${user.email}:`,
+          error,
+        );
+      }
+    }
 
     const updatedUser = await this.prisma.user.update({
       where: { id: user.id },
@@ -319,6 +315,7 @@ export class AuthService {
         emailVerified: new Date(),
         verificationToken: null,
         verificationTokenExpires: null,
+        ...(customerNo ? { accurateCustomerNo: customerNo } : {}),
       },
     });
 
