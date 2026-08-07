@@ -30,7 +30,7 @@ const BANNER_TYPE_CONFIG: Record<string, { label: string; maxQuota: number; size
   TOP_LEFT: { label: '2 Banner Atas (Kiri)', maxQuota: 1, sizeHint: '1000 × 750 px (rasio 4:3)' },
   TOP_RIGHT: { label: '2 Banner Atas (Kanan)', maxQuota: 1, sizeHint: '1000 × 750 px (rasio 4:3)' },
   MIDDLE: { label: 'Banner Tengah', maxQuota: 1, sizeHint: '1800 × 600 px (rasio 3:1)' },
-  BOTTOM: { label: 'Banner About Us (Bawah)', maxQuota: 1, sizeHint: '1200 × 800 px (rasio 3:2)' },
+  BOTTOM: { label: 'Banner About Us (Bawah)', maxQuota: 1, sizeHint: '1800 × 600 px (rasio 3:1)' },
 };
 
 // Types that support title & subtitle overlay
