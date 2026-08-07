@@ -69,7 +69,7 @@ export function PromoBanners() {
             {banner.buttonText && (
               <div className="mt-2 md:mt-3">
                 <span
-                  className="inline-block text-xs md:text-sm font-medium px-3 py-1.5 md:px-4 md:py-2 rounded-md transition-opacity hover:opacity-80"
+                  className="inline-flex items-center justify-center text-xs md:text-sm font-medium h-7 md:h-8 px-3.5 md:px-5 rounded-md leading-none transition-opacity hover:opacity-80"
                   style={{
                     backgroundColor: isButtonTransparent ? 'transparent' : buttonColor,
                     color: isButtonTransparent ? textColor : '#FFFFFF',

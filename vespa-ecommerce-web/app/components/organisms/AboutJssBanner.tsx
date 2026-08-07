@@ -59,19 +59,17 @@ export function AboutJssBanner() {
 
       {/* Optional Overlay Button — rendered ONLY if buttonText is filled in Admin */}
       {buttonText ? (
-        <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 md:bottom-8 md:left-8 z-10">
-          <Button
-            asChild
-            variant="outline"
-            className="font-medium text-[10px] sm:text-xs md:text-base px-2.5 sm:px-4 md:px-6 py-0.5 sm:py-1.5 md:py-2.5 rounded-sm sm:rounded-md shadow-md transition-all hover:opacity-90"
+        <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 md:bottom-6 md:left-6 z-10">
+          <span
+            className="inline-flex items-center justify-center text-xs md:text-sm font-medium h-7 md:h-8 px-3.5 md:px-5 rounded-md shadow-md leading-none transition-opacity hover:opacity-90 cursor-pointer"
             style={{
               backgroundColor: isButtonTransparent ? 'transparent' : buttonColor,
               color: getButtonTextColor(),
-              borderColor: isButtonTransparent ? textColor : buttonColor,
+              border: isButtonTransparent ? `1px solid ${textColor}` : 'none',
             }}
           >
-            <span>{buttonText}</span>
-          </Button>
+            {buttonText}
+          </span>
         </div>
       ) : null}
     </div>

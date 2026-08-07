@@ -59,25 +59,26 @@ const HeroCarousel = () => {
                     className="object-cover"
                     priority={index === 0}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white">
-                    <motion.p
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2, duration: 0.5 }}
-                      className="text-sm md:text-base font-semibold text-gray-200"
-                    >
-                      {item.subtitle}
-                    </motion.p>
-                    <motion.h2
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.5 }}
-                      className="text-2xl md:text-4xl font-bold mt-1"
-                    >
-                      {item.title}
-                    </motion.h2>
-                  </div>
+                  {item.title || item.subtitle ? (
+                    <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white">
+                      <motion.p
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2, duration: 0.5 }}
+                        className="text-sm md:text-base font-semibold text-gray-200"
+                      >
+                        {item.subtitle}
+                      </motion.p>
+                      <motion.h2
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.5 }}
+                        className="text-2xl md:text-4xl font-bold mt-1"
+                      >
+                        {item.title}
+                      </motion.h2>
+                    </div>
+                  ) : null}
                 </div>
               </Link>
             </CarouselItem>
